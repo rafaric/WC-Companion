@@ -269,6 +269,18 @@ describe('GroupsService', () => {
     expect(result.inviteCode).toBe(secondAttempt.inviteCode);
   });
 
+  it('rejects missing group names without throwing a runtime TypeError', async () => {
+    const prisma = createPrismaMock({ groups: [], memberships: [] });
+    const service = createService(prisma, createUsersServiceMock(), createTournamentsServiceMock());
+
+    await expect(
+      service.createGroup({
+        identity: createIdentity(),
+        name: undefined,
+      }),
+    ).rejects.toThrow('Group name is required');
+  });
+
   it('joins a group as a member', async () => {
     const group = createGroup();
     const prisma = createPrismaMock({ groups: [group], memberships: [] });
@@ -322,6 +334,18 @@ describe('GroupsService', () => {
         inviteCode: 'MISSING-CODE',
       }),
     ).rejects.toThrow('was not found');
+  });
+
+  it('rejects missing invite codes without throwing a runtime TypeError', async () => {
+    const prisma = createPrismaMock({ groups: [], memberships: [] });
+    const service = createService(prisma, createUsersServiceMock(), createTournamentsServiceMock());
+
+    await expect(
+      service.joinGroup({
+        identity: createIdentity(),
+        inviteCode: undefined,
+      }),
+    ).rejects.toThrow('Invite code is required');
   });
 
   it('lists my groups with membership roles', async () => {

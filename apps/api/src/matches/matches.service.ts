@@ -23,7 +23,7 @@ export class MatchesService {
   ) {}
 
   async finalizeMatch(input: FinalizeMatchInput): Promise<FinalizeMatchSummary> {
-    this.assertValidScores(input.homeScore, input.awayScore);
+    const scores = this.normalizeScores(input.homeScore, input.awayScore);
 
     const match = await this.prisma.match.findUnique({
       where: { id: input.matchId },
@@ -45,8 +45,8 @@ export class MatchesService {
       where: { id: input.matchId },
       data: {
         status: MatchStatus.FINISHED,
-        homeScore: input.homeScore,
-        awayScore: input.awayScore,
+        homeScore: scores.homeScore,
+        awayScore: scores.awayScore,
         finalizedAt,
       },
       select: {
@@ -81,9 +81,18 @@ export class MatchesService {
     };
   }
 
-  private assertValidScores(homeScore: number, awayScore: number): void {
-    if (!Number.isInteger(homeScore) || !Number.isInteger(awayScore) || homeScore < 0 || awayScore < 0) {
+  private normalizeScores(homeScore: unknown, awayScore: unknown): { homeScore: number; awayScore: number } {
+    if (
+      typeof homeScore !== 'number' ||
+      typeof awayScore !== 'number' ||
+      !Number.isInteger(homeScore) ||
+      !Number.isInteger(awayScore) ||
+      homeScore < 0 ||
+      awayScore < 0
+    ) {
       throw new BadRequestException('Scores must be non-negative integers');
     }
+
+    return { homeScore, awayScore };
   }
 }

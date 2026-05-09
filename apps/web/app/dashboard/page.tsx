@@ -211,6 +211,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <div className="flex items-center gap-3 text-xs text-slate-300">
             <span className="hidden sm:inline">{displayName}</span>
             <Link
+              href="/groups"
+              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
+            >
+              Groups
+            </Link>
+            <Link
               href="/auth/logout"
               className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
             >

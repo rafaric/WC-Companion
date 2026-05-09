@@ -197,6 +197,12 @@ export default async function HomePage() {
                     {profileComplete ? "Open dashboard" : "Complete profile"}
                   </Link>
                   <Link
+                    href="/groups"
+                    className="rounded-full border border-slate-700 bg-slate-900/80 px-6 py-3 text-center text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
+                  >
+                    My groups
+                  </Link>
+                  <Link
                     href="/auth/logout"
                     className="rounded-full border border-slate-700 bg-slate-900/80 px-6 py-3 text-center text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
                   >

@@ -77,6 +77,33 @@ export interface RankingEntry {
   updatedAt: string;
 }
 
+export const GROUP_ROLE = {
+  OWNER: "OWNER",
+  MEMBER: "MEMBER",
+} as const;
+
+export type GroupRole = (typeof GROUP_ROLE)[keyof typeof GROUP_ROLE];
+
+export interface GroupView {
+  id: string;
+  name: string;
+  inviteCode: string;
+  tournamentId: string;
+  createdAt: string;
+}
+
+export interface MyGroupView extends GroupView {
+  role: GroupRole;
+}
+
+export interface CreateGroupInput {
+  name: string;
+}
+
+export interface JoinGroupInput {
+  inviteCode: string;
+}
+
 export interface CurrentUserProfile {
   id: string;
   email: string;
@@ -196,5 +223,43 @@ export async function updateCurrentUserProfile(
       "Content-Type": "application/json",
     },
     body: JSON.stringify(input),
+  });
+}
+
+export async function getMyGroups(accessToken: string): Promise<MyGroupView[]> {
+  return fetchJson<MyGroupView[]>("/groups/me", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function createGroup(accessToken: string, input: CreateGroupInput): Promise<GroupView> {
+  return fetchJson<GroupView>("/groups", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function joinGroup(accessToken: string, input: JoinGroupInput): Promise<GroupView> {
+  return fetchJson<GroupView>("/groups/join", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function getGroupRanking(accessToken: string, groupId: string): Promise<RankingEntry[]> {
+  return fetchJson<RankingEntry[]>(`/groups/${groupId}/ranking`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   });
 }

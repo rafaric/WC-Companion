@@ -189,6 +189,10 @@ describe('MatchesService', () => {
     ['negative away score', 0, -1],
     ['fractional home score', 1.5, 0],
     ['fractional away score', 0, 2.25],
+    ['missing home score', undefined, 0],
+    ['missing away score', 0, undefined],
+    ['string home score', '2', 0],
+    ['string away score', 0, '1'],
   ])('rejects %s', async (_label, homeScore, awayScore) => {
     const prisma = createPrismaMock({ matches: [], groups: [] });
     const service = new MatchesService(

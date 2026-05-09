@@ -21,12 +21,12 @@ const GROUP_VIEW_SELECT = {
 
 export interface CreateGroupInput {
   identity: AuthenticatedIdentity;
-  name: string;
+  name: unknown;
 }
 
 export interface JoinGroupInput {
   identity: AuthenticatedIdentity;
-  inviteCode: string;
+  inviteCode: unknown;
 }
 
 export interface GroupView {
@@ -171,8 +171,8 @@ export class GroupsService {
     return memberships.map((membership) => this.toMyGroupView(membership as GroupMembershipRecord));
   }
 
-  private normalizeGroupName(name: string): string {
-    const normalizedName = name.trim();
+  private normalizeGroupName(name: unknown): string {
+    const normalizedName = this.normalizeRequiredString(name, 'Group name');
 
     if (normalizedName.length === 0) {
       throw new BadRequestException('Group name is required');
@@ -185,14 +185,24 @@ export class GroupsService {
     return normalizedName;
   }
 
-  private normalizeInviteCode(inviteCode: string): string {
-    const normalizedInviteCode = inviteCode.trim().toUpperCase();
-
-    if (normalizedInviteCode.length === 0) {
-      throw new BadRequestException('Invite code is required');
-    }
+  private normalizeInviteCode(inviteCode: unknown): string {
+    const normalizedInviteCode = this.normalizeRequiredString(inviteCode, 'Invite code').toUpperCase();
 
     return normalizedInviteCode;
+  }
+
+  private normalizeRequiredString(value: unknown, fieldName: string): string {
+    if (typeof value !== 'string') {
+      throw new BadRequestException(`${fieldName} is required`);
+    }
+
+    const normalizedValue = value.trim();
+
+    if (normalizedValue.length === 0) {
+      throw new BadRequestException(`${fieldName} is required`);
+    }
+
+    return normalizedValue;
   }
 
   private generateInviteCode(): string {
