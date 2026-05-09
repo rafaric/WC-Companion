@@ -1,0 +1,258 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TournamentStatus {
+  DRAFT
+  ACTIVE
+  FINISHED
+}
+
+enum MatchStatus {
+  UPCOMING
+  LIVE
+  FINISHED
+}
+
+enum PredictionScoringStatus {
+  PENDING
+  SCORED
+  VOID
+}
+
+enum RankingScope {
+  GLOBAL
+  GROUP
+  COUNTRY
+}
+
+enum GroupRole {
+  OWNER
+  MEMBER
+}
+
+enum ShareCardType {
+  PREDICTION
+  GROUP_RANKING
+  PERFORMANCE_SUMMARY
+}
+
+model User {
+  id                String            @id @default(uuid())
+  authProvider      String
+  authSubject       String
+  email             String
+  username          String            @unique
+  country           String?
+  favoriteTeamId    String?
+  avatar            String?
+  preferredLanguage String            @default("es")
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  favoriteTeam      Team?             @relation("FavoriteTeam", fields: [favoriteTeamId], references: [id], onDelete: SetNull)
+  predictions       Prediction[]
+  ownedGroups       Group[]           @relation("GroupOwner")
+  memberships       GroupMembership[]
+  rankingEntries    RankingEntry[]
+  shareCards        ShareCard[]
+
+  @@unique([authProvider, authSubject])
+  @@index([email])
+  @@index([country])
+  @@index([favoriteTeamId])
+}
+
+model Tournament {
+  id           String           @id @default(uuid())
+  name         String
+  slug         String           @unique
+  year         Int
+  status       TournamentStatus @default(DRAFT)
+  startsAt     DateTime?
+  endsAt       DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  teams        Team[]
+  matches      Match[]
+  predictions  Prediction[]
+  scoringRules ScoringRule[]
+  groups       Group[]
+  rankings     RankingEntry[]
+  shareCards   ShareCard[]
+
+  @@index([status])
+  @@index([year])
+}
+
+model Team {
+  id             String     @id @default(uuid())
+  tournamentId   String
+  name           String
+  shortName      String
+  countryCode    String?
+  flagCode       String?
+  primaryColor   String?
+  secondaryColor String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  tournament     Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  homeMatches    Match[]    @relation("HomeTeam")
+  awayMatches    Match[]    @relation("AwayTeam")
+  favoriteUsers  User[]     @relation("FavoriteTeam")
+
+  @@unique([tournamentId, name])
+  @@index([tournamentId])
+  @@index([countryCode])
+}
+
+model Match {
+  id            String       @id @default(uuid())
+  tournamentId  String
+  homeTeamId    String
+  awayTeamId    String
+  stage         String?
+  groupName     String?
+  kickoffAt     DateTime
+  status        MatchStatus  @default(UPCOMING)
+  homeScore     Int?
+  awayScore     Int?
+  finalizedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  tournament    Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  homeTeam      Team         @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam      Team         @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  predictions   Prediction[]
+  shareCards    ShareCard[]
+
+  @@index([tournamentId, kickoffAt])
+  @@index([status])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+}
+
+model Prediction {
+  id             String                  @id @default(uuid())
+  tournamentId   String
+  matchId        String
+  userId         String
+  homeScore      Int
+  awayScore      Int
+  pointsAwarded  Int                     @default(0)
+  scoringStatus  PredictionScoringStatus @default(PENDING)
+  submittedAt    DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  scoredAt       DateTime?
+
+  tournament     Tournament              @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  match          Match                   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, matchId])
+  @@index([tournamentId])
+  @@index([matchId])
+  @@index([userId])
+  @@index([scoringStatus])
+}
+
+model ScoringRule {
+  id           String     @id @default(uuid())
+  tournamentId String
+  name         String
+  exactScore   Int        @default(3)
+  correctSide  Int        @default(1)
+  wrongResult  Int        @default(0)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@index([tournamentId, isActive])
+}
+
+model Group {
+  id           String            @id @default(uuid())
+  tournamentId String
+  ownerId      String
+  name         String
+  inviteCode   String            @unique
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  tournament   Tournament        @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  owner        User              @relation("GroupOwner", fields: [ownerId], references: [id])
+  memberships  GroupMembership[]
+  shareCards   ShareCard[]
+
+  @@index([tournamentId])
+  @@index([ownerId])
+}
+
+model GroupMembership {
+  id        String    @id @default(uuid())
+  groupId   String
+  userId    String
+  role      GroupRole @default(MEMBER)
+  joinedAt  DateTime  @default(now())
+
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@index([role])
+}
+
+model RankingEntry {
+  id               String       @id @default(uuid())
+  tournamentId     String
+  userId           String
+  scope            RankingScope
+  scopeId          String
+  position         Int
+  totalPoints      Int          @default(0)
+  exactPredictions Int          @default(0)
+  predictionsCount Int          @default(0)
+  lastScoredAt     DateTime?
+  updatedAt        DateTime     @updatedAt
+
+  tournament       Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, scope, scopeId, userId])
+  @@index([tournamentId, scope, scopeId, position])
+  @@index([tournamentId, scope, scopeId, totalPoints, exactPredictions, predictionsCount, lastScoredAt])
+  @@index([userId])
+}
+
+model ShareCard {
+  id           String        @id @default(uuid())
+  type         ShareCardType
+  tournamentId String
+  userId       String
+  matchId      String?
+  groupId      String?
+  imageUrl     String?
+  payload      Json
+  createdAt    DateTime      @default(now())
+
+  tournament   Tournament    @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match        Match?        @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  group        Group?        @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@index([tournamentId, type])
+  @@index([userId])
+  @@index([matchId])
+  @@index([groupId])
+}

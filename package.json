@@ -1,0 +1,24 @@
+{
+  "name": "worldpredict-monorepo",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm api:dev",
+    "web:dev": "pnpm --filter @worldpredict/web dev",
+    "web:build": "pnpm --filter @worldpredict/web build",
+    "web:start": "pnpm --filter @worldpredict/web start",
+    "web:lint": "pnpm --filter @worldpredict/web lint",
+    "web:typecheck": "pnpm --filter @worldpredict/web typecheck",
+    "api:dev": "pnpm --filter @worldpredict/api start:dev",
+    "api:start": "pnpm --filter @worldpredict/api start:prod",
+    "api:test": "pnpm --filter @worldpredict/api test",
+    "smoke:mvp": "pnpm --filter @worldpredict/api smoke:mvp",
+    "test": "pnpm api:test",
+    "db:docker:up": "docker compose up -d postgres redis",
+    "db:docker:down": "docker compose down",
+    "prisma:generate": "pnpm --filter @worldpredict/api prisma:generate",
+    "prisma:seed": "pnpm --filter @worldpredict/api prisma:seed",
+    "prisma:migrate": "pnpm --filter @worldpredict/api prisma:migrate",
+    "prisma:studio": "pnpm --filter @worldpredict/api prisma:studio"
+  }
+}

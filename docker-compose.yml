@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: worldpredict-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: worldpredict
+      POSTGRES_USER: worldpredict
+      POSTGRES_PASSWORD: worldpredict
+    ports:
+      - "5432:5432"
+    volumes:
+      - worldpredict-postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: worldpredict-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - worldpredict-redis-data:/data
+
+volumes:
+  worldpredict-postgres-data:
+  worldpredict-redis-data:

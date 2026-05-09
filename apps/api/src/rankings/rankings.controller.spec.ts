@@ -1,0 +1,30 @@
+import { RankingsController } from './rankings.controller';
+import type { RankingEntryView, RankingsService } from './rankings.service';
+
+describe('RankingsController', () => {
+  it('delegates the global ranking lookup to the service', async () => {
+    const ranking: RankingEntryView[] = [
+      {
+        position: 1,
+        userId: 'user-1',
+        username: 'messi',
+        avatar: null,
+        country: 'AR',
+        favoriteTeamId: 'team-1',
+        totalPoints: 12,
+        exactPredictions: 4,
+        predictionsCount: 4,
+        lastScoredAt: null,
+        updatedAt: new Date('2026-05-08T00:00:00.000Z'),
+      },
+    ];
+
+    const rankingsService = {
+      getActiveGlobalRanking: jest.fn(async () => ranking),
+    } as unknown as RankingsService;
+    const controller = new RankingsController(rankingsService);
+
+    await expect(controller.getGlobalRanking()).resolves.toEqual(ranking);
+    expect(rankingsService.getActiveGlobalRanking).toHaveBeenCalledTimes(1);
+  });
+});
