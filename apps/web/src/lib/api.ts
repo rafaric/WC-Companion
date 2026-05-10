@@ -128,6 +128,7 @@ export interface UpsertMatchPredictionInput {
 }
 
 export const SHARE_CARD_TYPE = {
+  PREDICTION: "PREDICTION",
   PERFORMANCE_SUMMARY: "PERFORMANCE_SUMMARY",
   GROUP_RANKING: "GROUP_RANKING",
 } as const;
@@ -157,9 +158,36 @@ export interface GroupRankingShareCardPayload extends ShareCardPayloadBase {
   groupName: string;
 }
 
+export interface PredictionShareCardPayload {
+  cardType: typeof SHARE_CARD_TYPE.PREDICTION;
+  tournamentName: string;
+  tournamentYear: number;
+  username: string;
+  country: string | null;
+  avatar: string | null;
+  matchId: string;
+  predictionId: string;
+  homeTeamName: string;
+  homeTeamShortName: string;
+  homeTeamCountryCode: string | null;
+  awayTeamName: string;
+  awayTeamShortName: string;
+  awayTeamCountryCode: string | null;
+  predictedHomeScore: number;
+  predictedAwayScore: number;
+  pointsAwarded: number;
+  scoringStatus: string;
+  stage: string | null;
+  groupName: string | null;
+  kickoffAt: string;
+  predictionUpdatedAt: string;
+  generatedAt: string;
+}
+
 export type ShareCardPayloadSnapshot =
   | PerformanceSummaryShareCardPayload
-  | GroupRankingShareCardPayload;
+  | GroupRankingShareCardPayload
+  | PredictionShareCardPayload;
 
 export interface ShareCardView {
   id: string;
@@ -317,6 +345,15 @@ export async function createMyPerformanceSummaryShareCard(accessToken: string): 
 
 export async function createGroupRankingShareCard(accessToken: string, groupId: string): Promise<ShareCardView> {
   return fetchJson<ShareCardView>(`/share-cards/groups/${groupId}/ranking`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function createPredictionShareCard(accessToken: string, matchId: string): Promise<ShareCardView> {
+  return fetchJson<ShareCardView>(`/share-cards/predictions/matches/${matchId}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,

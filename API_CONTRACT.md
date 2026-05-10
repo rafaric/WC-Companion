@@ -425,6 +425,54 @@ Same as global share card, with:
 }
 ```
 
+### Create Prediction Share Card
+
+```http
+POST /share-cards/predictions/matches/:matchId
+Authorization: Bearer <token>
+```
+
+#### Rules
+
+- User must have a saved prediction for the match.
+- The card stores a payload snapshot only; image rendering is still future work.
+
+#### Response
+
+```json
+{
+  "id": "share-card-id",
+  "type": "PREDICTION",
+  "imageUrl": null,
+  "payload": {
+    "cardType": "PREDICTION",
+    "tournamentName": "World Cup 2026 Demo",
+    "tournamentYear": 2026,
+    "username": "rafa",
+    "country": "AR",
+    "avatar": null,
+    "matchId": "match-id",
+    "predictionId": "prediction-id",
+    "homeTeamName": "Argentina",
+    "homeTeamShortName": "ARG",
+    "homeTeamCountryCode": "AR",
+    "awayTeamName": "Brazil",
+    "awayTeamShortName": "BRA",
+    "awayTeamCountryCode": "BR",
+    "predictedHomeScore": 2,
+    "predictedAwayScore": 1,
+    "pointsAwarded": 0,
+    "scoringStatus": "PENDING",
+    "stage": "Group Stage",
+    "groupName": "Group A",
+    "kickoffAt": "2026-06-11T16:00:00.000Z",
+    "predictionUpdatedAt": "2026-05-08T12:00:00.000Z",
+    "generatedAt": "2026-05-08T12:00:00.000Z"
+  },
+  "createdAt": "2026-05-08T12:00:00.000Z"
+}
+```
+
 ## Admin Endpoint
 
 ### Finalize Match

@@ -9,6 +9,7 @@ import { UsersService } from '../users/users.service';
 const GLOBAL_SCOPE_ID = 'global' as const;
 
 const SHARE_CARD_TYPES = {
+  PREDICTION: ShareCardType.PREDICTION,
   PERFORMANCE_SUMMARY: ShareCardType.PERFORMANCE_SUMMARY,
   GROUP_RANKING: ShareCardType.GROUP_RANKING,
 } as const;
@@ -44,6 +45,44 @@ const GROUP_MEMBERSHIP_SELECT = {
           id: true,
           name: true,
           year: true,
+        },
+      },
+    },
+  },
+} as const;
+
+const PREDICTION_SHARE_CARD_SELECT = {
+  id: true,
+  homeScore: true,
+  awayScore: true,
+  pointsAwarded: true,
+  scoringStatus: true,
+  updatedAt: true,
+  match: {
+    select: {
+      id: true,
+      stage: true,
+      groupName: true,
+      kickoffAt: true,
+      tournament: {
+        select: {
+          id: true,
+          name: true,
+          year: true,
+        },
+      },
+      homeTeam: {
+        select: {
+          name: true,
+          shortName: true,
+          countryCode: true,
+        },
+      },
+      awayTeam: {
+        select: {
+          name: true,
+          shortName: true,
+          countryCode: true,
         },
       },
     },
@@ -93,6 +132,30 @@ interface GroupMembershipSnapshot {
   };
 }
 
+interface PredictionTeamSnapshot {
+  name: string;
+  shortName: string;
+  countryCode: string | null;
+}
+
+interface PredictionShareCardSnapshot {
+  id: string;
+  homeScore: number;
+  awayScore: number;
+  pointsAwarded: number;
+  scoringStatus: string;
+  updatedAt: Date;
+  match: {
+    id: string;
+    stage: string | null;
+    groupName: string | null;
+    kickoffAt: Date;
+    tournament: TournamentSnapshot;
+    homeTeam: PredictionTeamSnapshot;
+    awayTeam: PredictionTeamSnapshot;
+  };
+}
+
 interface ShareCardPayloadBase {
   cardType: string;
   tournamentName: string;
@@ -116,7 +179,33 @@ export interface GroupRankingShareCardPayload extends ShareCardPayloadBase {
   groupName: string;
 }
 
-export type ShareCardPayloadSnapshot = PerformanceSummaryShareCardPayload | GroupRankingShareCardPayload;
+export interface PredictionShareCardPayload {
+  cardType: typeof SHARE_CARD_TYPES.PREDICTION;
+  tournamentName: string;
+  tournamentYear: number;
+  username: string;
+  country: string | null;
+  avatar: string | null;
+  matchId: string;
+  predictionId: string;
+  homeTeamName: string;
+  homeTeamShortName: string;
+  homeTeamCountryCode: string | null;
+  awayTeamName: string;
+  awayTeamShortName: string;
+  awayTeamCountryCode: string | null;
+  predictedHomeScore: number;
+  predictedAwayScore: number;
+  pointsAwarded: number;
+  scoringStatus: string;
+  stage: string | null;
+  groupName: string | null;
+  kickoffAt: string;
+  predictionUpdatedAt: string;
+  generatedAt: string;
+}
+
+export type ShareCardPayloadSnapshot = PerformanceSummaryShareCardPayload | GroupRankingShareCardPayload | PredictionShareCardPayload;
 
 @Injectable()
 export class ShareCardsService {
@@ -188,11 +277,37 @@ export class ShareCardsService {
     });
   }
 
+  async createPredictionShareCard(identity: AuthenticatedIdentity, matchId: string): Promise<ShareCardView> {
+    const user = await this.usersService.syncAuthenticatedUser(identity);
+    const prediction = await this.prisma.prediction.findUnique({
+      where: {
+        userId_matchId: {
+          userId: user.id,
+          matchId,
+        },
+      },
+      select: PREDICTION_SHARE_CARD_SELECT,
+    });
+
+    if (prediction === null) {
+      throw new NotFoundException('Prediction share card is not available yet');
+    }
+
+    return this.createShareCard({
+      type: SHARE_CARD_TYPES.PREDICTION,
+      tournament: prediction.match.tournament,
+      userId: user.id,
+      matchId: prediction.match.id,
+      payload: this.buildPredictionPayload(user, prediction as PredictionShareCardSnapshot),
+    });
+  }
+
   private async createShareCard(input: {
     type: ShareCardType;
     tournament: TournamentSnapshot;
     userId: string;
     groupId?: string;
+    matchId?: string;
     payload: ShareCardPayloadSnapshot;
   }): Promise<ShareCardView> {
     const createdShareCard = await this.prisma.shareCard.create({
@@ -201,6 +316,7 @@ export class ShareCardsService {
         tournamentId: input.tournament.id,
         userId: input.userId,
         ...(input.groupId === undefined ? {} : { groupId: input.groupId }),
+        ...(input.matchId === undefined ? {} : { matchId: input.matchId }),
         payload: input.payload as unknown as Prisma.InputJsonValue,
       },
       select: SHARE_CARD_VIEW_SELECT,
@@ -248,6 +364,37 @@ export class ShareCardsService {
       totalPoints: rankingEntry.totalPoints,
       exactPredictions: rankingEntry.exactPredictions,
       predictionsCount: rankingEntry.predictionsCount,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  private buildPredictionPayload(
+    user: { username: string; country: string | null; avatar: string | null },
+    prediction: PredictionShareCardSnapshot,
+  ): PredictionShareCardPayload {
+    return {
+      cardType: SHARE_CARD_TYPES.PREDICTION,
+      tournamentName: prediction.match.tournament.name,
+      tournamentYear: prediction.match.tournament.year,
+      username: user.username,
+      country: user.country,
+      avatar: user.avatar,
+      matchId: prediction.match.id,
+      predictionId: prediction.id,
+      homeTeamName: prediction.match.homeTeam.name,
+      homeTeamShortName: prediction.match.homeTeam.shortName,
+      homeTeamCountryCode: prediction.match.homeTeam.countryCode,
+      awayTeamName: prediction.match.awayTeam.name,
+      awayTeamShortName: prediction.match.awayTeam.shortName,
+      awayTeamCountryCode: prediction.match.awayTeam.countryCode,
+      predictedHomeScore: prediction.homeScore,
+      predictedAwayScore: prediction.awayScore,
+      pointsAwarded: prediction.pointsAwarded,
+      scoringStatus: prediction.scoringStatus,
+      stage: prediction.match.stage,
+      groupName: prediction.match.groupName,
+      kickoffAt: prediction.match.kickoffAt.toISOString(),
+      predictionUpdatedAt: prediction.updatedAt.toISOString(),
       generatedAt: new Date().toISOString(),
     };
   }

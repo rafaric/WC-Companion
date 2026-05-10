@@ -24,4 +24,12 @@ export class ShareCardsController {
   ): Promise<ShareCardView> {
     return this.shareCardsService.createGroupRankingShareCard(identity, groupId);
   }
+
+  @Post('predictions/matches/:matchId')
+  async createPredictionShareCard(
+    @CurrentAuthUser() identity: AuthenticatedIdentity,
+    @Param('matchId') matchId: string,
+  ): Promise<ShareCardView> {
+    return this.shareCardsService.createPredictionShareCard(identity, matchId);
+  }
 }

@@ -8,6 +8,7 @@ describe('ShareCards wiring', () => {
     const service = {
       createMyGlobalRankingShareCard: jest.fn(),
       createGroupRankingShareCard: jest.fn(),
+      createPredictionShareCard: jest.fn(),
     } as unknown as ShareCardsService;
 
     expect(AppModule).toBeDefined();

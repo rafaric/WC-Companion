@@ -8,6 +8,7 @@ import {
   ApiError,
   createGroupRankingShareCard,
   createMyPerformanceSummaryShareCard,
+  createPredictionShareCard,
   getActiveTournamentMatches,
   getCurrentUserProfile,
   getGlobalRanking,
@@ -365,11 +366,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     }
 
     try {
-      const userPredictions = await getMyPredictions(actionToken);
-
-      if (!userPredictions.some((prediction) => prediction.matchId === matchId)) {
-        redirect("/share?error=prediction_not_found");
-      }
+      await createPredictionShareCard(actionToken, matchId);
     } catch (error) {
       redirect(`/share?error=${getShareErrorCode(error, "prediction")}`);
     }
@@ -512,12 +509,12 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                   <h2 className="mt-1 text-lg font-semibold text-white">Share your prediction</h2>
                 </div>
                 <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300">
-                  Preview only
+                  Backend snapshot
                 </span>
               </div>
 
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Pick one of your saved predictions and preview the payload that would be shared.
+                Pick one of your saved predictions and create a backend-owned payload snapshot.
               </p>
 
               <label className="mt-4 block space-y-2">
