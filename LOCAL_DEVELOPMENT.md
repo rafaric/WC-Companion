@@ -116,6 +116,8 @@ REDIS_HOST="localhost"
 REDIS_PORT="6379"
 AUTH0_DOMAIN="your-auth0-domain"
 AUTH0_AUDIENCE="your-auth0-api-audience"
+WEB_ORIGIN="http://localhost:3000"
+CORS_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
 PORT="3001"
 ```
 
@@ -196,3 +198,14 @@ pnpm smoke:mvp
 ```
 
 This uses smoke-owned users, a smoke group, and a dedicated smoke match so the flow can be rerun safely without touching non-smoke data.
+
+## Deploy readiness checklist
+
+- Configure Auth0 production settings: API audience, allowed callback/logout URLs, and allowed web origins.
+- Set explicit backend CORS allow-lists with `WEB_ORIGIN` and `CORS_ORIGINS`; do not rely on wildcard origins in production.
+- Run Prisma generation and migrations before release:
+  - `pnpm prisma:generate`
+  - `pnpm prisma:migrate`
+- Verify the API health endpoint: `GET /health`.
+- Smoke-check the critical path: active tournament, predictions, and admin match finalization with a token that has `matches:finalize`.
+- Keep the local development note in mind: Docker is optional locally; use the non-Docker setup when that is easier.

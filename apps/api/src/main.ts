@@ -11,7 +11,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   const configService = app.get(ConfigService<AppEnv, true>);
 
-  app.enableCors({ origin: true, credentials: true });
+  app.enableCors({ origin: configService.getOrThrow('CORS_ORIGINS'), credentials: true });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

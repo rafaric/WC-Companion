@@ -28,6 +28,20 @@ The backend validates the token and maps Auth0 identity to an internal `User`.
 
 ## Public Endpoints
 
+### Health Check
+
+```http
+GET /health
+```
+
+#### Response
+
+```json
+{
+  "status": "ok"
+}
+```
+
 ### Get Active Tournament
 
 ```http
@@ -485,9 +499,9 @@ Content-Type: application/json
 
 #### Important
 
-This endpoint currently requires a valid Auth0 token, but real admin-role authorization is still TODO.
+This endpoint requires a valid Auth0 token plus the `matches:finalize` permission.
 
-Do not expose this publicly in production until admin roles are enforced.
+Do not expose it publicly without the permission guard in place.
 
 #### Request
 

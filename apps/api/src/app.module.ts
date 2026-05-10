@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { AppConfigModule } from './config/config.module';
 import { AuthModule } from './auth/auth.module';
 import { GroupsModule } from './groups/groups.module';
+import { HealthModule } from './health/health.module';
 import { MatchesModule } from './matches/matches.module';
 import { PredictionsModule } from './predictions/predictions.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -21,6 +22,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     UsersModule,
     TournamentsModule,
+    HealthModule,
     MatchesModule,
     PredictionsModule,
     ScoringModule,
