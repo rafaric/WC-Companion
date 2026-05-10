@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { auth0 } from "@/lib/auth0";
 import {
@@ -19,6 +21,8 @@ import {
 } from "@/lib/api";
 import { formatCountryLabel, getTeamLabel } from "@/lib/profile";
 import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
+
+import { ShareActions } from "./share-actions";
 
 type ShareSearchParams = {
   error?: string;
@@ -77,6 +81,13 @@ interface PreviewCardProps {
   description: string;
   stats: PreviewStat[];
   note: string;
+  shareActions?: ReactNode;
+}
+
+interface ShareContent {
+  title: string;
+  text: string;
+  url: string;
 }
 
 type Session = NonNullable<Awaited<ReturnType<typeof auth0.getSession>>>;
@@ -98,6 +109,91 @@ function formatMatchLabel(match: MatchView): string {
 
 function formatPredictionLabel(prediction: PredictionView): string {
   return `${prediction.homeScore} - ${prediction.awayScore}`;
+}
+
+async function getRequestOrigin(): Promise<string> {
+  const requestHeaders = await headers();
+  const forwardedHost = requestHeaders.get("x-forwarded-host");
+  const host = forwardedHost ?? requestHeaders.get("host");
+
+  if (!host) {
+    return "http://localhost:3000";
+  }
+
+  const forwardedProto = requestHeaders.get("x-forwarded-proto");
+  const protocol = forwardedProto ?? (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
+
+  return `${protocol}://${host}`;
+}
+
+function buildShareUrl(origin: string, query: Record<string, string | null | undefined>): string {
+  const url = new URL("/share", origin);
+
+  for (const [key, value] of Object.entries(query)) {
+    if (value) {
+      url.searchParams.set(key, value);
+    }
+  }
+
+  return url.toString();
+}
+
+function buildPredictionShareContent(
+  origin: string,
+  username: string,
+  selectedPrediction: { prediction: PredictionView; match: MatchView | null },
+): ShareContent {
+  const { prediction, match } = selectedPrediction;
+  const title = "WorldPredict prediction preview";
+  const text = [
+    title,
+    `${username} picked ${match ? formatMatchLabel(match) : prediction.matchId}`,
+    `Predicted score: ${formatPredictionLabel(prediction)}`,
+    `Points: ${prediction.pointsAwarded}`,
+  ].join("\n");
+
+  return {
+    title,
+    text,
+    url: buildShareUrl(origin, { success: SHARE_SUCCESS.PREDICTION, matchId: prediction.matchId }),
+  };
+}
+
+function buildPerformanceSummaryShareContent(origin: string, username: string, rankingEntry: RankingEntry): ShareContent {
+  const title = "WorldPredict performance summary";
+  const text = [
+    title,
+    `${username} is #${rankingEntry.position} with ${rankingEntry.totalPoints} points`,
+    `Exact predictions: ${rankingEntry.exactPredictions}`,
+    `Saved predictions: ${rankingEntry.predictionsCount}`,
+  ].join("\n");
+
+  return {
+    title,
+    text,
+    url: buildShareUrl(origin, { success: SHARE_SUCCESS.PERFORMANCE_SUMMARY }),
+  };
+}
+
+function buildGroupRankingShareContent(
+  origin: string,
+  username: string,
+  groupName: string,
+  rankingEntry: RankingEntry,
+  groupId: string,
+): ShareContent {
+  const title = "WorldPredict group ranking";
+  const text = [
+    title,
+    groupName,
+    `${username} is #${rankingEntry.position} with ${rankingEntry.totalPoints} points`,
+  ].join("\n");
+
+  return {
+    title,
+    text,
+    url: buildShareUrl(origin, { success: SHARE_SUCCESS.GROUP_RANKING, groupId }),
+  };
 }
 
 function getShareErrorCode(error: unknown, kind: "prediction" | "performance" | "group"): ShareError {
@@ -138,7 +234,7 @@ function getShareErrorCode(error: unknown, kind: "prediction" | "performance" | 
   return error.status === 400 ? SHARE_ERROR.INVALID_INPUT : SHARE_ERROR.CREATE_FAILED;
 }
 
-function PreviewCard({ eyebrow, title, description, stats, note }: PreviewCardProps) {
+function PreviewCard({ eyebrow, title, description, stats, note, shareActions }: PreviewCardProps) {
   return (
     <article className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl shadow-slate-950/30">
       <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">{eyebrow}</p>
@@ -155,6 +251,7 @@ function PreviewCard({ eyebrow, title, description, stats, note }: PreviewCardPr
       </div>
 
       <p className="mt-4 text-xs leading-5 text-slate-500">{note}</p>
+      {shareActions ? <div className="mt-4">{shareActions}</div> : null}
     </article>
   );
 }
@@ -237,6 +334,18 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     selectedGroupId && resolvedSearchParams?.success === SHARE_SUCCESS.GROUP_RANKING
       ? await getGroupRanking(accessToken, selectedGroupId).catch(() => [] as RankingEntry[])
       : [];
+  const shareOrigin = await getRequestOrigin();
+  const shareUsername = currentUserProfile?.username ?? displayName;
+
+  const predictionShareContent = selectedPrediction
+    ? buildPredictionShareContent(shareOrigin, shareUsername, selectedPrediction)
+    : null;
+  const performanceSummaryShareContent = currentUserRankingEntry
+    ? buildPerformanceSummaryShareContent(shareOrigin, shareUsername, currentUserRankingEntry)
+    : null;
+  const groupRankingShareContent = selectedGroup && selectedGroupRanking[0]
+    ? buildGroupRankingShareContent(shareOrigin, shareUsername, selectedGroup.name, selectedGroupRanking[0], selectedGroup.id)
+    : null;
 
   async function submitPredictionPreview(formData: FormData) {
     "use server";
@@ -453,6 +562,13 @@ export default async function SharePage({ searchParams }: SharePageProps) {
               }
               stats={predictionStats}
               note="Current MVP cards store structured data only. That keeps the UX fast and lets image rendering land later without changing the flow."
+              shareActions={
+                predictionShareContent ? (
+                  <ShareActions title={predictionShareContent.title} text={predictionShareContent.text} url={predictionShareContent.url} />
+                ) : (
+                  <p className="text-xs leading-5 text-slate-500">Pick a saved prediction to enable copy/share.</p>
+                )
+              }
             />
           </div>
 
@@ -495,6 +611,15 @@ export default async function SharePage({ searchParams }: SharePageProps) {
               }
               stats={performanceSummaryStats}
               note={`Top of leaderboard preview: ${rankingPreview.length > 0 ? rankingPreview.length : 0} ranked players loaded.`}
+              shareActions={
+                performanceSummaryShareContent ? (
+                  <ShareActions
+                    title={performanceSummaryShareContent.title}
+                    text={performanceSummaryShareContent.text}
+                    url={performanceSummaryShareContent.url}
+                  />
+                ) : null
+              }
             />
           </div>
 
@@ -561,6 +686,13 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                 selectedGroup
                   ? `Created at ${formatDate(selectedGroup.createdAt)} · invite code stays private.`
                   : "The card preview will surface the group's current position, points, and prediction counts."
+              }
+              shareActions={
+                groupRankingShareContent ? (
+                  <ShareActions title={groupRankingShareContent.title} text={groupRankingShareContent.text} url={groupRankingShareContent.url} />
+                ) : selectedGroup ? (
+                  <p className="text-xs leading-5 text-slate-500">Generate the group card to enable copy/share.</p>
+                ) : null
               }
             />
           </div>
