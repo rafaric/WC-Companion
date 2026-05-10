@@ -127,6 +127,48 @@ export interface UpsertMatchPredictionInput {
   awayScore: number;
 }
 
+export const SHARE_CARD_TYPE = {
+  PERFORMANCE_SUMMARY: "PERFORMANCE_SUMMARY",
+  GROUP_RANKING: "GROUP_RANKING",
+} as const;
+
+type ShareCardType = (typeof SHARE_CARD_TYPE)[keyof typeof SHARE_CARD_TYPE];
+
+export interface ShareCardPayloadBase {
+  cardType: ShareCardType;
+  tournamentName: string;
+  tournamentYear: number;
+  username: string;
+  country: string | null;
+  avatar: string | null;
+  position: number;
+  totalPoints: number;
+  exactPredictions: number;
+  predictionsCount: number;
+  generatedAt: string;
+}
+
+export interface PerformanceSummaryShareCardPayload extends ShareCardPayloadBase {
+  cardType: typeof SHARE_CARD_TYPE.PERFORMANCE_SUMMARY;
+}
+
+export interface GroupRankingShareCardPayload extends ShareCardPayloadBase {
+  cardType: typeof SHARE_CARD_TYPE.GROUP_RANKING;
+  groupName: string;
+}
+
+export type ShareCardPayloadSnapshot =
+  | PerformanceSummaryShareCardPayload
+  | GroupRankingShareCardPayload;
+
+export interface ShareCardView {
+  id: string;
+  type: ShareCardType;
+  imageUrl: string | null;
+  payload: ShareCardPayloadSnapshot;
+  createdAt: string;
+}
+
 export class ApiError extends Error {
   readonly status: number;
   readonly url: string;
@@ -258,6 +300,24 @@ export async function joinGroup(accessToken: string, input: JoinGroupInput): Pro
 
 export async function getGroupRanking(accessToken: string, groupId: string): Promise<RankingEntry[]> {
   return fetchJson<RankingEntry[]>(`/groups/${groupId}/ranking`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function createMyPerformanceSummaryShareCard(accessToken: string): Promise<ShareCardView> {
+  return fetchJson<ShareCardView>("/share-cards/me/global-ranking", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function createGroupRankingShareCard(accessToken: string, groupId: string): Promise<ShareCardView> {
+  return fetchJson<ShareCardView>(`/share-cards/groups/${groupId}/ranking`, {
+    method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },

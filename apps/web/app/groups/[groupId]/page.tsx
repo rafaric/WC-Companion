@@ -105,12 +105,20 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300">WorldPredict</p>
             <p className="text-xs text-slate-400">Group ranking</p>
           </div>
-          <Link
-            href="/groups"
-            className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-          >
-            Back to groups
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/groups"
+              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
+            >
+              Back to groups
+            </Link>
+            <Link
+              href="/share"
+              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
+            >
+              Share cards
+            </Link>
+          </div>
         </header>
 
         <section className="space-y-6 py-8 sm:py-10">

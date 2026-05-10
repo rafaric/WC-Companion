@@ -80,6 +80,12 @@ export default async function RankingsPage() {
             >
               Groups
             </Link>
+            <Link
+              href="/share"
+              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
+            >
+              Share cards
+            </Link>
           </div>
         </header>
 
