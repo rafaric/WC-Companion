@@ -12,6 +12,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ShareCardsModule } from './share-cards/share-cards.module';
 import { RankingsModule } from './rankings/rankings.module';
 import { ScoringModule } from './scoring/scoring.module';
+import { SportsDataModule } from './sports-data/sports-data.module';
 import { TournamentsModule } from './tournaments/tournaments.module';
 import { UsersModule } from './users/users.module';
 
@@ -27,6 +28,7 @@ import { UsersModule } from './users/users.module';
     PredictionsModule,
     ScoringModule,
     RankingsModule,
+    SportsDataModule,
     GroupsModule,
     ShareCardsModule,
   ],

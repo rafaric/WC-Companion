@@ -47,6 +47,14 @@ Sports data provider integration should be abstracted so the product is not lock
 
 For MVP, manual/admin fixture management or a simple adapter is acceptable.
 
+### Staging-first sports data sync
+
+External provider sync must import fixtures and stage final results separately.
+
+If the provider has not published a result yet, that is a normal sync outcome and must not fail the job.
+
+Official match finalization still belongs to `MatchesService.finalizeMatch()` so scoring and rankings remain under explicit domain control.
+
 ## Recommended Architecture
 
 ### Applications

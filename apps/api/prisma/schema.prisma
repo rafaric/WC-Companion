@@ -42,6 +42,23 @@ enum ShareCardType {
   PERFORMANCE_SUMMARY
 }
 
+enum ExternalSyncType {
+  IMPORT
+  RESULTS
+}
+
+enum ExternalSyncStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+enum ExternalMatchResultState {
+  PENDING_CONFIRMATION
+  CONFIRMED
+  DISCARDED
+}
+
 model User {
   id                String            @id @default(uuid())
   authProvider      String
@@ -69,30 +86,36 @@ model User {
 }
 
 model Tournament {
-  id           String           @id @default(uuid())
-  name         String
-  slug         String           @unique
-  year         Int
-  status       TournamentStatus @default(DRAFT)
-  startsAt     DateTime?
-  endsAt       DateTime?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id                 String             @id @default(uuid())
+  name               String
+  slug               String             @unique
+  year               Int
+  status             TournamentStatus   @default(DRAFT)
+  startsAt           DateTime?
+  endsAt             DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
-  teams        Team[]
-  matches      Match[]
-  predictions  Prediction[]
-  scoringRules ScoringRule[]
-  groups       Group[]
-  rankings     RankingEntry[]
-  shareCards   ShareCard[]
+  teams              Team[]
+  venues             Venue[]
+  matches            Match[]
+  predictions        Prediction[]
+  scoringRules       ScoringRule[]
+  groups             Group[]
+  rankings           RankingEntry[]
+  shareCards         ShareCard[]
+  externalTeamReferences   ExternalTeamReference[]
+  externalVenueReferences  ExternalVenueReference[]
+  externalMatchReferences  ExternalMatchReference[]
+  externalSyncRuns         ExternalSyncRun[]
+  externalResults          ExternalMatchResult[]
 
   @@index([status])
   @@index([year])
 }
 
 model Team {
-  id             String     @id @default(uuid())
+  id             String               @id @default(uuid())
   tournamentId   String
   name           String
   shortName      String
@@ -100,13 +123,33 @@ model Team {
   flagCode       String?
   primaryColor   String?
   secondaryColor String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 
-  tournament     Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  homeMatches    Match[]    @relation("HomeTeam")
-  awayMatches    Match[]    @relation("AwayTeam")
-  favoriteUsers  User[]     @relation("FavoriteTeam")
+  tournament     Tournament           @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  homeMatches    Match[]              @relation("HomeTeam")
+  awayMatches    Match[]              @relation("AwayTeam")
+  favoriteUsers  User[]               @relation("FavoriteTeam")
+  externalRefs   ExternalTeamReference[]
+
+  @@unique([tournamentId, name])
+  @@index([tournamentId])
+  @@index([countryCode])
+}
+
+model Venue {
+  id            String                @id @default(uuid())
+  tournamentId  String
+  name          String
+  city          String?
+  countryCode   String?
+  capacity      Int?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  tournament    Tournament            @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  matches       Match[]
+  externalRefs  ExternalVenueReference[]
 
   @@unique([tournamentId, name])
   @@index([tournamentId])
@@ -118,6 +161,7 @@ model Match {
   tournamentId  String
   homeTeamId    String
   awayTeamId    String
+  venueId       String?
   stage         String?
   groupName     String?
   kickoffAt     DateTime
@@ -131,13 +175,123 @@ model Match {
   tournament    Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   homeTeam      Team         @relation("HomeTeam", fields: [homeTeamId], references: [id])
   awayTeam      Team         @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  venue         Venue?       @relation(fields: [venueId], references: [id], onDelete: SetNull)
   predictions   Prediction[]
   shareCards    ShareCard[]
+  externalRefs  ExternalMatchReference[]
+  externalResults ExternalMatchResult[]
 
   @@index([tournamentId, kickoffAt])
   @@index([status])
   @@index([homeTeamId])
   @@index([awayTeamId])
+  @@index([venueId])
+}
+
+model ExternalTeamReference {
+  id            String     @id @default(uuid())
+  providerKey   String
+  tournamentId  String
+  externalId    String
+  teamId        String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team          Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([providerKey, externalId])
+  @@unique([providerKey, tournamentId, teamId])
+  @@index([tournamentId])
+  @@index([teamId])
+}
+
+model ExternalVenueReference {
+  id            String     @id @default(uuid())
+  providerKey   String
+  tournamentId  String
+  externalId    String
+  venueId       String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  venue         Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([providerKey, externalId])
+  @@unique([providerKey, tournamentId, venueId])
+  @@index([tournamentId])
+  @@index([venueId])
+}
+
+model ExternalMatchReference {
+  id            String     @id @default(uuid())
+  providerKey   String
+  tournamentId  String
+  externalId    String
+  matchId       String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  match         Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([providerKey, externalId])
+  @@unique([providerKey, tournamentId, matchId])
+  @@index([tournamentId])
+  @@index([matchId])
+}
+
+model ExternalSyncRun {
+  id                String             @id @default(uuid())
+  providerKey       String
+  tournamentId      String
+  syncType          ExternalSyncType
+  status            ExternalSyncStatus  @default(RUNNING)
+  cursor            String?
+  nextCursor        String?
+  importedCount     Int                @default(0)
+  updatedCount      Int                @default(0)
+  stagedCount       Int                @default(0)
+  skippedCount      Int                @default(0)
+  errorMessage      String?
+  startedAt         DateTime           @default(now())
+  completedAt       DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  tournament        Tournament         @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  stagedResults     ExternalMatchResult[]
+
+  @@index([providerKey, tournamentId, syncType, startedAt])
+  @@index([status])
+}
+
+model ExternalMatchResult {
+  id                  String                   @id @default(uuid())
+  providerKey         String
+  tournamentId        String
+  externalMatchId     String
+  matchId             String?
+  externalSyncRunId   String?
+  homeScore           Int
+  awayScore           Int
+  playedAt            DateTime?
+  state               ExternalMatchResultState @default(PENDING_CONFIRMATION)
+  stagedAt            DateTime                 @default(now())
+  confirmedAt         DateTime?
+  discardedAt         DateTime?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  tournament          Tournament               @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  match               Match?                   @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  syncRun             ExternalSyncRun?         @relation(fields: [externalSyncRunId], references: [id], onDelete: SetNull)
+
+  @@unique([providerKey, externalMatchId])
+  @@index([tournamentId, state])
+  @@index([matchId])
+  @@index([externalSyncRunId])
 }
 
 model Prediction {

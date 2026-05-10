@@ -1,0 +1,651 @@
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { MatchStatus, TournamentStatus } from '@prisma/client';
+
+import { PrismaService } from '../prisma/prisma.service';
+import {
+  SPORTS_DATA_PROVIDER,
+  SPORTS_DATA_SYNC_STATUSES,
+  SPORTS_DATA_SYNC_TYPES,
+  type SportsDataSyncStatus,
+  type SportsDataSyncType,
+} from './sports-data.constants';
+import type {
+  SportsDataFinalResultDTO,
+  SportsDataFixtureDTO,
+  SportsDataProvider,
+  SportsDataSyncSummary,
+  SportsDataTeamDTO,
+  SportsDataVenueDTO,
+} from './sports-data.types';
+
+@Injectable()
+export class SportsDataSyncService {
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(SPORTS_DATA_PROVIDER) private readonly provider: SportsDataProvider,
+  ) {}
+
+  async importTournament(tournamentId?: string): Promise<SportsDataSyncSummary> {
+    const resolvedTournamentId = await this.resolveTournamentId(tournamentId);
+    const syncRun = await this.startSyncRun(resolvedTournamentId, SPORTS_DATA_SYNC_TYPES.IMPORT);
+
+    let importedCount = 0;
+    let updatedCount = 0;
+
+    try {
+      const teams = await this.provider.listTeams(resolvedTournamentId);
+      for (const team of teams) {
+        const outcome = await this.syncTeam(resolvedTournamentId, team);
+        importedCount += outcome.created ? 1 : 0;
+        updatedCount += outcome.updated ? 1 : 0;
+      }
+
+      const venues = await this.provider.listVenues(resolvedTournamentId);
+      for (const venue of venues) {
+        const outcome = await this.syncVenue(resolvedTournamentId, venue);
+        importedCount += outcome.created ? 1 : 0;
+        updatedCount += outcome.updated ? 1 : 0;
+      }
+
+      const fixtures = await this.provider.listFixtures(resolvedTournamentId);
+      for (const fixture of fixtures) {
+        const outcome = await this.syncFixture(resolvedTournamentId, fixture);
+        importedCount += outcome.created ? 1 : 0;
+        updatedCount += outcome.updated ? 1 : 0;
+      }
+
+      return await this.finishSyncRun(syncRun.id, {
+        status: SPORTS_DATA_SYNC_STATUSES.SUCCESS,
+        importedCount,
+        updatedCount,
+        stagedCount: 0,
+        skippedCount: 0,
+      });
+    } catch (error: unknown) {
+      await this.finishSyncRun(syncRun.id, {
+        status: SPORTS_DATA_SYNC_STATUSES.FAILED,
+        importedCount,
+        updatedCount,
+        stagedCount: 0,
+        skippedCount: 0,
+        errorMessage: error instanceof Error ? error.message : 'Unknown sports-data import error',
+      });
+
+      throw error;
+    }
+  }
+
+  async syncResults(tournamentId?: string): Promise<SportsDataSyncSummary> {
+    const resolvedTournamentId = await this.resolveTournamentId(tournamentId);
+    const syncRun = await this.startSyncRun(resolvedTournamentId, SPORTS_DATA_SYNC_TYPES.RESULTS);
+
+    let stagedCount = 0;
+
+    try {
+      const results = await this.provider.listFinalResults(resolvedTournamentId);
+
+      for (const result of results) {
+        const staged = await this.stageResult(resolvedTournamentId, syncRun.id, result);
+        stagedCount += staged ? 1 : 0;
+      }
+
+      return await this.finishSyncRun(syncRun.id, {
+        status: SPORTS_DATA_SYNC_STATUSES.SUCCESS,
+        importedCount: 0,
+        updatedCount: 0,
+        stagedCount,
+        skippedCount: 0,
+      });
+    } catch (error: unknown) {
+      await this.finishSyncRun(syncRun.id, {
+        status: SPORTS_DATA_SYNC_STATUSES.FAILED,
+        importedCount: 0,
+        updatedCount: 0,
+        stagedCount,
+        skippedCount: 0,
+        errorMessage: error instanceof Error ? error.message : 'Unknown sports-data result sync error',
+      });
+
+      throw error;
+    }
+  }
+
+  private async resolveTournamentId(tournamentId?: string): Promise<string> {
+    if (tournamentId !== undefined) {
+      const tournament = await this.prisma.tournament.findUnique({
+        where: { id: tournamentId },
+        select: { id: true },
+      });
+
+      if (tournament === null) {
+        throw new NotFoundException(`Tournament ${tournamentId} was not found`);
+      }
+
+      return tournament.id;
+    }
+
+    const activeTournament = await this.prisma.tournament.findFirst({
+      where: { status: TournamentStatus.ACTIVE },
+      select: { id: true },
+    });
+
+    if (activeTournament === null) {
+      throw new NotFoundException('Active tournament not found');
+    }
+
+    return activeTournament.id;
+  }
+
+  private async startSyncRun(tournamentId: string, syncType: SportsDataSyncType) {
+    return this.prisma.externalSyncRun.create({
+      data: {
+        providerKey: this.provider.providerKey,
+        tournamentId,
+        syncType,
+        status: SPORTS_DATA_SYNC_STATUSES.RUNNING,
+      },
+      select: {
+        id: true,
+        providerKey: true,
+        tournamentId: true,
+        syncType: true,
+      },
+    });
+  }
+
+  private async finishSyncRun(
+    syncRunId: string,
+    input: {
+      status: SportsDataSyncStatus;
+      importedCount: number;
+      updatedCount: number;
+      stagedCount: number;
+      skippedCount: number;
+      errorMessage?: string;
+    },
+  ): Promise<SportsDataSyncSummary> {
+    const syncRun = await this.prisma.externalSyncRun.update({
+      where: { id: syncRunId },
+      data: {
+        status: input.status,
+        importedCount: input.importedCount,
+        updatedCount: input.updatedCount,
+        stagedCount: input.stagedCount,
+        skippedCount: input.skippedCount,
+        errorMessage: input.errorMessage ?? null,
+        completedAt: new Date(),
+      },
+      select: {
+        id: true,
+        providerKey: true,
+        tournamentId: true,
+        syncType: true,
+        status: true,
+        importedCount: true,
+        updatedCount: true,
+        stagedCount: true,
+        skippedCount: true,
+        errorMessage: true,
+      },
+    });
+
+    return {
+      syncRunId: syncRun.id,
+      providerKey: syncRun.providerKey,
+      tournamentId: syncRun.tournamentId,
+      syncType: syncRun.syncType,
+      status: syncRun.status,
+      importedCount: syncRun.importedCount,
+      updatedCount: syncRun.updatedCount,
+      stagedCount: syncRun.stagedCount,
+      skippedCount: syncRun.skippedCount,
+      errorMessage: syncRun.errorMessage,
+    };
+  }
+
+  private async syncTeam(
+    tournamentId: string,
+    team: SportsDataTeamDTO,
+  ): Promise<{ created: boolean; updated: boolean }> {
+    const existingReference = await this.prisma.externalTeamReference.findUnique({
+      where: {
+        providerKey_externalId: {
+          providerKey: this.provider.providerKey,
+          externalId: team.externalId,
+        },
+      },
+      select: {
+        teamId: true,
+      },
+    });
+
+    if (existingReference !== null) {
+      await this.prisma.team.update({
+        where: { id: existingReference.teamId },
+        data: {
+          name: team.name,
+          shortName: team.shortName,
+          countryCode: team.countryCode,
+          flagCode: team.flagCode,
+          primaryColor: team.primaryColor,
+          secondaryColor: team.secondaryColor,
+        },
+      });
+
+      await this.prisma.externalTeamReference.upsert({
+        where: {
+          providerKey_externalId: {
+            providerKey: this.provider.providerKey,
+            externalId: team.externalId,
+          },
+        },
+        create: {
+          providerKey: this.provider.providerKey,
+          tournamentId,
+          externalId: team.externalId,
+          teamId: existingReference.teamId,
+        },
+        update: {
+          tournamentId,
+          teamId: existingReference.teamId,
+        },
+      });
+
+      return { created: false, updated: true };
+    }
+
+    const existingTeam = await this.prisma.team.findUnique({
+      where: {
+        tournamentId_name: {
+          tournamentId,
+          name: team.name,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existingTeam !== null) {
+      await this.prisma.team.update({
+        where: { id: existingTeam.id },
+        data: {
+          shortName: team.shortName,
+          countryCode: team.countryCode,
+          flagCode: team.flagCode,
+          primaryColor: team.primaryColor,
+          secondaryColor: team.secondaryColor,
+        },
+      });
+
+      await this.prisma.externalTeamReference.create({
+        data: {
+          providerKey: this.provider.providerKey,
+          tournamentId,
+          externalId: team.externalId,
+          teamId: existingTeam.id,
+        },
+      });
+
+      return { created: false, updated: true };
+    }
+
+    const createdTeam = await this.prisma.team.create({
+      data: {
+        tournamentId,
+        name: team.name,
+        shortName: team.shortName,
+        countryCode: team.countryCode,
+        flagCode: team.flagCode,
+        primaryColor: team.primaryColor,
+        secondaryColor: team.secondaryColor,
+      },
+      select: { id: true },
+    });
+
+    await this.prisma.externalTeamReference.create({
+      data: {
+        providerKey: this.provider.providerKey,
+        tournamentId,
+        externalId: team.externalId,
+        teamId: createdTeam.id,
+      },
+    });
+
+    return { created: true, updated: false };
+  }
+
+  private async syncVenue(
+    tournamentId: string,
+    venue: SportsDataVenueDTO,
+  ): Promise<{ created: boolean; updated: boolean }> {
+    const existingReference = await this.prisma.externalVenueReference.findUnique({
+      where: {
+        providerKey_externalId: {
+          providerKey: this.provider.providerKey,
+          externalId: venue.externalId,
+        },
+      },
+      select: {
+        venueId: true,
+      },
+    });
+
+    if (existingReference !== null) {
+      await this.prisma.venue.update({
+        where: { id: existingReference.venueId },
+        data: {
+          name: venue.name,
+          city: venue.city,
+          countryCode: venue.countryCode,
+          capacity: venue.capacity,
+        },
+      });
+
+      await this.prisma.externalVenueReference.upsert({
+        where: {
+          providerKey_externalId: {
+            providerKey: this.provider.providerKey,
+            externalId: venue.externalId,
+          },
+        },
+        create: {
+          providerKey: this.provider.providerKey,
+          tournamentId,
+          externalId: venue.externalId,
+          venueId: existingReference.venueId,
+        },
+        update: {
+          tournamentId,
+          venueId: existingReference.venueId,
+        },
+      });
+
+      return { created: false, updated: true };
+    }
+
+    const existingVenue = await this.prisma.venue.findUnique({
+      where: {
+        tournamentId_name: {
+          tournamentId,
+          name: venue.name,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existingVenue !== null) {
+      await this.prisma.venue.update({
+        where: { id: existingVenue.id },
+        data: {
+          city: venue.city,
+          countryCode: venue.countryCode,
+          capacity: venue.capacity,
+        },
+      });
+
+      await this.prisma.externalVenueReference.create({
+        data: {
+          providerKey: this.provider.providerKey,
+          tournamentId,
+          externalId: venue.externalId,
+          venueId: existingVenue.id,
+        },
+      });
+
+      return { created: false, updated: true };
+    }
+
+    const createdVenue = await this.prisma.venue.create({
+      data: {
+        tournamentId,
+        name: venue.name,
+        city: venue.city,
+        countryCode: venue.countryCode,
+        capacity: venue.capacity,
+      },
+      select: { id: true },
+    });
+
+    await this.prisma.externalVenueReference.create({
+      data: {
+        providerKey: this.provider.providerKey,
+        tournamentId,
+        externalId: venue.externalId,
+        venueId: createdVenue.id,
+      },
+    });
+
+    return { created: true, updated: false };
+  }
+
+  private async syncFixture(
+    tournamentId: string,
+    fixture: SportsDataFixtureDTO,
+  ): Promise<{ created: boolean; updated: boolean }> {
+    const homeTeam = await this.resolveTeamId(fixture.homeTeamExternalId);
+    const awayTeam = await this.resolveTeamId(fixture.awayTeamExternalId);
+    const venueId = await this.resolveVenueId(fixture.venueExternalId);
+
+    const existingReference = await this.prisma.externalMatchReference.findUnique({
+      where: {
+        providerKey_externalId: {
+          providerKey: this.provider.providerKey,
+          externalId: fixture.externalId,
+        },
+      },
+      select: {
+        matchId: true,
+      },
+    });
+
+    if (existingReference !== null) {
+      const currentMatch = await this.prisma.match.findUnique({
+        where: { id: existingReference.matchId },
+        select: {
+          id: true,
+          status: true,
+        },
+      });
+
+      if (currentMatch === null) {
+        throw new NotFoundException(`Match ${existingReference.matchId} was not found`);
+      }
+
+      await this.prisma.match.update({
+        where: { id: currentMatch.id },
+        data: {
+          tournamentId,
+          homeTeamId: homeTeam,
+          awayTeamId: awayTeam,
+          venueId,
+          kickoffAt: fixture.kickoffAt,
+          stage: fixture.stage,
+          groupName: fixture.groupName,
+          status: currentMatch.status === MatchStatus.FINISHED ? MatchStatus.FINISHED : MatchStatus.UPCOMING,
+        },
+      });
+
+      await this.prisma.externalMatchReference.upsert({
+        where: {
+          providerKey_externalId: {
+            providerKey: this.provider.providerKey,
+            externalId: fixture.externalId,
+          },
+        },
+        create: {
+          providerKey: this.provider.providerKey,
+          tournamentId,
+          externalId: fixture.externalId,
+          matchId: currentMatch.id,
+        },
+        update: {
+          tournamentId,
+          matchId: currentMatch.id,
+        },
+      });
+
+      return { created: false, updated: true };
+    }
+
+    const existingMatch = await this.prisma.match.findFirst({
+      where: {
+        tournamentId,
+        homeTeamId: homeTeam,
+        awayTeamId: awayTeam,
+        kickoffAt: fixture.kickoffAt,
+        stage: fixture.stage,
+        groupName: fixture.groupName,
+      },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+
+    if (existingMatch !== null) {
+      await this.prisma.match.update({
+        where: { id: existingMatch.id },
+        data: {
+          venueId,
+          kickoffAt: fixture.kickoffAt,
+          stage: fixture.stage,
+          groupName: fixture.groupName,
+          status: existingMatch.status === MatchStatus.FINISHED ? MatchStatus.FINISHED : MatchStatus.UPCOMING,
+        },
+      });
+
+      await this.prisma.externalMatchReference.create({
+        data: {
+          providerKey: this.provider.providerKey,
+          tournamentId,
+          externalId: fixture.externalId,
+          matchId: existingMatch.id,
+        },
+      });
+
+      return { created: false, updated: true };
+    }
+
+    const createdMatch = await this.prisma.match.create({
+      data: {
+        tournamentId,
+        homeTeamId: homeTeam,
+        awayTeamId: awayTeam,
+        venueId,
+        kickoffAt: fixture.kickoffAt,
+        stage: fixture.stage,
+        groupName: fixture.groupName,
+        status: MatchStatus.UPCOMING,
+      },
+      select: { id: true },
+    });
+
+    await this.prisma.externalMatchReference.create({
+      data: {
+        providerKey: this.provider.providerKey,
+        tournamentId,
+        externalId: fixture.externalId,
+        matchId: createdMatch.id,
+      },
+    });
+
+    return { created: true, updated: false };
+  }
+
+  private async resolveTeamId(externalTeamId: string): Promise<string> {
+    const reference = await this.prisma.externalTeamReference.findUnique({
+      where: {
+        providerKey_externalId: {
+          providerKey: this.provider.providerKey,
+          externalId: externalTeamId,
+        },
+      },
+      select: {
+        teamId: true,
+      },
+    });
+
+    if (reference === null) {
+      throw new NotFoundException(`External team ${externalTeamId} was not found`);
+    }
+
+    return reference.teamId;
+  }
+
+  private async resolveVenueId(externalVenueId: string | null): Promise<string | null> {
+    if (externalVenueId === null) {
+      return null;
+    }
+
+    const reference = await this.prisma.externalVenueReference.findUnique({
+      where: {
+        providerKey_externalId: {
+          providerKey: this.provider.providerKey,
+          externalId: externalVenueId,
+        },
+      },
+      select: {
+        venueId: true,
+      },
+    });
+
+    if (reference === null) {
+      throw new NotFoundException(`External venue ${externalVenueId} was not found`);
+    }
+
+    return reference.venueId;
+  }
+
+  private async stageResult(
+    tournamentId: string,
+    syncRunId: string,
+    result: SportsDataFinalResultDTO,
+  ): Promise<boolean> {
+    const existingReference = await this.prisma.externalMatchReference.findUnique({
+      where: {
+        providerKey_externalId: {
+          providerKey: this.provider.providerKey,
+          externalId: result.externalMatchId,
+        },
+      },
+      select: {
+        matchId: true,
+      },
+    });
+
+    await this.prisma.externalMatchResult.upsert({
+      where: {
+        providerKey_externalMatchId: {
+          providerKey: this.provider.providerKey,
+          externalMatchId: result.externalMatchId,
+        },
+      },
+      create: {
+        providerKey: this.provider.providerKey,
+        tournamentId,
+        externalMatchId: result.externalMatchId,
+        matchId: existingReference?.matchId ?? null,
+        externalSyncRunId: syncRunId,
+        homeScore: result.homeScore,
+        awayScore: result.awayScore,
+        playedAt: result.playedAt,
+      },
+      update: {
+        tournamentId,
+        matchId: existingReference?.matchId ?? null,
+        externalSyncRunId: syncRunId,
+        homeScore: result.homeScore,
+        awayScore: result.awayScore,
+        playedAt: result.playedAt,
+        state: 'PENDING_CONFIRMATION',
+        confirmedAt: null,
+        discardedAt: null,
+      },
+    });
+
+    return true;
+  }
+}
