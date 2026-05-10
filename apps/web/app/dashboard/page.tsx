@@ -6,13 +6,17 @@ import { auth0 } from "@/lib/auth0";
 import {
   getActiveTournamentMatches,
   getCurrentUserProfile,
+  getGlobalRanking,
   getMyPredictions,
   upsertMatchPrediction,
   ApiError,
   type MatchView,
   type PredictionView,
+  type RankingEntry,
 } from "@/lib/api";
 import { formatCountryLabel, getTeamLabel, isProfileComplete } from "@/lib/profile";
+import { cn } from "@/lib/cn";
+import { GLOBAL_RANKING_PREVIEW_LIMIT, findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
 
 type DashboardSearchParams = {
   error?: string;
@@ -142,6 +146,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   const resolvedSearchParams = await searchParams;
+  const globalRankingPromise = getGlobalRanking().catch(() => [] as RankingEntry[]);
 
   let accessToken: string;
 
@@ -151,15 +156,18 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     redirect("/auth/login?returnTo=/dashboard");
   }
 
-  const [currentUserProfile, matches, predictions] = await Promise.all([
+  const [currentUserProfile, matches, predictions, globalRanking] = await Promise.all([
     getCurrentUserProfile(accessToken).catch(() => null),
     getActiveTournamentMatches().catch(() => []),
     getMyPredictions(accessToken).catch(() => []),
+    globalRankingPromise,
   ]);
 
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;
   const displayName = currentUserProfile?.username ?? getDisplayName(session.user);
   const matchCards = mergePredictions(matches, predictions);
+  const currentUserRankingEntry = findRankingEntryByUserId(globalRanking, currentUserProfile?.id);
+  const rankingPreview = getRankingPreview(globalRanking);
 
   async function submitPrediction(matchId: string, formData: FormData) {
     "use server";
@@ -263,6 +271,110 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               </div>
             </div>
           ) : null}
+
+          <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+            <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Global ranking</p>
+                  <h2 className="mt-1 text-lg font-semibold text-white">Your standing</h2>
+                </div>
+                <Link
+                  href="/rankings"
+                  className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
+                >
+                  View all
+                </Link>
+              </div>
+
+              {currentUserRankingEntry ? (
+                <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Current position</p>
+                      <p className="mt-1 text-2xl font-black text-white">#{currentUserRankingEntry.position}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Points</p>
+                      <p className="mt-1 text-2xl font-black text-white">{currentUserRankingEntry.totalPoints}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Exact</p>
+                      <p className="mt-1 text-lg font-bold text-white">{currentUserRankingEntry.exactPredictions}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Predictions</p>
+                      <p className="mt-1 text-lg font-bold text-white">{currentUserRankingEntry.predictionsCount}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3 sm:col-span-2">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Username</p>
+                      <p className="mt-1 text-lg font-bold text-white">{displayName}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">
+                  {profileComplete
+                    ? "Score your first matched prediction to appear in the ranking."
+                    : "Complete your profile and score a match to join the ranking."}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Top ranking</p>
+                  <h2 className="mt-1 text-lg font-semibold text-white">Preview</h2>
+                </div>
+                <p className="text-sm text-slate-400">Top {GLOBAL_RANKING_PREVIEW_LIMIT}</p>
+              </div>
+
+              {rankingPreview.length > 0 ? (
+                <ul className="mt-4 space-y-3">
+                  {rankingPreview.map((entry) => {
+                    const isCurrentUser = entry.userId === currentUserProfile?.id;
+
+                    return (
+                      <li
+                        key={entry.userId}
+                        className={cn(
+                          "flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 transition",
+                          isCurrentUser
+                            ? "border-cyan-400/40 bg-cyan-400/10"
+                            : "border-slate-800 bg-slate-950/60",
+                        )}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate font-semibold text-white">
+                              #{entry.position} {entry.username}
+                            </p>
+                            {isCurrentUser ? (
+                              <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
+                                You
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            {entry.exactPredictions} exact · {entry.predictionsCount} predictions
+                          </p>
+                        </div>
+                        <p className="text-lg font-black text-cyan-300">{entry.totalPoints} pts</p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">
+                  No global ranking yet. Once scored predictions land, the board will appear here.
+                </div>
+              )}
+            </section>
+          </div>
 
           {!profileComplete ? (
             <div className="rounded-3xl border border-amber-400/20 bg-amber-400/10 p-5 text-amber-100">

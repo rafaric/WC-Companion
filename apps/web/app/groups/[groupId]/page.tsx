@@ -2,10 +2,25 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth0 } from "@/lib/auth0";
-import { ApiError, getGroupRanking, type RankingEntry } from "@/lib/api";
+import { ApiError, getCurrentUserProfile, getGroupRanking, type RankingEntry } from "@/lib/api";
+import { cn } from "@/lib/cn";
 
 interface GroupDetailPageProps {
   params: Promise<{ groupId: string }>;
+}
+
+interface RankingStatsProps {
+  label: string;
+  value: number;
+}
+
+function RankingStats({ label, value }: RankingStatsProps) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3 text-right">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{label}</p>
+      <p className="mt-1 text-base font-bold text-white">{value}</p>
+    </div>
+  );
 }
 
 function getRankingErrorMessage(error: unknown): string {
@@ -22,20 +37,31 @@ function getRankingErrorMessage(error: unknown): string {
   return "We could not load this ranking right now.";
 }
 
-function RankingRow({ entry }: { entry: RankingEntry }) {
+function RankingRow({ entry, isCurrentUser }: { entry: RankingEntry; isCurrentUser: boolean }) {
   return (
-    <li className="flex items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3">
-      <div>
-        <p className="font-semibold text-white">
-          #{entry.position} {entry.username}
-        </p>
+    <li
+      className={cn(
+        "flex items-start justify-between gap-4 rounded-2xl border px-4 py-3",
+        isCurrentUser ? "border-cyan-400/40 bg-cyan-400/10" : "border-slate-800 bg-slate-950/60",
+      )}
+    >
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="truncate font-semibold text-white">
+            #{entry.position} {entry.username}
+          </p>
+          {isCurrentUser ? (
+            <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
+              You
+            </span>
+          ) : null}
+        </div>
         <p className="text-xs text-slate-500">{entry.userId}</p>
       </div>
-      <div className="text-right">
-        <p className="text-sm font-semibold text-cyan-300">{entry.totalPoints} pts</p>
-        <p className="text-xs text-slate-500">
-          {entry.exactPredictions} exact · {entry.predictionsCount} picks
-        </p>
+      <div className="grid grid-cols-3 gap-2 text-right">
+        <RankingStats label="Points" value={entry.totalPoints} />
+        <RankingStats label="Exact" value={entry.exactPredictions} />
+        <RankingStats label="Predictions" value={entry.predictionsCount} />
       </div>
     </li>
   );
@@ -58,9 +84,16 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
     redirect("/auth/login?returnTo=/groups");
   }
 
-  const rankingResult = await getGroupRanking(accessToken, groupId)
-    .then((ranking) => ({ ranking, error: null as string | null }))
-    .catch((error: unknown) => ({ ranking: [] as RankingEntry[], error: getRankingErrorMessage(error) }));
+  const [currentUserProfile, rankingResult] = await Promise.all([
+    getCurrentUserProfile(accessToken).catch(() => null),
+    getGroupRanking(accessToken, groupId)
+      .then((ranking) => ({ ranking, error: null as string | null }))
+      .catch((error: unknown) => ({ ranking: [] as RankingEntry[], error: getRankingErrorMessage(error) })),
+  ]);
+
+  const currentUserRankingEntry = currentUserProfile
+    ? rankingResult.ranking.find((entry) => entry.userId === currentUserProfile.id) ?? null
+    : null;
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-50">
@@ -106,16 +139,47 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
               <p className="text-sm text-slate-400">{rankingResult.ranking.length} players</p>
             </div>
 
+            {currentUserRankingEntry ? (
+              <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Your standing</p>
+                    <p className="mt-1 text-2xl font-black text-white">#{currentUserRankingEntry.position}</p>
+                  </div>
+                  <p className="text-sm font-medium text-cyan-100">{currentUserRankingEntry.totalPoints} points</p>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Exact predictions</p>
+                    <p className="mt-1 text-lg font-bold text-white">{currentUserRankingEntry.exactPredictions}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Predictions</p>
+                    <p className="mt-1 text-lg font-bold text-white">{currentUserRankingEntry.predictionsCount}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Username</p>
+                    <p className="mt-1 text-lg font-bold text-white">{currentUserProfile?.username ?? "You"}</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             {rankingResult.ranking.length > 0 ? (
               <ul className="mt-4 space-y-3">
                 {rankingResult.ranking.map((entry) => (
-                  <RankingRow key={entry.userId} entry={entry} />
+                  <RankingRow
+                    key={entry.userId}
+                    entry={entry}
+                    isCurrentUser={entry.userId === currentUserProfile?.id}
+                  />
                 ))}
               </ul>
             ) : (
-              <p className="mt-4 text-sm leading-6 text-slate-400">
-                No ranking data yet. Once members score points, positions will appear here.
-              </p>
+              <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">
+                No ranking data yet. Once members score points, positions, exact predictions, and prediction counts
+                will appear here.
+              </div>
             )}
 
             <p className="mt-4 text-xs text-slate-500">

@@ -115,7 +115,7 @@ function GroupCard({ group }: { group: MyGroupView }) {
           href={`/groups/${group.id}`}
           className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
         >
-          View ranking
+          Open ranking
         </Link>
       </div>
     </article>
@@ -240,6 +240,9 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">Create your private circle.</h1>
             <p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
               Start a private group, join with an invite code, and compare rankings with your crew.
+            </p>
+            <p className="max-w-2xl text-sm leading-6 text-slate-500">
+              Open each group to see positions, points, exact predictions, and prediction counts.
             </p>
           </div>
 
