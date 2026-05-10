@@ -1,5 +1,6 @@
 import { MatchStatus, TournamentStatus } from '@prisma/client';
 
+import { MatchesService, type FinalizeMatchSummary } from '../matches/matches.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MOCK_SPORTS_DATA_PROVIDER_SNAPSHOT, MockSportsDataProvider } from './mock-sports-data.provider';
 import { SportsDataSyncService } from './sports-data-sync.service';
@@ -64,6 +65,7 @@ interface ExternalMatchReferenceRecord {
 }
 
 interface ExternalMatchResultRecord {
+  id: string;
   providerKey: string;
   tournamentId: string;
   externalMatchId: string;
@@ -73,6 +75,8 @@ interface ExternalMatchResultRecord {
   awayScore: number;
   playedAt: Date | null;
   state: 'PENDING_CONFIRMATION' | 'CONFIRMED' | 'DISCARDED';
+  confirmedAt: Date | null;
+  discardedAt: Date | null;
 }
 
 interface SyncRunRecord {
@@ -141,8 +145,14 @@ interface PrismaMock {
     update: jest.Mock<Promise<SyncRunRecord>, [unknown]>;
   };
   externalMatchResult: {
+    findUnique: jest.Mock<Promise<ExternalMatchResultRecord | null>, [unknown]>;
     upsert: jest.Mock<Promise<ExternalMatchResultRecord>, [unknown]>;
+    update: jest.Mock<Promise<ExternalMatchResultRecord>, [unknown]>;
   };
+}
+
+interface MatchesServiceMock {
+  finalizeMatch: jest.Mock<Promise<FinalizeMatchSummary>, [unknown]>;
 }
 
 function createInitialState(overrides: Partial<PrismaState> = {}): PrismaState {
@@ -170,6 +180,35 @@ function createProvider(finalResults: readonly SportsDataFinalResultDTO[] = []):
     ...MOCK_SPORTS_DATA_PROVIDER_SNAPSHOT,
     finalResults,
   });
+}
+
+function createMatchesServiceMock(summary: FinalizeMatchSummary): MatchesServiceMock {
+  return {
+    finalizeMatch: jest.fn(async (_input: unknown) => summary),
+  };
+}
+
+function createFinalizeMatchSummary(matchId: string, tournamentId: string): FinalizeMatchSummary {
+  return {
+    matchId,
+    tournamentId,
+    scoringSummary: {
+      matchId,
+      tournamentId,
+      scoringRuleId: 'rule-1',
+      pendingCount: 2,
+      processedCount: 2,
+      alreadyScoredCount: 0,
+      scoredAt: new Date('2026-05-08T12:00:00.000Z'),
+    },
+    globalRankingSummary: {
+      scope: 'GLOBAL',
+      scopeId: 'global',
+      tournamentId,
+      processedCount: 4,
+    },
+    groupRankingSummaries: [],
+  };
 }
 
 function createPrismaMock(state: PrismaState): PrismaMock {
@@ -363,6 +402,9 @@ function createPrismaMock(state: PrismaState): PrismaMock {
       }),
     },
     externalMatchResult: {
+      findUnique: jest.fn(async ({ where }: { where: { id: string } }) =>
+        state.externalMatchResults.find((result) => result.id === where.id) ?? null,
+      ),
       upsert: jest.fn(async ({ where, create, update }: { where: { providerKey_externalMatchId: { providerKey: string; externalMatchId: string } }; create: ExternalMatchResultRecord; update: Partial<ExternalMatchResultRecord> }) => {
         const existing = state.externalMatchResults.find(
           (result) =>
@@ -371,13 +413,28 @@ function createPrismaMock(state: PrismaState): PrismaMock {
         );
 
         if (existing === undefined) {
-          const record = { ...create };
+          const record = {
+            ...create,
+            id: `external-result-${state.externalMatchResults.length + 1}`,
+            confirmedAt: null,
+            discardedAt: null,
+          };
           state.externalMatchResults.push(record);
           return record;
         }
 
         Object.assign(existing, update);
         return existing;
+      }),
+      update: jest.fn(async ({ where, data }: { where: { id: string }; data: Partial<ExternalMatchResultRecord> }) => {
+        const result = state.externalMatchResults.find((candidate) => candidate.id === where.id);
+
+        if (result === undefined) {
+          throw new Error(`Missing external result ${where.id}`);
+        }
+
+        Object.assign(result, data);
+        return result;
       }),
     },
   } as unknown as PrismaMock;
@@ -387,7 +444,11 @@ describe('SportsDataSyncService', () => {
   it('imports teams, venues, and fixtures idempotently', async () => {
     const state = createInitialState();
     const prisma = createPrismaMock(state);
-    const service = new SportsDataSyncService(prisma as unknown as PrismaService, createProvider());
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      createProvider(),
+      createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+    );
 
     const firstRun = await service.importTournament();
     const secondRun = await service.importTournament();
@@ -406,7 +467,11 @@ describe('SportsDataSyncService', () => {
   it('records success with zero staged results when the provider has nothing to finalize', async () => {
     const state = createInitialState();
     const prisma = createPrismaMock(state);
-    const service = new SportsDataSyncService(prisma as unknown as PrismaService, createProvider());
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      createProvider(),
+      createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+    );
 
     const summary = await service.syncResults();
 
@@ -452,7 +517,11 @@ describe('SportsDataSyncService', () => {
         playedAt: new Date('2026-06-11T19:00:00.000Z'),
       },
     ]);
-    const service = new SportsDataSyncService(prisma as unknown as PrismaService, provider);
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      provider,
+      createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+    );
 
     const firstRun = await service.syncResults();
     const secondRun = await service.syncResults();
@@ -468,5 +537,134 @@ describe('SportsDataSyncService', () => {
       state: 'PENDING_CONFIRMATION',
     });
     expect(prisma.match.update).not.toHaveBeenCalled();
+  });
+
+  it('confirms a pending staged result by finalizing the linked match', async () => {
+    const state = createInitialState({
+      matches: [
+        {
+          id: 'match-1',
+          tournamentId: 'tournament-1',
+          homeTeamId: 'team-1',
+          awayTeamId: 'team-2',
+          venueId: null,
+          kickoffAt: new Date('2026-06-11T16:00:00.000Z'),
+          stage: 'Group Stage',
+          groupName: 'Group A',
+          status: MatchStatus.UPCOMING,
+        },
+      ],
+      externalMatchResults: [
+        {
+          id: 'external-result-1',
+          providerKey: 'mock',
+          tournamentId: 'tournament-1',
+          externalMatchId: 'fixture-arg-eng',
+          matchId: 'match-1',
+          externalSyncRunId: 'sync-1',
+          homeScore: 2,
+          awayScore: 1,
+          playedAt: new Date('2026-06-11T19:00:00.000Z'),
+          state: 'PENDING_CONFIRMATION',
+          confirmedAt: null,
+          discardedAt: null,
+        },
+      ],
+    });
+    const prisma = createPrismaMock(state);
+    const finalizeSummary = createFinalizeMatchSummary('match-1', 'tournament-1');
+    const matchesService = createMatchesServiceMock(finalizeSummary);
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      createProvider(),
+      matchesService as unknown as MatchesService,
+    );
+
+    const summary = await service.confirmExternalMatchResult({ externalMatchResultId: 'external-result-1' });
+
+    expect(summary).toMatchObject({
+      externalMatchResultId: 'external-result-1',
+      externalMatchId: 'fixture-arg-eng',
+      matchId: 'match-1',
+      tournamentId: 'tournament-1',
+      state: 'CONFIRMED',
+      finalizationSummary: finalizeSummary,
+    });
+    expect(matchesService.finalizeMatch).toHaveBeenCalledWith({
+      matchId: 'match-1',
+      homeScore: 2,
+      awayScore: 1,
+    });
+    expect(state.externalMatchResults[0]).toMatchObject({
+      state: 'CONFIRMED',
+      confirmedAt: expect.any(Date),
+      discardedAt: null,
+    });
+  });
+
+  it('rejects a staged result without a linked internal match', async () => {
+    const state = createInitialState({
+      externalMatchResults: [
+        {
+          id: 'external-result-1',
+          providerKey: 'mock',
+          tournamentId: 'tournament-1',
+          externalMatchId: 'fixture-arg-eng',
+          matchId: null,
+          externalSyncRunId: 'sync-1',
+          homeScore: 2,
+          awayScore: 1,
+          playedAt: new Date('2026-06-11T19:00:00.000Z'),
+          state: 'PENDING_CONFIRMATION',
+          confirmedAt: null,
+          discardedAt: null,
+        },
+      ],
+    });
+    const prisma = createPrismaMock(state);
+    const matchesService = createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1'));
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      createProvider(),
+      matchesService as unknown as MatchesService,
+    );
+
+    await expect(service.confirmExternalMatchResult({ externalMatchResultId: 'external-result-1' })).rejects.toThrow(
+      'is not linked to an internal match',
+    );
+    expect(matchesService.finalizeMatch).not.toHaveBeenCalled();
+  });
+
+  it('rejects an already confirmed staged result', async () => {
+    const state = createInitialState({
+      externalMatchResults: [
+        {
+          id: 'external-result-1',
+          providerKey: 'mock',
+          tournamentId: 'tournament-1',
+          externalMatchId: 'fixture-arg-eng',
+          matchId: 'match-1',
+          externalSyncRunId: 'sync-1',
+          homeScore: 2,
+          awayScore: 1,
+          playedAt: new Date('2026-06-11T19:00:00.000Z'),
+          state: 'CONFIRMED',
+          confirmedAt: new Date('2026-06-11T20:00:00.000Z'),
+          discardedAt: null,
+        },
+      ],
+    });
+    const prisma = createPrismaMock(state);
+    const matchesService = createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1'));
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      createProvider(),
+      matchesService as unknown as MatchesService,
+    );
+
+    await expect(service.confirmExternalMatchResult({ externalMatchResultId: 'external-result-1' })).rejects.toThrow(
+      'already confirmed',
+    );
+    expect(matchesService.finalizeMatch).not.toHaveBeenCalled();
   });
 });

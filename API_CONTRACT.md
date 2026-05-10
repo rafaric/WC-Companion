@@ -554,6 +554,60 @@ mark match FINISHED
 }
 ```
 
+### Confirm Staged External Match Result
+
+```http
+POST /admin/sports-data/external-results/:externalMatchResultId/confirm
+Authorization: Bearer <token>
+```
+
+#### Important
+
+This endpoint requires a valid Auth0 token plus the `matches:finalize` permission.
+
+#### Behavior
+
+```txt
+load staged external result
+→ require PENDING_CONFIRMATION
+→ require linked internal matchId
+→ finalize the internal match through MatchesService.finalizeMatch()
+→ mark the external result CONFIRMED and store confirmedAt
+```
+
+#### Response
+
+```json
+{
+  "externalMatchResultId": "external-result-id",
+  "externalMatchId": "fixture-arg-eng",
+  "matchId": "match-id",
+  "tournamentId": "tournament-id",
+  "state": "CONFIRMED",
+  "confirmedAt": "2026-05-08T12:00:00.000Z",
+  "finalizationSummary": {
+    "matchId": "match-id",
+    "tournamentId": "tournament-id",
+    "scoringSummary": {
+      "matchId": "match-id",
+      "tournamentId": "tournament-id",
+      "scoringRuleId": "rule-id",
+      "pendingCount": 2,
+      "processedCount": 2,
+      "alreadyScoredCount": 0,
+      "scoredAt": "2026-05-08T12:00:00.000Z"
+    },
+    "globalRankingSummary": {
+      "scope": "GLOBAL",
+      "scopeId": "global",
+      "tournamentId": "tournament-id",
+      "processedCount": 2
+    },
+    "groupRankingSummaries": []
+  }
+}
+```
+
 ## Recommended Frontend Flow
 
 ### First Load

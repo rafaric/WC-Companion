@@ -1,11 +1,14 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { MatchStatus, TournamentStatus } from '@prisma/client';
 
+import { MatchesService, type FinalizeMatchSummary } from '../matches/matches.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  EXTERNAL_MATCH_RESULT_STATES,
   SPORTS_DATA_PROVIDER,
   SPORTS_DATA_SYNC_STATUSES,
   SPORTS_DATA_SYNC_TYPES,
+  type ExternalMatchResultState,
   type SportsDataSyncStatus,
   type SportsDataSyncType,
 } from './sports-data.constants';
@@ -18,12 +21,102 @@ import type {
   SportsDataVenueDTO,
 } from './sports-data.types';
 
+export interface ConfirmExternalMatchResultInput {
+  externalMatchResultId: string;
+}
+
+export interface ConfirmExternalMatchResultSummary {
+  externalMatchResultId: string;
+  externalMatchId: string;
+  matchId: string;
+  tournamentId: string;
+  state: ExternalMatchResultState;
+  confirmedAt: Date;
+  finalizationSummary: FinalizeMatchSummary;
+}
+
 @Injectable()
 export class SportsDataSyncService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(SPORTS_DATA_PROVIDER) private readonly provider: SportsDataProvider,
+    private readonly matchesService: MatchesService,
   ) {}
+
+  async confirmExternalMatchResult(
+    input: ConfirmExternalMatchResultInput,
+  ): Promise<ConfirmExternalMatchResultSummary> {
+    const stagedResult = await this.prisma.externalMatchResult.findUnique({
+      where: {
+        id: input.externalMatchResultId,
+      },
+      select: {
+        id: true,
+        tournamentId: true,
+        externalMatchId: true,
+        matchId: true,
+        homeScore: true,
+        awayScore: true,
+        state: true,
+      },
+    });
+
+    if (stagedResult === null) {
+      throw new NotFoundException(`External match result ${input.externalMatchResultId} was not found`);
+    }
+
+    if (stagedResult.state !== EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION) {
+      throw new ConflictException(
+        `External match result ${stagedResult.id} is already ${stagedResult.state.toLowerCase()}`,
+      );
+    }
+
+    if (stagedResult.matchId === null) {
+      throw new BadRequestException(
+        `External match result ${stagedResult.id} is not linked to an internal match`,
+      );
+    }
+
+    const finalizationSummary = await this.matchesService.finalizeMatch({
+      matchId: stagedResult.matchId,
+      homeScore: stagedResult.homeScore,
+      awayScore: stagedResult.awayScore,
+    });
+
+    const confirmedAt = new Date();
+    const confirmedResult = await this.prisma.externalMatchResult.update({
+      where: {
+        id: stagedResult.id,
+      },
+      data: {
+        state: EXTERNAL_MATCH_RESULT_STATES.CONFIRMED,
+        confirmedAt,
+        discardedAt: null,
+      },
+      select: {
+        id: true,
+        tournamentId: true,
+        externalMatchId: true,
+        matchId: true,
+        state: true,
+        confirmedAt: true,
+      },
+    });
+
+    if (confirmedResult.matchId === null || confirmedResult.confirmedAt === null) {
+      throw new ConflictException(`External match result ${confirmedResult.id} could not be confirmed`);
+    }
+
+    return {
+      externalMatchResultId: confirmedResult.id,
+      externalMatchId: confirmedResult.externalMatchId,
+      matchId: confirmedResult.matchId,
+      tournamentId: confirmedResult.tournamentId,
+      state: confirmedResult.state,
+      confirmedAt: confirmedResult.confirmedAt,
+      finalizationSummary,
+    };
+  }
 
   async importTournament(tournamentId?: string): Promise<SportsDataSyncSummary> {
     const resolvedTournamentId = await this.resolveTournamentId(tournamentId);
