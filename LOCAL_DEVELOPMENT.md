@@ -208,4 +208,5 @@ This uses smoke-owned users, a smoke group, and a dedicated smoke match so the f
   - `pnpm prisma:migrate`
 - Verify the API health endpoint: `GET /health`.
 - Smoke-check the critical path: active tournament, predictions, and admin match finalization with a token that has `matches:finalize`.
+- Admin reviewers can inspect staged external results at `/admin/external-results` once their Auth0 session includes `matches:finalize`.
 - Keep the local development note in mind: Docker is optional locally; use the non-Docker setup when that is easier.

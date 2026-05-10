@@ -5,10 +5,10 @@ import { MatchesService, type FinalizeMatchSummary } from '../matches/matches.se
 import { PrismaService } from '../prisma/prisma.service';
 import {
   EXTERNAL_MATCH_RESULT_STATES,
+  type ExternalMatchResultState,
   SPORTS_DATA_PROVIDER,
   SPORTS_DATA_SYNC_STATUSES,
   SPORTS_DATA_SYNC_TYPES,
-  type ExternalMatchResultState,
   type SportsDataSyncStatus,
   type SportsDataSyncType,
 } from './sports-data.constants';
@@ -33,6 +33,31 @@ export interface ConfirmExternalMatchResultSummary {
   state: ExternalMatchResultState;
   confirmedAt: Date;
   finalizationSummary: FinalizeMatchSummary;
+}
+
+export interface ExternalMatchResultMatchSummary {
+  matchId: string;
+  status: MatchStatus;
+  kickoffAt: Date;
+  homeTeamName: string;
+  awayTeamName: string;
+  stage: string | null;
+  groupName: string | null;
+}
+
+export interface ExternalMatchResultSummary {
+  id: string;
+  providerKey: string;
+  externalMatchId: string;
+  matchId: string | null;
+  state: ExternalMatchResultState;
+  homeScore: number;
+  awayScore: number;
+  playedAt: Date | null;
+  stagedAt: Date;
+  confirmedAt: Date | null;
+  discardedAt: Date | null;
+  match: ExternalMatchResultMatchSummary | null;
 }
 
 @Injectable()
@@ -116,6 +141,74 @@ export class SportsDataSyncService {
       confirmedAt: confirmedResult.confirmedAt,
       finalizationSummary,
     };
+  }
+
+  async listExternalMatchResults(state: ExternalMatchResultState = EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION): Promise<ExternalMatchResultSummary[]> {
+    const externalMatchResults = await this.prisma.externalMatchResult.findMany({
+      where: {
+        state,
+      },
+      orderBy: {
+        stagedAt: 'desc',
+      },
+      select: {
+        id: true,
+        providerKey: true,
+        externalMatchId: true,
+        matchId: true,
+        state: true,
+        homeScore: true,
+        awayScore: true,
+        playedAt: true,
+        stagedAt: true,
+        confirmedAt: true,
+        discardedAt: true,
+        match: {
+          select: {
+            id: true,
+            status: true,
+            kickoffAt: true,
+            stage: true,
+            groupName: true,
+            homeTeam: {
+              select: {
+                name: true,
+              },
+            },
+            awayTeam: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return externalMatchResults.map((result) => ({
+      id: result.id,
+      providerKey: result.providerKey,
+      externalMatchId: result.externalMatchId,
+      matchId: result.matchId,
+      state: result.state,
+      homeScore: result.homeScore,
+      awayScore: result.awayScore,
+      playedAt: result.playedAt,
+      stagedAt: result.stagedAt,
+      confirmedAt: result.confirmedAt,
+      discardedAt: result.discardedAt,
+      match: result.match
+        ? {
+            matchId: result.match.id,
+            status: result.match.status,
+            kickoffAt: result.match.kickoffAt,
+            homeTeamName: result.match.homeTeam.name,
+            awayTeamName: result.match.awayTeam.name,
+            stage: result.match.stage,
+            groupName: result.match.groupName,
+          }
+        : null,
+    }));
   }
 
   async importTournament(tournamentId?: string): Promise<SportsDataSyncSummary> {

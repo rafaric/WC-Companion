@@ -1,8 +1,47 @@
 import { AUTH_PERMISSION_METADATA_KEYS, AUTH_PERMISSIONS } from '../auth/auth.constants';
 import { SportsDataController } from './sports-data.controller';
-import type { ConfirmExternalMatchResultSummary, SportsDataSyncService } from './sports-data-sync.service';
+import type {
+  ConfirmExternalMatchResultSummary,
+  ExternalMatchResultSummary,
+  SportsDataSyncService,
+} from './sports-data-sync.service';
 
 describe('SportsDataController', () => {
+  it('lists pending staged results for admin review', async () => {
+    const results: ExternalMatchResultSummary[] = [
+      {
+        id: 'external-result-1',
+        providerKey: 'mock',
+        externalMatchId: 'fixture-arg-eng',
+        matchId: 'match-1',
+        state: 'PENDING_CONFIRMATION',
+        homeScore: 2,
+        awayScore: 1,
+        playedAt: new Date('2026-05-08T11:00:00.000Z'),
+        stagedAt: new Date('2026-05-08T12:00:00.000Z'),
+        confirmedAt: null,
+        discardedAt: null,
+        match: {
+          matchId: 'match-1',
+          status: 'UPCOMING',
+          kickoffAt: new Date('2026-06-11T16:00:00.000Z'),
+          homeTeamName: 'Argentina',
+          awayTeamName: 'England',
+          stage: 'Group Stage',
+          groupName: 'Group A',
+        },
+      },
+    ];
+
+    const sportsDataSyncService = {
+      listExternalMatchResults: jest.fn(async () => results),
+    } as unknown as SportsDataSyncService;
+    const controller = new SportsDataController(sportsDataSyncService);
+
+    await expect(controller.listExternalMatchResults({})).resolves.toEqual(results);
+    expect(sportsDataSyncService.listExternalMatchResults).toHaveBeenCalledWith('PENDING_CONFIRMATION');
+  });
+
   it('delegates manual confirmation to the service', async () => {
     const summary: ConfirmExternalMatchResultSummary = {
       externalMatchResultId: 'external-result-1',
@@ -48,6 +87,15 @@ describe('SportsDataController', () => {
     const requiredPermissions = Reflect.getMetadata(
       AUTH_PERMISSION_METADATA_KEYS.REQUIRED_PERMISSIONS,
       SportsDataController.prototype.confirmExternalMatchResult,
+    ) as string[] | undefined;
+
+    expect(requiredPermissions).toEqual([AUTH_PERMISSIONS.MATCHES_FINALIZE]);
+  });
+
+  it('requires the matches finalize permission to list staged results', () => {
+    const requiredPermissions = Reflect.getMetadata(
+      AUTH_PERMISSION_METADATA_KEYS.REQUIRED_PERMISSIONS,
+      SportsDataController.prototype.listExternalMatchResults,
     ) as string[] | undefined;
 
     expect(requiredPermissions).toEqual([AUTH_PERMISSIONS.MATCHES_FINALIZE]);

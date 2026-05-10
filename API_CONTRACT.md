@@ -608,6 +608,48 @@ load staged external result
 }
 ```
 
+### List Pending Staged External Match Results
+
+```http
+GET /admin/sports-data/external-results?state=PENDING_CONFIRMATION
+Authorization: Bearer <token>
+```
+
+Returns staged results with provider, external match ID, timestamps, proposed score, and linked internal match context when available.
+
+#### Response
+
+```json
+[
+  {
+    "id": "external-result-id",
+    "providerKey": "mock",
+    "externalMatchId": "fixture-arg-eng",
+    "matchId": "match-id",
+    "state": "PENDING_CONFIRMATION",
+    "homeScore": 2,
+    "awayScore": 1,
+    "playedAt": "2026-06-11T19:00:00.000Z",
+    "stagedAt": "2026-05-08T12:00:00.000Z",
+    "confirmedAt": null,
+    "discardedAt": null,
+    "match": {
+      "matchId": "match-id",
+      "status": "UPCOMING",
+      "kickoffAt": "2026-06-11T16:00:00.000Z",
+      "homeTeamName": "Argentina",
+      "awayTeamName": "England",
+      "stage": "Group Stage",
+      "groupName": "Group A"
+    }
+  }
+]
+```
+
+#### Admin UI
+
+The web app exposes an admin review page at `/admin/external-results` for users with the `matches:finalize` permission.
+
 ## Recommended Frontend Flow
 
 ### First Load

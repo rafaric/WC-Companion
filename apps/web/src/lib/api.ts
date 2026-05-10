@@ -50,6 +50,48 @@ export interface MatchView {
   awayTeam: TeamView;
 }
 
+export const EXTERNAL_MATCH_RESULT_STATES = {
+  PENDING_CONFIRMATION: "PENDING_CONFIRMATION",
+  CONFIRMED: "CONFIRMED",
+  DISCARDED: "DISCARDED",
+} as const;
+
+export type ExternalMatchResultState = (typeof EXTERNAL_MATCH_RESULT_STATES)[keyof typeof EXTERNAL_MATCH_RESULT_STATES];
+
+export interface ExternalMatchResultMatchView {
+  matchId: string;
+  status: string;
+  kickoffAt: string;
+  homeTeamName: string;
+  awayTeamName: string;
+  stage: string | null;
+  groupName: string | null;
+}
+
+export interface ExternalMatchResultView {
+  id: string;
+  providerKey: string;
+  externalMatchId: string;
+  matchId: string | null;
+  state: ExternalMatchResultState;
+  homeScore: number;
+  awayScore: number;
+  playedAt: string | null;
+  stagedAt: string;
+  confirmedAt: string | null;
+  discardedAt: string | null;
+  match: ExternalMatchResultMatchView | null;
+}
+
+export interface ConfirmExternalMatchResultSummary {
+  externalMatchResultId: string;
+  externalMatchId: string;
+  matchId: string;
+  tournamentId: string;
+  state: ExternalMatchResultState;
+  confirmedAt: string;
+}
+
 export interface PredictionView {
   id: string;
   matchId: string;
@@ -358,5 +400,63 @@ export async function createPredictionShareCard(accessToken: string, matchId: st
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
+  });
+}
+
+export async function getPendingExternalMatchResults(accessToken: string): Promise<ExternalMatchResultView[]> {
+  return fetchJson<ExternalMatchResultView[]>("/admin/sports-data/external-results?state=PENDING_CONFIRMATION", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function confirmExternalMatchResult(
+  accessToken: string,
+  externalMatchResultId: string,
+): Promise<ConfirmExternalMatchResultSummary> {
+  return fetchJson<ConfirmExternalMatchResultSummary>(
+    `/admin/sports-data/external-results/${externalMatchResultId}/confirm`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+}
+
+export interface SportsDataSyncSummary {
+  syncRunId: string;
+  providerKey: string;
+  tournamentId: string;
+  syncType: string;
+  status: string;
+  importedCount: number;
+  updatedCount: number;
+  stagedCount: number;
+  skippedCount: number;
+  errorMessage: string | null;
+}
+
+export async function importTournament(accessToken: string, tournamentId?: string): Promise<SportsDataSyncSummary> {
+  return fetchJson<SportsDataSyncSummary>("/admin/sports-data/external-results/sync/import", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ tournamentId }),
+  });
+}
+
+export async function syncResults(accessToken: string, tournamentId?: string): Promise<SportsDataSyncSummary> {
+  return fetchJson<SportsDataSyncSummary>("/admin/sports-data/external-results/sync/results", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ tournamentId }),
   });
 }

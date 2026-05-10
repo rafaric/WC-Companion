@@ -32,6 +32,8 @@ interface MatchPredictionCard extends MatchView {
 
 type Session = NonNullable<Awaited<ReturnType<typeof auth0.getSession>>>;
 
+const MATCHES_FINALIZE_PERMISSION = "matches:finalize" as const;
+
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_input: "Enter whole numbers between 0 and 20 for both scores.",
   match_closed: "This match is no longer open for predictions.",
@@ -42,6 +44,20 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 function getDisplayName(user: Session["user"]): string {
   return user.name ?? user.nickname ?? user.email ?? user.sub;
+}
+
+function getUserPermissions(user: Session["user"]): string[] {
+  const permissions = (user as { permissions?: unknown }).permissions;
+
+  if (!Array.isArray(permissions) || permissions.some((permission) => typeof permission !== "string")) {
+    return [];
+  }
+
+  return permissions;
+}
+
+function canAccessExternalResults(user: Session["user"]): boolean {
+  return getUserPermissions(user).includes(MATCHES_FINALIZE_PERMISSION);
 }
 
 function formatKickoff(kickoffAt: string): string {
@@ -230,6 +246,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             >
               Share cards
             </Link>
+            {canAccessExternalResults(session.user) ? (
+              <Link
+                href="/admin/external-results"
+                className="rounded-full border border-amber-500/40 bg-amber-400/10 px-4 py-2 font-semibold text-amber-200 transition hover:border-amber-400/60 hover:bg-amber-400/20"
+              >
+                External results
+              </Link>
+            ) : null}
             <Link
               href="/auth/logout"
               className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"

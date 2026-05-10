@@ -75,8 +75,27 @@ interface ExternalMatchResultRecord {
   awayScore: number;
   playedAt: Date | null;
   state: 'PENDING_CONFIRMATION' | 'CONFIRMED' | 'DISCARDED';
+  stagedAt?: Date;
   confirmedAt: Date | null;
   discardedAt: Date | null;
+}
+
+interface ExternalMatchResultMatchRecord {
+  id: string;
+  status: MatchStatus;
+  kickoffAt: Date;
+  stage: string | null;
+  groupName: string | null;
+  homeTeam: {
+    name: string;
+  };
+  awayTeam: {
+    name: string;
+  };
+}
+
+interface ExternalMatchResultListRecord extends ExternalMatchResultRecord {
+  match: ExternalMatchResultMatchRecord | null;
 }
 
 interface SyncRunRecord {
@@ -146,6 +165,7 @@ interface PrismaMock {
   };
   externalMatchResult: {
     findUnique: jest.Mock<Promise<ExternalMatchResultRecord | null>, [unknown]>;
+    findMany: jest.Mock<Promise<ExternalMatchResultListRecord[]>, [unknown]>;
     upsert: jest.Mock<Promise<ExternalMatchResultRecord>, [unknown]>;
     update: jest.Mock<Promise<ExternalMatchResultRecord>, [unknown]>;
   };
@@ -405,6 +425,38 @@ function createPrismaMock(state: PrismaState): PrismaMock {
       findUnique: jest.fn(async ({ where }: { where: { id: string } }) =>
         state.externalMatchResults.find((result) => result.id === where.id) ?? null,
       ),
+      findMany: jest.fn(async ({ where }: { where: { state?: ExternalMatchResultRecord['state'] } }) => {
+        const filteredResults = state.externalMatchResults
+          .filter((result) => where.state === undefined || result.state === where.state)
+          .slice()
+          .sort((left, right) => (right.stagedAt?.getTime() ?? 0) - (left.stagedAt?.getTime() ?? 0));
+
+        return filteredResults.map((result) => {
+          const match = result.matchId ? state.matches.find((candidate) => candidate.id === result.matchId) ?? null : null;
+          const homeTeam = match ? state.teams.find((team) => team.id === match.homeTeamId) ?? null : null;
+          const awayTeam = match ? state.teams.find((team) => team.id === match.awayTeamId) ?? null : null;
+
+          return {
+            ...result,
+            stagedAt: result.stagedAt ?? new Date('2026-05-08T12:00:00.000Z'),
+            match: match
+              ? {
+                  id: match.id,
+                  status: match.status,
+                  kickoffAt: match.kickoffAt,
+                  stage: match.stage,
+                  groupName: match.groupName,
+                  homeTeam: {
+                    name: homeTeam?.name ?? '',
+                  },
+                  awayTeam: {
+                    name: awayTeam?.name ?? '',
+                  },
+                }
+              : null,
+          };
+        });
+      }),
       upsert: jest.fn(async ({ where, create, update }: { where: { providerKey_externalMatchId: { providerKey: string; externalMatchId: string } }; create: ExternalMatchResultRecord; update: Partial<ExternalMatchResultRecord> }) => {
         const existing = state.externalMatchResults.find(
           (result) =>
@@ -416,6 +468,7 @@ function createPrismaMock(state: PrismaState): PrismaMock {
           const record = {
             ...create,
             id: `external-result-${state.externalMatchResults.length + 1}`,
+            stagedAt: create.stagedAt ?? new Date('2026-05-08T12:00:00.000Z'),
             confirmedAt: null,
             discardedAt: null,
           };
@@ -482,6 +535,117 @@ describe('SportsDataSyncService', () => {
       updatedCount: 0,
     });
     expect(state.externalMatchResults).toHaveLength(0);
+  });
+
+  it('lists pending staged results with linked match context', async () => {
+    const state = createInitialState({
+      teams: [
+        {
+          id: 'team-1',
+          tournamentId: 'tournament-1',
+          name: 'Argentina',
+          shortName: 'ARG',
+          countryCode: 'AR',
+          flagCode: 'ARG',
+          primaryColor: '#74ACDF',
+          secondaryColor: '#F6E7A1',
+        },
+        {
+          id: 'team-2',
+          tournamentId: 'tournament-1',
+          name: 'England',
+          shortName: 'ENG',
+          countryCode: 'GB-ENG',
+          flagCode: 'ENG',
+          primaryColor: '#FFFFFF',
+          secondaryColor: '#CE1124',
+        },
+      ],
+      matches: [
+        {
+          id: 'match-1',
+          tournamentId: 'tournament-1',
+          homeTeamId: 'team-1',
+          awayTeamId: 'team-2',
+          venueId: null,
+          kickoffAt: new Date('2026-06-11T16:00:00.000Z'),
+          stage: 'Group Stage',
+          groupName: 'Group A',
+          status: MatchStatus.UPCOMING,
+        },
+      ],
+      externalMatchResults: [
+        {
+          id: 'external-result-1',
+          providerKey: 'mock',
+          tournamentId: 'tournament-1',
+          externalMatchId: 'fixture-arg-eng',
+          matchId: 'match-1',
+          externalSyncRunId: 'sync-1',
+          homeScore: 2,
+          awayScore: 1,
+          playedAt: new Date('2026-06-11T19:00:00.000Z'),
+          stagedAt: new Date('2026-06-11T20:00:00.000Z'),
+          state: 'PENDING_CONFIRMATION',
+          confirmedAt: null,
+          discardedAt: null,
+        },
+        {
+          id: 'external-result-2',
+          providerKey: 'mock',
+          tournamentId: 'tournament-1',
+          externalMatchId: 'fixture-arg-mex',
+          matchId: null,
+          externalSyncRunId: 'sync-1',
+          homeScore: 0,
+          awayScore: 0,
+          playedAt: null,
+          stagedAt: new Date('2026-06-11T21:00:00.000Z'),
+          state: 'CONFIRMED',
+          confirmedAt: new Date('2026-06-11T21:05:00.000Z'),
+          discardedAt: null,
+        },
+      ],
+    });
+    const prisma = createPrismaMock(state);
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      createProvider(),
+      createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+    );
+
+    const results = await service.listExternalMatchResults();
+
+    expect(results).toEqual([
+      {
+        id: 'external-result-1',
+        providerKey: 'mock',
+        externalMatchId: 'fixture-arg-eng',
+        matchId: 'match-1',
+        state: 'PENDING_CONFIRMATION',
+        homeScore: 2,
+        awayScore: 1,
+        playedAt: new Date('2026-06-11T19:00:00.000Z'),
+        stagedAt: new Date('2026-06-11T20:00:00.000Z'),
+        confirmedAt: null,
+        discardedAt: null,
+        match: {
+          matchId: 'match-1',
+          status: MatchStatus.UPCOMING,
+          kickoffAt: new Date('2026-06-11T16:00:00.000Z'),
+          homeTeamName: 'Argentina',
+          awayTeamName: 'England',
+          stage: 'Group Stage',
+          groupName: 'Group A',
+        },
+      },
+    ]);
+    expect(prisma.externalMatchResult.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { state: 'PENDING_CONFIRMATION' },
+        orderBy: { stagedAt: 'desc' },
+      }),
+    );
   });
 
   it('stages final results idempotently without invoking match finalization', async () => {

@@ -89,7 +89,20 @@ export const MOCK_SPORTS_DATA_PROVIDER_SNAPSHOT: MockSportsDataProviderSnapshot 
       groupName: 'Group B',
     },
   ],
-  finalResults: [],
+  finalResults: [
+    {
+      externalMatchId: 'fixture-arg-eng',
+      homeScore: 2,
+      awayScore: 1,
+      playedAt: new Date('2026-06-11T18:30:00.000Z'),
+    },
+    {
+      externalMatchId: 'fixture-bra-ger',
+      homeScore: 3,
+      awayScore: 2,
+      playedAt: new Date('2026-06-12T18:30:00.000Z'),
+    },
+  ],
 };
 
 export class MockSportsDataProvider implements SportsDataProvider {
