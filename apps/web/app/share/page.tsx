@@ -83,6 +83,7 @@ interface PreviewCardProps {
   stats: PreviewStat[];
   note: string;
   shareActions?: ReactNode;
+  backgroundImage?: string;
 }
 
 interface ShareContent {
@@ -235,9 +236,16 @@ function getShareErrorCode(error: unknown, kind: "prediction" | "performance" | 
   return error.status === 400 ? SHARE_ERROR.INVALID_INPUT : SHARE_ERROR.CREATE_FAILED;
 }
 
-function PreviewCard({ eyebrow, title, description, stats, note, shareActions }: PreviewCardProps) {
+function PreviewCard({ eyebrow, title, description, stats, note, shareActions, backgroundImage }: PreviewCardProps) {
   return (
-    <article className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl shadow-slate-950/30">
+    <article
+      className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl shadow-slate-950/30"
+      style={backgroundImage ? {
+        backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.85)), url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      } : undefined}
+    >
       <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">{eyebrow}</p>
       <h3 className="mt-2 text-xl font-semibold text-white">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-slate-300">{description}</p>
@@ -267,7 +275,14 @@ function SectionHeader({
   description: string;
 }) {
   return (
-    <div className="space-y-3">
+    <div
+      className="space-y-3 rounded-3xl border border-slate-800/50 p-6"
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.85)), url(/assets/hero.png)`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
         {eyebrow}
       </p>
@@ -559,6 +574,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
               }
               stats={predictionStats}
               note="Current MVP cards store structured data only. That keeps the UX fast and lets image rendering land later without changing the flow."
+              backgroundImage="/assets/shareprediction.png"
               shareActions={
                 predictionShareContent ? (
                   <ShareActions title={predictionShareContent.title} text={predictionShareContent.text} url={predictionShareContent.url} />
@@ -608,6 +624,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
               }
               stats={performanceSummaryStats}
               note={`Top of leaderboard preview: ${rankingPreview.length > 0 ? rankingPreview.length : 0} ranked players loaded.`}
+              backgroundImage="/assets/squadPerformance.png"
               shareActions={
                 performanceSummaryShareContent ? (
                   <ShareActions
@@ -679,6 +696,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                     : "Pick a group to preview the standing card payload."
               }
               stats={groupRankingStats}
+              backgroundImage="/assets/groupLeaderb.png"
               note={
                 selectedGroup
                   ? `Created at ${formatDate(selectedGroup.createdAt)} · invite code stays private.`

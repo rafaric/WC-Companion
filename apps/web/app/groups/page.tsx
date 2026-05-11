@@ -40,8 +40,20 @@ const SUCCESS_MESSAGES: Record<string, string> = {
   joined: "You joined the group.",
 };
 
+function looksLikeEmail(value: string | null | undefined): value is string {
+  return typeof value === "string" && value.includes("@");
+}
+
 function getDisplayName(user: Session["user"]): string {
-  return user.name ?? user.nickname ?? user.email ?? user.sub;
+  const name = user.name;
+  if (name && !looksLikeEmail(name)) {
+    return name;
+  }
+  const nickname = user.nickname;
+  if (nickname && !looksLikeEmail(nickname)) {
+    return nickname;
+  }
+  return user.email ?? user.sub;
 }
 
 function formatCreatedAt(createdAt: string): string {
@@ -79,14 +91,15 @@ function formatMemberCount(memberCount: number): string {
   return `${memberCount} ${memberCount === 1 ? "member" : "members"}`;
 }
 
-function renderProfileNote(profile: CurrentUserProfile | null): string {
+function renderProfileNote(profile: CurrentUserProfile | null, user: Session["user"]): string {
   if (!profile) {
     return "We could not load your backend profile right now.";
   }
 
   const countryLabel = formatCountryLabel(profile.country);
+  const displayName = getDisplayName(user);
 
-  return `Signed in as ${profile.username} · ${countryLabel}`;
+  return `Signed in as ${displayName} · ${countryLabel}`;
 }
 
 function GroupCard({ group }: { group: MyGroupView }) {
@@ -152,7 +165,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
   ]);
 
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;
-  const displayName = currentUserProfile?.username ?? getDisplayName(session.user);
+  const displayName = currentUserProfile ? getDisplayName(session.user) : session.user.name ?? session.user.nickname ?? session.user.email ?? "You";
 
   async function submitCreateGroup(formData: FormData) {
     "use server";
@@ -273,7 +286,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
 
           <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-2xl shadow-slate-950/30">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Profile</p>
-            <p className="mt-2 text-sm leading-6 text-slate-300">{renderProfileNote(currentUserProfile)}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-300">{renderProfileNote(currentUserProfile, session.user)}</p>
             {!profileComplete ? (
               <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-amber-100">

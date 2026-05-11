@@ -127,7 +127,14 @@ export function RecentlyScoredResults({ items }: RecentlyScoredResultsProps) {
   }
 
   return (
-    <section className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5 shadow-xl shadow-emerald-950/20">
+    <section
+      className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5 shadow-xl shadow-emerald-950/20"
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(16, 185, 129, 0.08), rgba(15, 23, 42, 0.9)), url(/assets/won.png)`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">Recently scored</p>

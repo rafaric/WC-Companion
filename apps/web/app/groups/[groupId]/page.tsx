@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth0 } from "@/lib/auth0";
-import { ApiError, getCurrentUserProfile, getGroupRanking, getMyGroups, type MyGroupView, type RankingEntry } from "@/lib/api";
+import { ApiError, getCurrentUserProfile, getGroupRanking, getMyGroups, type CurrentUserProfile, type MyGroupView, type RankingEntry } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { CopyInviteCodeButton } from "../copy-invite-code-button";
 
@@ -41,6 +41,24 @@ function getGroupRoleLabel(role: MyGroupView["role"]): string {
 
 function formatMemberCount(memberCount: number): string {
   return `${memberCount} ${memberCount === 1 ? "member" : "members"}`;
+}
+
+type Session = NonNullable<Awaited<ReturnType<typeof auth0.getSession>>>;
+
+function looksLikeEmail(value: string | null | undefined): value is string {
+  return typeof value === "string" && value.includes("@");
+}
+
+function getProfileDisplayName(profile: CurrentUserProfile, user: Session["user"]): string {
+  const name = user.name;
+  if (name && !looksLikeEmail(name)) {
+    return name;
+  }
+  const nickname = user.nickname;
+  if (nickname && !looksLikeEmail(nickname)) {
+    return nickname;
+  }
+  return profile.username;
 }
 
 function getLeader(ranking: RankingEntry[]): RankingEntry | null {
@@ -346,7 +364,9 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
                   </div>
                   <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
                     <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Username</p>
-                    <p className="mt-1 text-lg font-bold text-white">{currentUserProfile?.username ?? "You"}</p>
+                    <p className="mt-1 text-lg font-bold text-white">
+                      {currentUserProfile ? getProfileDisplayName(currentUserProfile, session.user) : "You"}
+                    </p>
                   </div>
                 </div>
               </div>
