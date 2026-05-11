@@ -8,6 +8,7 @@
     "start:prod": "node dist/main",
     "test": "node scripts/run-jest.cjs --runInBand",
     "smoke:mvp": "pnpm exec ts-node scripts/smoke-mvp-flow.ts",
+    "demo:social": "pnpm exec ts-node scripts/demo-social-flow.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",

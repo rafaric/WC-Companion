@@ -199,6 +199,16 @@ pnpm smoke:mvp
 
 This uses smoke-owned users, a smoke group, and a dedicated smoke match so the flow can be rerun safely without touching non-smoke data.
 
+## Dev/demo helpers
+
+Refresh local social data for group, ranking, and share-card demos:
+
+```bash
+pnpm --filter @worldpredict/api demo:social
+```
+
+This keeps a fixed set of dev-only users, a private demo group, predictions on isolated `DEV Demo Social` matches, and finalized scores/rankings in sync so the script can be rerun safely without mutating seeded match results.
+
 ## Deploy readiness checklist
 
 - Configure Auth0 production settings: API audience, allowed callback/logout URLs, and allowed web origins.
