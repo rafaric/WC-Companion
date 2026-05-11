@@ -2,6 +2,7 @@ import { AUTH_PERMISSION_METADATA_KEYS, AUTH_PERMISSIONS } from '../auth/auth.co
 import { SportsDataController } from './sports-data.controller';
 import type {
   ConfirmExternalMatchResultSummary,
+  DiscardExternalMatchResultSummary,
   ExternalMatchResultSummary,
   SportsDataSyncService,
 } from './sports-data-sync.service';
@@ -83,6 +84,27 @@ describe('SportsDataController', () => {
     });
   });
 
+  it('delegates manual discard to the service', async () => {
+    const summary: DiscardExternalMatchResultSummary = {
+      externalMatchResultId: 'external-result-1',
+      externalMatchId: 'fixture-arg-eng',
+      matchId: 'match-1',
+      tournamentId: 'tournament-1',
+      state: 'DISCARDED',
+      discardedAt: new Date('2026-05-08T12:00:00.000Z'),
+    };
+
+    const sportsDataSyncService = {
+      discardExternalMatchResult: jest.fn(async () => summary),
+    } as unknown as SportsDataSyncService;
+    const controller = new SportsDataController(sportsDataSyncService);
+
+    await expect(controller.discardExternalMatchResult('external-result-1')).resolves.toEqual(summary);
+    expect(sportsDataSyncService.discardExternalMatchResult).toHaveBeenCalledWith({
+      externalMatchResultId: 'external-result-1',
+    });
+  });
+
   it('requires the matches finalize permission', () => {
     const requiredPermissions = Reflect.getMetadata(
       AUTH_PERMISSION_METADATA_KEYS.REQUIRED_PERMISSIONS,
@@ -96,6 +118,15 @@ describe('SportsDataController', () => {
     const requiredPermissions = Reflect.getMetadata(
       AUTH_PERMISSION_METADATA_KEYS.REQUIRED_PERMISSIONS,
       SportsDataController.prototype.listExternalMatchResults,
+    ) as string[] | undefined;
+
+    expect(requiredPermissions).toEqual([AUTH_PERMISSIONS.MATCHES_FINALIZE]);
+  });
+
+  it('requires the matches finalize permission to discard staged results', () => {
+    const requiredPermissions = Reflect.getMetadata(
+      AUTH_PERMISSION_METADATA_KEYS.REQUIRED_PERMISSIONS,
+      SportsDataController.prototype.discardExternalMatchResult,
     ) as string[] | undefined;
 
     expect(requiredPermissions).toEqual([AUTH_PERMISSIONS.MATCHES_FINALIZE]);

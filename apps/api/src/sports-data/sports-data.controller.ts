@@ -8,6 +8,7 @@ import { EXTERNAL_MATCH_RESULT_STATES } from './sports-data.constants';
 import { ListExternalMatchResultsQueryDto } from './dto/list-external-match-results.query';
 import {
   ConfirmExternalMatchResultSummary,
+  DiscardExternalMatchResultSummary,
   ExternalMatchResultSummary,
   SportsDataSyncService,
 } from './sports-data-sync.service';
@@ -34,6 +35,14 @@ export class SportsDataController {
     @Param('externalMatchResultId') externalMatchResultId: string,
   ): Promise<ConfirmExternalMatchResultSummary> {
     return this.sportsDataSyncService.confirmExternalMatchResult({ externalMatchResultId });
+  }
+
+  @RequirePermissions(AUTH_PERMISSIONS.MATCHES_FINALIZE)
+  @Post(':externalMatchResultId/discard')
+  async discardExternalMatchResult(
+    @Param('externalMatchResultId') externalMatchResultId: string,
+  ): Promise<DiscardExternalMatchResultSummary> {
+    return this.sportsDataSyncService.discardExternalMatchResult({ externalMatchResultId });
   }
 
   @RequirePermissions(AUTH_PERMISSIONS.MATCHES_FINALIZE)

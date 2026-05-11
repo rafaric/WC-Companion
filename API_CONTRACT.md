@@ -608,14 +608,48 @@ load staged external result
 }
 ```
 
-### List Pending Staged External Match Results
+### Discard Staged External Match Result
+
+```http
+POST /admin/sports-data/external-results/:externalMatchResultId/discard
+Authorization: Bearer <token>
+```
+
+#### Important
+
+This endpoint requires a valid Auth0 token plus the `matches:finalize` permission.
+
+#### Behavior
+
+```txt
+load staged external result
+→ require PENDING_CONFIRMATION
+→ mark the external result DISCARDED and store discardedAt
+→ do not finalize the linked internal match
+→ do not update scoring or rankings
+```
+
+#### Response
+
+```json
+{
+  "externalMatchResultId": "external-result-id",
+  "externalMatchId": "fixture-arg-eng",
+  "matchId": "match-id",
+  "tournamentId": "tournament-id",
+  "state": "DISCARDED",
+  "discardedAt": "2026-05-08T12:00:00.000Z"
+}
+```
+
+### List Staged External Match Results
 
 ```http
 GET /admin/sports-data/external-results?state=PENDING_CONFIRMATION
 Authorization: Bearer <token>
 ```
 
-Returns staged results with provider, external match ID, timestamps, proposed score, and linked internal match context when available.
+Returns staged results with provider, external match ID, timestamps, proposed score, and linked internal match context when available. Supported `state` values are `PENDING_CONFIRMATION`, `CONFIRMED`, and `DISCARDED`.
 
 #### Response
 
@@ -648,7 +682,7 @@ Returns staged results with provider, external match ID, timestamps, proposed sc
 
 #### Admin UI
 
-The web app exposes an admin review page at `/admin/external-results` for users with the `matches:finalize` permission.
+The web app exposes an admin review page at `/admin/external-results` for users with the `matches:finalize` permission. The page supports filtering by staged result state and lets admins confirm or discard pending provider results.
 
 ## Recommended Frontend Flow
 

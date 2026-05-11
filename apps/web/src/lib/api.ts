@@ -92,6 +92,15 @@ export interface ConfirmExternalMatchResultSummary {
   confirmedAt: string;
 }
 
+export interface DiscardExternalMatchResultSummary {
+  externalMatchResultId: string;
+  externalMatchId: string;
+  matchId: string | null;
+  tournamentId: string;
+  state: ExternalMatchResultState;
+  discardedAt: string;
+}
+
 export interface PredictionView {
   id: string;
   matchId: string;
@@ -403,12 +412,19 @@ export async function createPredictionShareCard(accessToken: string, matchId: st
   });
 }
 
-export async function getPendingExternalMatchResults(accessToken: string): Promise<ExternalMatchResultView[]> {
-  return fetchJson<ExternalMatchResultView[]>("/admin/sports-data/external-results?state=PENDING_CONFIRMATION", {
+export async function getExternalMatchResults(
+  accessToken: string,
+  state: ExternalMatchResultState = EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION,
+): Promise<ExternalMatchResultView[]> {
+  return fetchJson<ExternalMatchResultView[]>(`/admin/sports-data/external-results?state=${state}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   });
+}
+
+export async function getPendingExternalMatchResults(accessToken: string): Promise<ExternalMatchResultView[]> {
+  return getExternalMatchResults(accessToken, EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION);
 }
 
 export async function confirmExternalMatchResult(
@@ -417,6 +433,21 @@ export async function confirmExternalMatchResult(
 ): Promise<ConfirmExternalMatchResultSummary> {
   return fetchJson<ConfirmExternalMatchResultSummary>(
     `/admin/sports-data/external-results/${externalMatchResultId}/confirm`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+}
+
+export async function discardExternalMatchResult(
+  accessToken: string,
+  externalMatchResultId: string,
+): Promise<DiscardExternalMatchResultSummary> {
+  return fetchJson<DiscardExternalMatchResultSummary>(
+    `/admin/sports-data/external-results/${externalMatchResultId}/discard`,
     {
       method: "POST",
       headers: {

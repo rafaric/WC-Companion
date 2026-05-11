@@ -35,6 +35,19 @@ export interface ConfirmExternalMatchResultSummary {
   finalizationSummary: FinalizeMatchSummary;
 }
 
+export interface DiscardExternalMatchResultInput {
+  externalMatchResultId: string;
+}
+
+export interface DiscardExternalMatchResultSummary {
+  externalMatchResultId: string;
+  externalMatchId: string;
+  matchId: string | null;
+  tournamentId: string;
+  state: ExternalMatchResultState;
+  discardedAt: Date;
+}
+
 export interface ExternalMatchResultMatchSummary {
   matchId: string;
   status: MatchStatus;
@@ -140,6 +153,66 @@ export class SportsDataSyncService {
       state: confirmedResult.state,
       confirmedAt: confirmedResult.confirmedAt,
       finalizationSummary,
+    };
+  }
+
+  async discardExternalMatchResult(
+    input: DiscardExternalMatchResultInput,
+  ): Promise<DiscardExternalMatchResultSummary> {
+    const stagedResult = await this.prisma.externalMatchResult.findUnique({
+      where: {
+        id: input.externalMatchResultId,
+      },
+      select: {
+        id: true,
+        tournamentId: true,
+        externalMatchId: true,
+        matchId: true,
+        state: true,
+      },
+    });
+
+    if (stagedResult === null) {
+      throw new NotFoundException(`External match result ${input.externalMatchResultId} was not found`);
+    }
+
+    if (stagedResult.state !== EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION) {
+      throw new ConflictException(
+        `External match result ${stagedResult.id} is already ${stagedResult.state.toLowerCase()}`,
+      );
+    }
+
+    const discardedAt = new Date();
+    const discardedResult = await this.prisma.externalMatchResult.update({
+      where: {
+        id: stagedResult.id,
+      },
+      data: {
+        state: EXTERNAL_MATCH_RESULT_STATES.DISCARDED,
+        confirmedAt: null,
+        discardedAt,
+      },
+      select: {
+        id: true,
+        tournamentId: true,
+        externalMatchId: true,
+        matchId: true,
+        state: true,
+        discardedAt: true,
+      },
+    });
+
+    if (discardedResult.discardedAt === null) {
+      throw new ConflictException(`External match result ${discardedResult.id} could not be discarded`);
+    }
+
+    return {
+      externalMatchResultId: discardedResult.id,
+      externalMatchId: discardedResult.externalMatchId,
+      matchId: discardedResult.matchId,
+      tournamentId: discardedResult.tournamentId,
+      state: discardedResult.state,
+      discardedAt: discardedResult.discardedAt,
     };
   }
 

@@ -6,15 +6,18 @@ import { auth0 } from "@/lib/auth0";
 import {
   ApiError,
   confirmExternalMatchResult,
-  getPendingExternalMatchResults,
+  discardExternalMatchResult,
+  EXTERNAL_MATCH_RESULT_STATES,
+  getExternalMatchResults,
   importTournament,
   syncResults,
+  type ExternalMatchResultState,
   type ExternalMatchResultView,
-  type SportsDataSyncSummary,
 } from "@/lib/api";
 
 type AdminExternalResultsSearchParams = {
   error?: string;
+  state?: string;
   success?: string;
 };
 
@@ -27,7 +30,7 @@ type Session = NonNullable<Awaited<ReturnType<typeof auth0.getSession>>>;
 const RESULT_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "You need the matches:finalize permission to review or confirm staged results.",
   already_processed: "This staged result was already confirmed or discarded.",
-  bad_request: "We could not confirm that staged result.",
+  bad_request: "We could not process that staged result.",
   invalid_input: "Missing staged result identifier.",
   not_found: "We could not find that staged result.",
   session_expired: "Your session expired or is missing the required admin permission.",
@@ -36,7 +39,16 @@ const RESULT_ERROR_MESSAGES: Record<string, string> = {
 
 const RESULT_SUCCESS_MESSAGES: Record<string, string> = {
   confirmed: "Staged result confirmed and the linked match was finalized.",
+  discarded: "Staged result discarded without touching the linked match.",
+  imported: "Mock tournament import completed.",
+  synced: "Mock results sync completed.",
 };
+
+const EXTERNAL_MATCH_RESULT_FILTERS = [
+  EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION,
+  EXTERNAL_MATCH_RESULT_STATES.CONFIRMED,
+  EXTERNAL_MATCH_RESULT_STATES.DISCARDED,
+] as const;
 
 function getDisplayName(user: Session["user"]): string {
   return user.name ?? user.nickname ?? user.email ?? user.sub;
@@ -55,6 +67,34 @@ function formatDateTime(value: string | Date | null): string {
 
 function formatStateLabel(state: string): string {
   return state.split("_").join(" ").toLowerCase();
+}
+
+function resolveResultStateFilter(value: string | undefined): ExternalMatchResultState {
+  switch (value) {
+    case EXTERNAL_MATCH_RESULT_STATES.CONFIRMED:
+    case EXTERNAL_MATCH_RESULT_STATES.DISCARDED:
+    case EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION:
+      return value;
+    default:
+      return EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION;
+  }
+}
+
+function buildExternalResultsPath(
+  state: ExternalMatchResultState,
+  params: { error?: string; success?: string } = {},
+): string {
+  const searchParams = new URLSearchParams({ state });
+
+  if (params.error) {
+    searchParams.set("error", params.error);
+  }
+
+  if (params.success) {
+    searchParams.set("success", params.success);
+  }
+
+  return `/admin/external-results?${searchParams.toString()}`;
 }
 
 function getResultErrorCode(error: unknown): string {
@@ -102,10 +142,16 @@ function getListLoadErrorMessage(error: unknown): string {
 function ResultCard({
   result,
   onConfirm,
+  onDiscard,
+  currentState,
 }: {
   result: ExternalMatchResultView;
   onConfirm: (formData: FormData) => Promise<void>;
+  onDiscard: (formData: FormData) => Promise<void>;
+  currentState: ExternalMatchResultState;
 }) {
+  const isPending = result.state === EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION;
+
   return (
     <article className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -164,17 +210,30 @@ function ResultCard({
         </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-end gap-3">
-        <form action={onConfirm}>
-          <input type="hidden" name="externalMatchResultId" value={result.id} />
-          <button
-            type="submit"
-            className="rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-110"
-          >
-            Confirm result
-          </button>
-        </form>
-      </div>
+      {isPending ? (
+        <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
+          <form action={onDiscard}>
+            <input type="hidden" name="externalMatchResultId" value={result.id} />
+            <input type="hidden" name="state" value={currentState} />
+            <button
+              type="submit"
+              className="rounded-full border border-rose-400/30 bg-rose-400/10 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-300/60 hover:bg-rose-400/20"
+            >
+              Discard result
+            </button>
+          </form>
+          <form action={onConfirm}>
+            <input type="hidden" name="externalMatchResultId" value={result.id} />
+            <input type="hidden" name="state" value={currentState} />
+            <button
+              type="submit"
+              className="rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-110"
+            >
+              Confirm result
+            </button>
+          </form>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -187,6 +246,7 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
   }
 
   const resolvedSearchParams = await searchParams;
+  const currentState = resolveResultStateFilter(resolvedSearchParams?.state);
 
   let accessToken: string;
 
@@ -200,7 +260,7 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
   let loadErrorMessage: string | null = null;
 
   try {
-    stagedResults = await getPendingExternalMatchResults(accessToken);
+    stagedResults = await getExternalMatchResults(accessToken, currentState);
   } catch (error) {
     loadErrorMessage = getListLoadErrorMessage(error);
   }
@@ -209,9 +269,10 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
     "use server";
 
     const externalMatchResultId = String(formData.get("externalMatchResultId") ?? "").trim();
+    const state = resolveResultStateFilter(String(formData.get("state") ?? ""));
 
     if (!externalMatchResultId) {
-      redirect("/admin/external-results?error=invalid_input");
+      redirect(buildExternalResultsPath(state, { error: "invalid_input" }));
     }
 
     let actionToken: string;
@@ -225,14 +286,40 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
     try {
       await confirmExternalMatchResult(actionToken, externalMatchResultId);
     } catch (error) {
-      redirect(`/admin/external-results?error=${getResultErrorCode(error)}`);
+      redirect(buildExternalResultsPath(state, { error: getResultErrorCode(error) }));
     }
 
     revalidatePath("/admin/external-results");
-    redirect("/admin/external-results?success=confirmed");
+    redirect(buildExternalResultsPath(state, { success: "confirmed" }));
   }
 
-  let syncResult: SportsDataSyncSummary | null = null;
+  async function discardExternalResult(formData: FormData) {
+    "use server";
+
+    const externalMatchResultId = String(formData.get("externalMatchResultId") ?? "").trim();
+    const state = resolveResultStateFilter(String(formData.get("state") ?? ""));
+
+    if (!externalMatchResultId) {
+      redirect(buildExternalResultsPath(state, { error: "invalid_input" }));
+    }
+
+    let actionToken: string;
+
+    try {
+      actionToken = (await auth0.getAccessToken()).token;
+    } catch {
+      redirect("/auth/login?returnTo=/admin/external-results");
+    }
+
+    try {
+      await discardExternalMatchResult(actionToken, externalMatchResultId);
+    } catch (error) {
+      redirect(buildExternalResultsPath(state, { error: getResultErrorCode(error) }));
+    }
+
+    revalidatePath("/admin/external-results");
+    redirect(buildExternalResultsPath(state, { success: "discarded" }));
+  }
 
   async function importTournamentAction() {
     "use server";
@@ -246,13 +333,14 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
     }
 
     try {
-      syncResult = await importTournament(actionToken);
+      await importTournament(actionToken);
     } catch (error) {
-      // Silently fail - the UI will just not show a result
       console.error("Import tournament failed:", error);
+      redirect(buildExternalResultsPath(EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { error: "bad_request" }));
     }
 
     revalidatePath("/admin/external-results");
+    redirect(buildExternalResultsPath(EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { success: "imported" }));
   }
 
   async function syncResultsAction() {
@@ -267,13 +355,14 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
     }
 
     try {
-      syncResult = await syncResults(actionToken);
+      await syncResults(actionToken);
     } catch (error) {
-      // Silently fail
       console.error("Sync results failed:", error);
+      redirect(buildExternalResultsPath(EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { error: "bad_request" }));
     }
 
     revalidatePath("/admin/external-results");
+    redirect(buildExternalResultsPath(EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { success: "synced" }));
   }
 
   const displayName = getDisplayName(session.user);
@@ -313,8 +402,8 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
             <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">Confirm staged external results.</h1>
             <p className="max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
               This screen requires the <span className="font-semibold text-amber-200">matches:finalize</span> permission.
-              Review provider-staged scores carefully before confirming them, because confirmation finalizes the linked
-              internal match and updates the ranking tables.
+              Review provider-staged scores carefully before confirming or discarding them, because confirmation finalizes
+              the linked internal match and updates the ranking tables.
             </p>
           </div>
 
@@ -356,29 +445,43 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
                 </button>
               </form>
             </div>
-            {syncResult ? (
-              <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950/60 p-3 text-xs text-slate-300">
-                <p>
-                  <span className="font-semibold text-cyan-300">Status:</span> {syncResult.status}
-                </p>
-                <p>
-                  <span className="font-semibold text-cyan-300">Imported:</span> {syncResult.importedCount} |{" "}
-                  <span className="font-semibold text-cyan-300">Updated:</span> {syncResult.updatedCount} |{" "}
-                  <span className="font-semibold text-cyan-300">Staged:</span> {syncResult.stagedCount}
-                </p>
-              </div>
-            ) : null}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {EXTERNAL_MATCH_RESULT_FILTERS.map((state) => {
+              const isActive = state === currentState;
+
+              return (
+                <Link
+                  key={state}
+                  href={buildExternalResultsPath(state)}
+                  className={
+                    isActive
+                      ? "rounded-full border border-cyan-300/50 bg-cyan-300/15 px-4 py-2 text-sm font-semibold text-cyan-100"
+                      : "rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800"
+                  }
+                >
+                  {formatStateLabel(state)}
+                </Link>
+              );
+            })}
           </div>
 
           {stagedResults.length > 0 ? (
             <div className="space-y-4">
               {stagedResults.map((result) => (
-                <ResultCard key={result.id} result={result} onConfirm={confirmExternalResult} />
+                <ResultCard
+                  key={result.id}
+                  currentState={currentState}
+                  result={result}
+                  onConfirm={confirmExternalResult}
+                  onDiscard={discardExternalResult}
+                />
               ))}
             </div>
           ) : (
             <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-8 text-sm text-slate-300 shadow-xl shadow-slate-950/30">
-              No pending staged results right now.
+              No {formatStateLabel(currentState)} staged results right now.
             </div>
           )}
         </section>

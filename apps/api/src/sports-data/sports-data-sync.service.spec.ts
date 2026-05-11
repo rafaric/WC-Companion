@@ -766,6 +766,50 @@ describe('SportsDataSyncService', () => {
     });
   });
 
+  it('discards a pending staged result without finalizing the linked match', async () => {
+    const state = createInitialState({
+      externalMatchResults: [
+        {
+          id: 'external-result-1',
+          providerKey: 'mock',
+          tournamentId: 'tournament-1',
+          externalMatchId: 'fixture-arg-eng',
+          matchId: 'match-1',
+          externalSyncRunId: 'sync-1',
+          homeScore: 2,
+          awayScore: 1,
+          playedAt: new Date('2026-06-11T19:00:00.000Z'),
+          state: 'PENDING_CONFIRMATION',
+          confirmedAt: null,
+          discardedAt: null,
+        },
+      ],
+    });
+    const prisma = createPrismaMock(state);
+    const matchesService = createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1'));
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      createProvider(),
+      matchesService as unknown as MatchesService,
+    );
+
+    const summary = await service.discardExternalMatchResult({ externalMatchResultId: 'external-result-1' });
+
+    expect(summary).toMatchObject({
+      externalMatchResultId: 'external-result-1',
+      externalMatchId: 'fixture-arg-eng',
+      matchId: 'match-1',
+      tournamentId: 'tournament-1',
+      state: 'DISCARDED',
+    });
+    expect(matchesService.finalizeMatch).not.toHaveBeenCalled();
+    expect(state.externalMatchResults[0]).toMatchObject({
+      state: 'DISCARDED',
+      confirmedAt: null,
+      discardedAt: expect.any(Date),
+    });
+  });
+
   it('rejects a staged result without a linked internal match', async () => {
     const state = createInitialState({
       externalMatchResults: [
@@ -828,6 +872,39 @@ describe('SportsDataSyncService', () => {
 
     await expect(service.confirmExternalMatchResult({ externalMatchResultId: 'external-result-1' })).rejects.toThrow(
       'already confirmed',
+    );
+    expect(matchesService.finalizeMatch).not.toHaveBeenCalled();
+  });
+
+  it('rejects an already discarded staged result', async () => {
+    const state = createInitialState({
+      externalMatchResults: [
+        {
+          id: 'external-result-1',
+          providerKey: 'mock',
+          tournamentId: 'tournament-1',
+          externalMatchId: 'fixture-arg-eng',
+          matchId: 'match-1',
+          externalSyncRunId: 'sync-1',
+          homeScore: 2,
+          awayScore: 1,
+          playedAt: new Date('2026-06-11T19:00:00.000Z'),
+          state: 'DISCARDED',
+          confirmedAt: null,
+          discardedAt: new Date('2026-06-11T20:00:00.000Z'),
+        },
+      ],
+    });
+    const prisma = createPrismaMock(state);
+    const matchesService = createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1'));
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      createProvider(),
+      matchesService as unknown as MatchesService,
+    );
+
+    await expect(service.discardExternalMatchResult({ externalMatchResultId: 'external-result-1' })).rejects.toThrow(
+      'already discarded',
     );
     expect(matchesService.finalizeMatch).not.toHaveBeenCalled();
   });
