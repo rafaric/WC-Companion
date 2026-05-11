@@ -13,6 +13,7 @@ import {
   PREDICTION_SCORING_STATUS,
   upsertMatchPrediction,
   ApiError,
+  type CurrentUserProfile,
   type MatchView,
   type PredictionView,
   type MyGroupView,
@@ -78,6 +79,37 @@ interface ScoringExplanation {
 
 function getDisplayName(user: Session["user"]): string {
   return user.name ?? user.nickname ?? user.email ?? user.sub;
+}
+
+function isPlaceholderEmail(email: string): boolean {
+  return email.endsWith("@users.invalid");
+}
+
+function looksLikeEmail(value: string | null | undefined): value is string {
+  return typeof value === "string" && value.includes("@");
+}
+
+function getProfileDisplayName(profile: CurrentUserProfile, user: Session["user"]): string {
+  const name = user.name;
+  if (name && !looksLikeEmail(name)) {
+    return name;
+  }
+  const nickname = user.nickname;
+  if (nickname && !looksLikeEmail(nickname)) {
+    return nickname;
+  }
+  return profile.username;
+}
+
+function getProfileEmailLabel(profile: CurrentUserProfile, user: Session["user"]): string {
+  const sessionEmail = user.email;
+  if (sessionEmail && !isPlaceholderEmail(sessionEmail)) {
+    return sessionEmail;
+  }
+  if (isPlaceholderEmail(profile.email)) {
+    return "Email not shared";
+  }
+  return profile.email;
 }
 
 function getGroupRoleLabel(role: MyGroupView["role"]): string {
@@ -425,7 +457,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   ]);
 
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;
-  const displayName = currentUserProfile?.username ?? getDisplayName(session.user);
+  const displayName = currentUserProfile ? getProfileDisplayName(currentUserProfile, session.user) : getDisplayName(session.user);
+  const emailLabel = currentUserProfile ? getProfileEmailLabel(currentUserProfile, session.user) : null;
   const matchCards = mergePredictions(matches, predictions);
   const upcomingMatchCards = getUpcomingMatchCards(matchCards);
   const recentlyScoredResultItems = getRecentlyScoredResultItems(matchCards);
@@ -535,7 +568,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Profile</p>
                 <p className="mt-1 font-semibold text-white">{displayName}</p>
-                <p className="text-sm text-slate-400">{currentUserProfile.email}</p>
+                <p className="text-sm text-slate-400">{emailLabel}</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Country</p>
