@@ -44,6 +44,34 @@ const ERROR_MESSAGES: Record<string, string> = {
   update_failed: "We could not save your prediction right now. Try again.",
 };
 
+const MATCH_OUTCOME = {
+  AWAY_WIN: "away-win",
+  DRAW: "draw",
+  HOME_WIN: "home-win",
+} as const;
+
+type MatchOutcome = (typeof MATCH_OUTCOME)[keyof typeof MATCH_OUTCOME];
+
+const SCORING_EXPLANATION_KIND = {
+  CORRECT_OUTCOME: "correct-outcome",
+  EXACT_SCORE: "exact-score",
+  NOT_SCORED: "not-scored",
+  WRONG_OUTCOME: "wrong-outcome",
+} as const;
+
+type ScoringExplanationKind = (typeof SCORING_EXPLANATION_KIND)[keyof typeof SCORING_EXPLANATION_KIND];
+
+interface ScoreLine {
+  homeScore: number;
+  awayScore: number;
+}
+
+interface ScoringExplanation {
+  kind: ScoringExplanationKind;
+  title: string;
+  detail: string;
+}
+
 function getDisplayName(user: Session["user"]): string {
   return user.name ?? user.nickname ?? user.email ?? user.sub;
 }
@@ -131,6 +159,113 @@ function formatScoredAt(value: string | null): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function resolveOutcome(score: ScoreLine): MatchOutcome {
+  if (score.homeScore > score.awayScore) {
+    return MATCH_OUTCOME.HOME_WIN;
+  }
+
+  if (score.homeScore < score.awayScore) {
+    return MATCH_OUTCOME.AWAY_WIN;
+  }
+
+  return MATCH_OUTCOME.DRAW;
+}
+
+function formatOutcomeLabel(outcome: MatchOutcome): string {
+  switch (outcome) {
+    case MATCH_OUTCOME.HOME_WIN:
+      return "home win";
+    case MATCH_OUTCOME.AWAY_WIN:
+      return "away win";
+    case MATCH_OUTCOME.DRAW:
+      return "draw";
+  }
+}
+
+function getActualScoreLine(match: MatchView): ScoreLine | null {
+  if (match.homeScore === null || match.awayScore === null) {
+    return null;
+  }
+
+  return {
+    homeScore: match.homeScore,
+    awayScore: match.awayScore,
+  };
+}
+
+function getPredictionScoreLine(prediction: PredictionView): ScoreLine {
+  return {
+    homeScore: prediction.homeScore,
+    awayScore: prediction.awayScore,
+  };
+}
+
+function getScoringExplanation(match: MatchPredictionCard): ScoringExplanation | null {
+  if (!match.prediction) {
+    return null;
+  }
+
+  if (match.prediction.scoringStatus !== PREDICTION_SCORING_STATUS.SCORED) {
+    return {
+      kind: SCORING_EXPLANATION_KIND.NOT_SCORED,
+      title: "Waiting for scoring",
+      detail: "Your prediction exists, but this match has not been scored yet.",
+    };
+  }
+
+  const actualScore = getActualScoreLine(match);
+
+  if (!actualScore) {
+    return {
+      kind: SCORING_EXPLANATION_KIND.NOT_SCORED,
+      title: "Final score unavailable",
+      detail: "We have the match marked as final, but the score is not available yet.",
+    };
+  }
+
+  const predictionScore = getPredictionScoreLine(match.prediction);
+  const exactScore =
+    predictionScore.homeScore === actualScore.homeScore && predictionScore.awayScore === actualScore.awayScore;
+
+  if (exactScore) {
+    return {
+      kind: SCORING_EXPLANATION_KIND.EXACT_SCORE,
+      title: "Exact score",
+      detail: `You nailed the final score: ${formatPointsLabel(match.prediction.pointsAwarded)} awarded.`,
+    };
+  }
+
+  const predictedOutcome = resolveOutcome(predictionScore);
+  const actualOutcome = resolveOutcome(actualScore);
+
+  if (predictedOutcome === actualOutcome) {
+    return {
+      kind: SCORING_EXPLANATION_KIND.CORRECT_OUTCOME,
+      title: "Correct outcome",
+      detail: `You predicted a ${formatOutcomeLabel(predictedOutcome)}, and the match ended as a ${formatOutcomeLabel(actualOutcome)}.`,
+    };
+  }
+
+  return {
+    kind: SCORING_EXPLANATION_KIND.WRONG_OUTCOME,
+    title: "Wrong outcome",
+    detail: `You predicted a ${formatOutcomeLabel(predictedOutcome)}, but the match ended as a ${formatOutcomeLabel(actualOutcome)}.`,
+  };
+}
+
+function getScoringExplanationClassName(kind: ScoringExplanationKind): string {
+  switch (kind) {
+    case SCORING_EXPLANATION_KIND.EXACT_SCORE:
+      return "border-cyan-300/30 bg-cyan-300/10 text-cyan-100";
+    case SCORING_EXPLANATION_KIND.CORRECT_OUTCOME:
+      return "border-emerald-300/30 bg-emerald-300/10 text-emerald-100";
+    case SCORING_EXPLANATION_KIND.WRONG_OUTCOME:
+      return "border-rose-300/30 bg-rose-300/10 text-rose-100";
+    case SCORING_EXPLANATION_KIND.NOT_SCORED:
+      return "border-amber-300/30 bg-amber-300/10 text-amber-100";
+  }
 }
 
 function isMatchOpenForPrediction(match: MatchView): boolean {
@@ -470,6 +605,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             {matchCards.length > 0 ? (
               matchCards.map((match) => {
                 const matchFinished = isMatchFinished(match);
+                const scoringExplanation = getScoringExplanation(match);
 
                 return (
                 <article key={match.id} className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
@@ -532,6 +668,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                               <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">Scored at</p>
                               <p className="mt-1 text-sm font-semibold text-white">{formatScoredAt(match.prediction.scoredAt)}</p>
                             </div>
+                            {scoringExplanation ? (
+                              <div
+                                className={`rounded-2xl border p-3 sm:col-span-2 ${getScoringExplanationClassName(scoringExplanation.kind)}`}
+                              >
+                                <p className="text-[11px] uppercase tracking-[0.2em] opacity-75">Why this score?</p>
+                                <p className="mt-1 text-sm font-bold">{scoringExplanation.title}</p>
+                                <p className="mt-1 text-xs leading-5 opacity-90">{scoringExplanation.detail}</p>
+                              </div>
+                            ) : null}
                           </div>
                         ) : (
                           <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-6 text-slate-300 sm:max-w-xs">
