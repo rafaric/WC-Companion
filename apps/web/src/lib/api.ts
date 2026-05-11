@@ -185,6 +185,7 @@ export interface GroupView {
   inviteCode: string;
   tournamentId: string;
   createdAt: string;
+  memberCount: number;
 }
 
 export interface MyGroupView extends GroupView {

@@ -74,6 +74,12 @@ interface MembershipFindManyArgs {
   };
 }
 
+interface MembershipCountArgs {
+  where: {
+    groupId: string;
+  };
+}
+
 interface PrismaMock {
   group: {
     findUnique: jest.Mock<Promise<GroupRecord | null>, [GroupFindUniqueArgs]>;
@@ -83,6 +89,7 @@ interface PrismaMock {
     findFirst: jest.Mock<Promise<{ role: GroupRole } | null>, [MembershipFindFirstArgs]>;
     create: jest.Mock<Promise<MembershipRecord>, [MembershipCreateArgs]>;
     findMany: jest.Mock<Promise<Array<{ role: GroupRole; group: GroupRecord }>>, [MembershipFindManyArgs]>;
+    count: jest.Mock<Promise<number>, [MembershipCountArgs]>;
   };
   $transaction: <T>(callback: (transaction: PrismaMock) => Promise<T>) => Promise<T>;
 }
@@ -195,6 +202,7 @@ function createPrismaMock(state: {
           .sort((left, right) => right.joinedAt.getTime() - left.joinedAt.getTime())
           .map((membership) => ({ role: membership.role, group: membership.group })),
       ),
+      count: jest.fn(async ({ where }) => state.memberships.filter((membership) => membership.groupId === where.groupId).length),
     },
     $transaction,
   };
@@ -248,6 +256,7 @@ describe('GroupsService', () => {
     );
     expect(result.name).toBe('Friends of Messi');
     expect(result.tournamentId).toBe('tournament-1');
+    expect(result.memberCount).toBe(1);
   });
 
   it('retries invite code generation after a unique collision', async () => {
@@ -306,6 +315,7 @@ describe('GroupsService', () => {
       inviteCode: group.inviteCode,
       tournamentId: group.tournamentId,
       createdAt: group.createdAt,
+      memberCount: 1,
     });
   });
 
@@ -322,6 +332,7 @@ describe('GroupsService', () => {
 
     expect(prisma.groupMembership.create).not.toHaveBeenCalled();
     expect(result.inviteCode).toBe(group.inviteCode);
+    expect(result.memberCount).toBe(1);
   });
 
   it('rejects unknown invite codes', async () => {
@@ -370,6 +381,7 @@ describe('GroupsService', () => {
         inviteCode: firstGroup.inviteCode,
         tournamentId: firstGroup.tournamentId,
         createdAt: firstGroup.createdAt,
+        memberCount: 1,
       },
       {
         role: GroupRole.MEMBER,
@@ -378,6 +390,7 @@ describe('GroupsService', () => {
         inviteCode: secondGroup.inviteCode,
         tournamentId: secondGroup.tournamentId,
         createdAt: secondGroup.createdAt,
+        memberCount: 1,
       },
     ]);
   });

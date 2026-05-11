@@ -39,6 +39,10 @@ function getGroupRoleLabel(role: MyGroupView["role"]): string {
   return role === "OWNER" ? "Owner" : "Member";
 }
 
+function formatMemberCount(memberCount: number): string {
+  return `${memberCount} ${memberCount === 1 ? "member" : "members"}`;
+}
+
 function getLeader(ranking: RankingEntry[]): RankingEntry | null {
   return ranking[0] ?? null;
 }
@@ -237,6 +241,9 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
                 <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-cyan-300">
                   {getGroupRoleLabel(group.role)}
                 </span>
+                <span className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1">
+                  {formatMemberCount(group.memberCount)}
+                </span>
               </div>
             ) : null}
           </div>
@@ -365,8 +372,7 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
               </ul>
             ) : (
               <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">
-                No ranking data yet. Once members score points, positions, exact predictions, and prediction counts
-                will appear here.
+                No ranking data yet. Share the invite code and come back after the first scores land.
               </div>
             )}
 

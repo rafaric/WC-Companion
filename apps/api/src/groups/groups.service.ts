@@ -35,6 +35,7 @@ export interface GroupView {
   inviteCode: string;
   tournamentId: string;
   createdAt: Date;
+  memberCount: number;
 }
 
 export interface MyGroupView extends GroupView {
@@ -93,7 +94,13 @@ export class GroupsService {
           return group;
         });
 
-        return this.toGroupView(createdGroup);
+        const memberCount = await this.prisma.groupMembership.count({
+          where: {
+            groupId: createdGroup.id,
+          },
+        });
+
+        return this.toGroupView(createdGroup, memberCount);
       } catch (error: unknown) {
         if (!this.isUniqueConstraintError(error)) {
           throw error;
@@ -130,7 +137,7 @@ export class GroupsService {
     });
 
     if (existingMembership !== null) {
-      return this.toGroupView(group);
+      return this.toGroupView(group, await this.countGroupMembers(group.id));
     }
 
     try {
@@ -147,7 +154,7 @@ export class GroupsService {
       }
     }
 
-    return this.toGroupView(group);
+    return this.toGroupView(group, await this.countGroupMembers(group.id));
   }
 
   async getMyGroups(input: { identity: AuthenticatedIdentity }): Promise<MyGroupView[]> {
@@ -168,7 +175,7 @@ export class GroupsService {
       },
     });
 
-    return memberships.map((membership) => this.toMyGroupView(membership as GroupMembershipRecord));
+    return Promise.all(memberships.map((membership) => this.toMyGroupView(membership as GroupMembershipRecord)));
   }
 
   private normalizeGroupName(name: unknown): string {
@@ -211,20 +218,31 @@ export class GroupsService {
     return randomValue.toString(36).toUpperCase().padStart(13, '0');
   }
 
-  private toGroupView(group: GroupRecord): GroupView {
+  private async countGroupMembers(groupId: string): Promise<number> {
+    return this.prisma.groupMembership.count({
+      where: {
+        groupId,
+      },
+    });
+  }
+
+  private toGroupView(group: GroupRecord, memberCount: number): GroupView {
     return {
       id: group.id,
       name: group.name,
       inviteCode: group.inviteCode,
       tournamentId: group.tournamentId,
       createdAt: group.createdAt,
+      memberCount,
     };
   }
 
-  private toMyGroupView(membership: GroupMembershipRecord): MyGroupView {
+  private async toMyGroupView(membership: GroupMembershipRecord): Promise<MyGroupView> {
+    const memberCount = await this.countGroupMembers(membership.group.id);
+
     return {
       role: membership.role,
-      ...this.toGroupView(membership.group),
+      ...this.toGroupView(membership.group, memberCount),
     };
   }
 

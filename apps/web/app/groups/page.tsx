@@ -75,6 +75,10 @@ function getGroupRoleLabel(role: MyGroupView["role"]): string {
   return role === "OWNER" ? "Owner" : "Member";
 }
 
+function formatMemberCount(memberCount: number): string {
+  return `${memberCount} ${memberCount === 1 ? "member" : "members"}`;
+}
+
 function renderProfileNote(profile: CurrentUserProfile | null): string {
   if (!profile) {
     return "We could not load your backend profile right now.";
@@ -113,7 +117,7 @@ function GroupCard({ group }: { group: MyGroupView }) {
       </div>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-slate-500">Use this group to compete privately during the tournament.</p>
+        <p className="text-xs text-slate-500">{formatMemberCount(group.memberCount)} · private group</p>
         <Link
           href={`/groups/${group.id}`}
           className="rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
@@ -248,10 +252,10 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             </p>
             <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">Compete with your private circle.</h1>
             <p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-              Create a group, copy the invite code, and bring your friends into the ranking fight.
+              Create a group, copy the invite code, and bring your friends into your private circle.
             </p>
             <p className="max-w-2xl text-sm leading-6 text-slate-500">
-              Open each group to see the podium, latest scored players, and your position after results land.
+              Open each group to see the ranking, latest scored players, and your position after results land.
             </p>
           </div>
 
@@ -373,7 +377,10 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
               </div>
             ) : (
               <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 text-sm leading-6 text-slate-300">
-                No groups yet. Create one to get an invite code, or join a friend’s group to start competing.
+                <p className="text-base font-semibold text-white">No groups yet.</p>
+                <p className="mt-2 text-slate-300">
+                  Create one above to get your first invite code, or join a friend’s group to start together.
+                </p>
               </div>
             )}
           </div>
