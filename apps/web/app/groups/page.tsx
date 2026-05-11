@@ -14,6 +14,7 @@ import {
   type MyGroupView,
 } from "@/lib/api";
 import { formatCountryLabel, isProfileComplete } from "@/lib/profile";
+import { CopyInviteCodeButton } from "./copy-invite-code-button";
 
 type GroupsSearchParams = {
   error?: string;
@@ -86,8 +87,8 @@ function renderProfileNote(profile: CurrentUserProfile | null): string {
 
 function GroupCard({ group }: { group: MyGroupView }) {
   return (
-    <article className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
-      <div className="flex items-start justify-between gap-3">
+    <article className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30 transition hover:border-slate-700">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Group</p>
           <h3 className="text-lg font-semibold text-white">{group.name}</h3>
@@ -98,22 +99,24 @@ function GroupCard({ group }: { group: MyGroupView }) {
         </span>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Invite code</p>
-          <p className="mt-1 font-semibold text-white">{group.inviteCode}</p>
+      <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Invite code</p>
+            <p className="mt-1 break-all text-2xl font-black tracking-[0.15em] text-white">{group.inviteCode}</p>
+          </div>
+          <CopyInviteCodeButton inviteCode={group.inviteCode} />
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Tournament</p>
-          <p className="mt-1 font-semibold text-white">{group.tournamentId}</p>
-        </div>
+        <p className="mt-3 text-xs leading-5 text-cyan-100/70">
+          Send this code to friends so they can join from the Groups page.
+        </p>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <p className="text-xs text-slate-500">Group ID: {group.id}</p>
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-slate-500">Use this group to compete privately during the tournament.</p>
         <Link
           href={`/groups/${group.id}`}
-          className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
+          className="rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
         >
           Open ranking
         </Link>
@@ -243,12 +246,12 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
               Social groups
             </p>
-            <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">Create your private circle.</h1>
+            <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">Compete with your private circle.</h1>
             <p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-              Start a private group, join with an invite code, and compare rankings with your crew.
+              Create a group, copy the invite code, and bring your friends into the ranking fight.
             </p>
             <p className="max-w-2xl text-sm leading-6 text-slate-500">
-              Open each group to see positions, points, exact predictions, and prediction counts.
+              Open each group to see the podium, latest scored players, and your position after results land.
             </p>
           </div>
 
@@ -291,7 +294,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                 <div className="space-y-2">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Create</p>
                   <h2 className="text-lg font-semibold text-white">New private group</h2>
-                  <p className="text-sm leading-6 text-slate-400">Pick a name and invite your friends later.</p>
+                  <p className="text-sm leading-6 text-slate-400">Pick a name, get an invite code, and start your crew ranking.</p>
                 </div>
 
                 <label className="mt-5 block space-y-2">
@@ -307,7 +310,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                 </label>
 
                 <div className="mt-5 flex items-center justify-between gap-3">
-                  <p className="text-xs text-slate-500">Private groups stay internal to your tournament.</p>
+                  <p className="text-xs text-slate-500">You can copy the invite code after creation.</p>
                   <button
                     type="submit"
                     className="rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
@@ -326,7 +329,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                 <div className="space-y-2">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Join</p>
                   <h2 className="text-lg font-semibold text-white">Enter an invite code</h2>
-                  <p className="text-sm leading-6 text-slate-400">Paste the code you got from the group owner.</p>
+                  <p className="text-sm leading-6 text-slate-400">Paste the code from a friend and jump into their private leaderboard.</p>
                 </div>
 
                 <label className="mt-5 block space-y-2">
@@ -341,7 +344,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                 </label>
 
                 <div className="mt-5 flex items-center justify-between gap-3">
-                  <p className="text-xs text-slate-500">Joining is idempotent if you are already in.</p>
+                  <p className="text-xs text-slate-500">Already joined? Opening the ranking is enough.</p>
                   <button
                     type="submit"
                     className="rounded-full border border-slate-700 bg-slate-900/80 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
@@ -357,7 +360,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">My groups</p>
-                <h2 className="mt-1 text-lg font-semibold text-white">Private spaces you belong to</h2>
+                <h2 className="mt-1 text-lg font-semibold text-white">Your competitions</h2>
               </div>
               <p className="text-sm text-slate-400">{myGroups.length} total</p>
             </div>
@@ -370,7 +373,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
               </div>
             ) : (
               <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 text-sm leading-6 text-slate-300">
-                No groups yet. Create one or join with a code to start a private ranking.
+                No groups yet. Create one to get an invite code, or join a friend’s group to start competing.
               </div>
             )}
           </div>
