@@ -19,6 +19,7 @@ import {
 import { formatCountryLabel, getTeamLabel, isProfileComplete } from "@/lib/profile";
 import { cn } from "@/lib/cn";
 import { GLOBAL_RANKING_PREVIEW_LIMIT, findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
+import { RecentlyScoredResults, type RecentlyScoredResultItem } from "./recently-scored-results";
 
 type DashboardSearchParams = {
   error?: string;
@@ -105,6 +106,18 @@ function formatStatusLabel(status: string): string {
   const normalized = status.split("_").join(" ").toLowerCase();
 
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function buildDashboardPath(params: { error?: string } = {}): string {
+  const searchParams = new URLSearchParams();
+
+  if (params.error) {
+    searchParams.set("error", params.error);
+  }
+
+  const queryString = searchParams.toString();
+
+  return queryString ? `/dashboard?${queryString}` : "/dashboard";
 }
 
 function parseScoreValue(value: string): number | null {
@@ -292,6 +305,50 @@ function getPredictionOutcomeLabel(match: MatchPredictionCard): string {
   return "Prediction waiting to be scored";
 }
 
+function getUpcomingMatchCards(matchCards: MatchPredictionCard[]): MatchPredictionCard[] {
+  return matchCards.filter((match) => isMatchOpenForPrediction(match));
+}
+
+function getRecentlyScoredResultItems(matchCards: MatchPredictionCard[]): RecentlyScoredResultItem[] {
+  return matchCards
+    .filter(
+      (match) =>
+        isMatchFinished(match) &&
+        match.prediction !== null &&
+        match.prediction.scoringStatus === PREDICTION_SCORING_STATUS.SCORED &&
+        match.prediction.scoredAt !== null &&
+        match.homeScore !== null &&
+        match.awayScore !== null,
+    )
+    .map((match) => {
+      const prediction = match.prediction;
+      const scoringExplanation = getScoringExplanation(match);
+
+      if (!prediction || !prediction.scoredAt || match.homeScore === null || match.awayScore === null) {
+        throw new Error("Invalid recently scored match state");
+      }
+
+      return {
+        id: prediction.id,
+        matchId: match.id,
+        homeTeamName: match.homeTeam.name,
+        awayTeamName: match.awayTeam.name,
+        stage: match.stage,
+        groupName: match.groupName,
+        finalHomeScore: match.homeScore,
+        finalAwayScore: match.awayScore,
+        predictedHomeScore: prediction.homeScore,
+        predictedAwayScore: prediction.awayScore,
+        pointsAwarded: prediction.pointsAwarded,
+        scoredAt: prediction.scoredAt,
+        explanationKind: scoringExplanation?.kind ?? SCORING_EXPLANATION_KIND.NOT_SCORED,
+        explanationTitle: scoringExplanation?.title ?? "Waiting for scoring",
+        explanationDetail: scoringExplanation?.detail ?? "Your prediction exists, but this match has not been scored yet.",
+      };
+    })
+    .sort((left, right) => new Date(right.scoredAt).getTime() - new Date(left.scoredAt).getTime());
+}
+
 function getPredictionSaveErrorCode(error: unknown): string {
   if (!(error instanceof ApiError)) {
     return "update_failed";
@@ -362,6 +419,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;
   const displayName = currentUserProfile?.username ?? getDisplayName(session.user);
   const matchCards = mergePredictions(matches, predictions);
+  const upcomingMatchCards = getUpcomingMatchCards(matchCards);
+  const recentlyScoredResultItems = getRecentlyScoredResultItems(matchCards);
   const currentUserRankingEntry = findRankingEntryByUserId(globalRanking, currentUserProfile?.id);
   const rankingPreview = getRankingPreview(globalRanking);
 
@@ -379,7 +438,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       awayScore < 0 ||
       awayScore > 20
     ) {
-      redirect("/dashboard?error=invalid_input");
+      redirect(buildDashboardPath({ error: "invalid_input" }));
     }
 
     let actionToken: string;
@@ -396,7 +455,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         awayScore,
       });
     } catch (error) {
-      redirect(`/dashboard?error=${getPredictionSaveErrorCode(error)}`);
+      redirect(buildDashboardPath({ error: getPredictionSaveErrorCode(error) }));
     }
 
     revalidatePath("/dashboard");
@@ -601,9 +660,20 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
           ) : null}
 
+          <RecentlyScoredResults items={recentlyScoredResultItems} />
+
           <div className="space-y-4">
-            {matchCards.length > 0 ? (
-              matchCards.map((match) => {
+            <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/30">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Upcoming predictions</p>
+                <p className="mt-1 text-sm text-slate-300">
+                  Showing only matches still open for prediction, so you can focus on what needs action.
+                </p>
+              </div>
+            </div>
+
+            {upcomingMatchCards.length > 0 ? (
+              upcomingMatchCards.map((match) => {
                 const matchFinished = isMatchFinished(match);
                 const scoringExplanation = getScoringExplanation(match);
 
@@ -740,7 +810,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               })
             ) : (
               <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 text-sm leading-6 text-slate-300">
-                No active fixtures yet. When the tournament publishes matches, they will appear here.
+                No upcoming matches open for prediction right now. New scored matches will appear above when results land.
               </div>
             )}
           </div>
