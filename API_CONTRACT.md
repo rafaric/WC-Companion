@@ -716,6 +716,36 @@ Returns active-tournament matches with their provider mapping status. Use this t
 ]
 ```
 
+### List Recent Sports Data Sync Runs
+
+```http
+GET /admin/sports-data/external-results/sync-runs
+Authorization: Bearer <token>
+```
+
+Returns recent provider sync runs for the active tournament. Use this to inspect whether imports/results syncs succeeded, failed, or are still running.
+
+#### Response
+
+```json
+[
+  {
+    "syncRunId": "sync-run-id",
+    "providerKey": "mock",
+    "tournamentId": "tournament-id",
+    "syncType": "RESULTS",
+    "status": "SUCCESS",
+    "importedCount": 0,
+    "updatedCount": 0,
+    "stagedCount": 4,
+    "skippedCount": 0,
+    "errorMessage": null,
+    "startedAt": "2026-05-08T12:00:00.000Z",
+    "completedAt": "2026-05-08T12:01:00.000Z"
+  }
+]
+```
+
 #### Admin UI
 
 The web app exposes an admin review page at `/admin/external-results` for users with the `matches:finalize` permission. The page supports filtering by staged result state and lets admins confirm or discard pending provider results.

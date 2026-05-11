@@ -10,11 +10,13 @@ import {
   EXTERNAL_MATCH_RESULT_STATES,
   getExternalMatchMappingDiagnostics,
   getExternalMatchResults,
+  getExternalSyncRuns,
   importTournament,
   syncResults,
   type ExternalMatchMappingDiagnosticView,
   type ExternalMatchResultState,
   type ExternalMatchResultView,
+  type ExternalSyncRunView,
 } from "@/lib/api";
 
 type AdminExternalResultsSearchParams = {
@@ -173,6 +175,23 @@ function getDiagnosticStatusClassName(diagnostic: ExternalMatchMappingDiagnostic
   return "border-cyan-400/30 bg-cyan-400/10 text-cyan-100";
 }
 
+function getSyncRunStatusClassName(status: string): string {
+  switch (status) {
+    case "SUCCESS":
+      return "border-emerald-400/30 bg-emerald-400/10 text-emerald-100";
+    case "FAILED":
+      return "border-rose-400/30 bg-rose-400/10 text-rose-100";
+    case "RUNNING":
+      return "border-cyan-400/30 bg-cyan-400/10 text-cyan-100";
+    default:
+      return "border-slate-700 bg-slate-800/60 text-slate-200";
+  }
+}
+
+function getLatestSyncRunByType(syncRuns: ExternalSyncRunView[], syncType: string): ExternalSyncRunView | null {
+  return syncRuns.find((syncRun) => syncRun.syncType === syncType) ?? null;
+}
+
 function ResultCard({
   result,
   onConfirm,
@@ -292,8 +311,10 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
 
   let stagedResults: ExternalMatchResultView[] = [];
   let matchDiagnostics: ExternalMatchMappingDiagnosticView[] = [];
+  let syncRuns: ExternalSyncRunView[] = [];
   let loadErrorMessage: string | null = null;
   let diagnosticsLoadErrorMessage: string | null = null;
+  let syncRunsLoadErrorMessage: string | null = null;
 
   try {
     stagedResults = await getExternalMatchResults(accessToken, currentState);
@@ -305,6 +326,12 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
     matchDiagnostics = await getExternalMatchMappingDiagnostics(accessToken);
   } catch (error) {
     diagnosticsLoadErrorMessage = getListLoadErrorMessage(error);
+  }
+
+  try {
+    syncRuns = await getExternalSyncRuns(accessToken);
+  } catch (error) {
+    syncRunsLoadErrorMessage = getListLoadErrorMessage(error);
   }
 
   async function confirmExternalResult(formData: FormData) {
@@ -408,6 +435,8 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
   }
 
   const displayName = getDisplayName(session.user);
+  const latestImportSyncRun = getLatestSyncRunByType(syncRuns, "IMPORT");
+  const latestResultsSyncRun = getLatestSyncRunByType(syncRuns, "RESULTS");
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-50">
@@ -488,6 +517,102 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
               </form>
             </div>
           </div>
+
+          <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Sports data sync</p>
+                <h2 className="mt-1 text-lg font-semibold text-white">Recent provider runs</h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                  Check the latest import/results runs before debugging staged results. If a run failed or never completed,
+                  the review queue can look empty even when matches exist.
+                </p>
+              </div>
+              <p className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs font-semibold text-slate-300">
+                {syncRuns.length} runs
+              </p>
+            </div>
+
+            {syncRunsLoadErrorMessage ? (
+              <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+                {syncRunsLoadErrorMessage}
+              </div>
+            ) : null}
+
+            <div className="mt-5 grid gap-3 lg:grid-cols-2">
+              {[
+                { label: "import", syncRun: latestImportSyncRun },
+                { label: "results", syncRun: latestResultsSyncRun },
+              ].map(({ label, syncRun }) => (
+                <div key={label} className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+                  {syncRun ? (
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{syncRun.syncType.toLowerCase()}</p>
+                          <p className="mt-1 break-all text-sm font-semibold text-white">{syncRun.syncRunId}</p>
+                        </div>
+                        <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${getSyncRunStatusClassName(syncRun.status)}`}>
+                          {syncRun.status.toLowerCase()}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                        <div>
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Imported</p>
+                          <p className="mt-1 font-bold text-white">{syncRun.importedCount}</p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Updated</p>
+                          <p className="mt-1 font-bold text-white">{syncRun.updatedCount}</p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Staged</p>
+                          <p className="mt-1 font-bold text-white">{syncRun.stagedCount}</p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Skipped</p>
+                          <p className="mt-1 font-bold text-white">{syncRun.skippedCount}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 text-xs text-slate-400 sm:grid-cols-2">
+                        <p>Started: {formatDateTime(syncRun.startedAt)}</p>
+                        <p>Completed: {formatDateTime(syncRun.completedAt)}</p>
+                      </div>
+
+                      {syncRun.errorMessage ? (
+                        <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-3 text-xs leading-5 text-rose-100">
+                          {syncRun.errorMessage}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="text-sm leading-6 text-slate-300">No {label} sync run recorded yet.</div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {syncRuns.length > 2 ? (
+              <div className="mt-4 space-y-2">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Recent history</p>
+                {syncRuns.slice(2).map((syncRun) => (
+                  <div key={syncRun.syncRunId} className="flex flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-white">
+                        {syncRun.syncType.toLowerCase()} · {syncRun.status.toLowerCase()}
+                      </p>
+                      <p className="truncate text-xs text-slate-500">{syncRun.syncRunId}</p>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      {formatDateTime(syncRun.startedAt)} · imported {syncRun.importedCount} · updated {syncRun.updatedCount} · staged {syncRun.stagedCount}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </section>
 
           <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

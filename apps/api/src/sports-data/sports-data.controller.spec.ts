@@ -5,6 +5,7 @@ import type {
   DiscardExternalMatchResultSummary,
   ExternalMatchMappingDiagnosticSummary,
   ExternalMatchResultSummary,
+  ExternalSyncRunSummary,
   SportsDataSyncService,
 } from './sports-data-sync.service';
 
@@ -67,6 +68,33 @@ describe('SportsDataController', () => {
 
     await expect(controller.listExternalMatchResults({})).resolves.toEqual(results);
     expect(sportsDataSyncService.listExternalMatchResults).toHaveBeenCalledWith('PENDING_CONFIRMATION');
+  });
+
+  it('lists recent sync runs for admin operations', async () => {
+    const syncRuns: ExternalSyncRunSummary[] = [
+      {
+        syncRunId: 'sync-1',
+        providerKey: 'mock',
+        tournamentId: 'tournament-1',
+        syncType: 'RESULTS',
+        status: 'SUCCESS',
+        importedCount: 0,
+        updatedCount: 0,
+        stagedCount: 2,
+        skippedCount: 0,
+        errorMessage: null,
+        startedAt: new Date('2026-05-08T12:00:00.000Z'),
+        completedAt: new Date('2026-05-08T12:01:00.000Z'),
+      },
+    ];
+
+    const sportsDataSyncService = {
+      listRecentSyncRuns: jest.fn(async () => syncRuns),
+    } as unknown as SportsDataSyncService;
+    const controller = new SportsDataController(sportsDataSyncService);
+
+    await expect(controller.listRecentSyncRuns()).resolves.toEqual(syncRuns);
+    expect(sportsDataSyncService.listRecentSyncRuns).toHaveBeenCalledWith();
   });
 
   it('delegates manual confirmation to the service', async () => {
@@ -153,6 +181,15 @@ describe('SportsDataController', () => {
     const requiredPermissions = Reflect.getMetadata(
       AUTH_PERMISSION_METADATA_KEYS.REQUIRED_PERMISSIONS,
       SportsDataController.prototype.listExternalMatchMappingDiagnostics,
+    ) as string[] | undefined;
+
+    expect(requiredPermissions).toEqual([AUTH_PERMISSIONS.MATCHES_FINALIZE]);
+  });
+
+  it('requires the matches finalize permission to list recent sync runs', () => {
+    const requiredPermissions = Reflect.getMetadata(
+      AUTH_PERMISSION_METADATA_KEYS.REQUIRED_PERMISSIONS,
+      SportsDataController.prototype.listRecentSyncRuns,
     ) as string[] | undefined;
 
     expect(requiredPermissions).toEqual([AUTH_PERMISSIONS.MATCHES_FINALIZE]);

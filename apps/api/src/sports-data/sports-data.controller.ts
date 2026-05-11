@@ -11,6 +11,7 @@ import {
   DiscardExternalMatchResultSummary,
   ExternalMatchMappingDiagnosticSummary,
   ExternalMatchResultSummary,
+  ExternalSyncRunSummary,
   SportsDataSyncService,
 } from './sports-data-sync.service';
 import type { SportsDataSyncSummary } from './sports-data.types';
@@ -24,6 +25,12 @@ export class SportsDataController {
   @Get('diagnostics/matches')
   async listExternalMatchMappingDiagnostics(): Promise<ExternalMatchMappingDiagnosticSummary[]> {
     return this.sportsDataSyncService.listExternalMatchMappingDiagnostics();
+  }
+
+  @RequirePermissions(AUTH_PERMISSIONS.MATCHES_FINALIZE)
+  @Get('sync-runs')
+  async listRecentSyncRuns(): Promise<ExternalSyncRunSummary[]> {
+    return this.sportsDataSyncService.listRecentSyncRuns();
   }
 
   @RequirePermissions(AUTH_PERMISSIONS.MATCHES_FINALIZE)

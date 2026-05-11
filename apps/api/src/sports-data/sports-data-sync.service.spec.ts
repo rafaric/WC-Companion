@@ -109,6 +109,8 @@ interface SyncRunRecord {
   stagedCount: number;
   skippedCount: number;
   errorMessage: string | null;
+  startedAt: Date;
+  completedAt: Date | null;
 }
 
 interface PrismaState {
@@ -162,6 +164,7 @@ interface PrismaMock {
   };
   externalSyncRun: {
     create: jest.Mock<Promise<SyncRunRecord>, [unknown]>;
+    findMany: jest.Mock<Promise<SyncRunRecord[]>, [unknown]>;
     update: jest.Mock<Promise<SyncRunRecord>, [unknown]>;
   };
   externalMatchResult: {
@@ -439,7 +442,7 @@ function createPrismaMock(state: PrismaState): PrismaMock {
       }),
     },
     externalSyncRun: {
-      create: jest.fn(async ({ data }: { data: Omit<SyncRunRecord, 'id' | 'importedCount' | 'updatedCount' | 'stagedCount' | 'skippedCount' | 'errorMessage'> }) => {
+      create: jest.fn(async ({ data }: { data: Omit<SyncRunRecord, 'id' | 'importedCount' | 'updatedCount' | 'stagedCount' | 'skippedCount' | 'errorMessage' | 'startedAt' | 'completedAt'> }) => {
         const record: SyncRunRecord = {
           id: `sync-${state.syncRuns.length + 1}`,
           importedCount: 0,
@@ -447,11 +450,20 @@ function createPrismaMock(state: PrismaState): PrismaMock {
           stagedCount: 0,
           skippedCount: 0,
           errorMessage: null,
+          startedAt: new Date('2026-05-08T12:00:00.000Z'),
+          completedAt: null,
           ...data,
         };
         state.syncRuns.push(record);
         return record;
       }),
+      findMany: jest.fn(async ({ where, take }: { where: { tournamentId: string; providerKey: string }; take: number }) =>
+        state.syncRuns
+          .filter((run) => run.tournamentId === where.tournamentId && run.providerKey === where.providerKey)
+          .slice()
+          .sort((left, right) => right.startedAt.getTime() - left.startedAt.getTime())
+          .slice(0, take),
+      ),
       update: jest.fn(async ({ where, data }: { where: { id: string }; data: Partial<SyncRunRecord> & { completedAt?: Date | null } }) => {
         const run = state.syncRuns.find((candidate) => candidate.id === where.id);
 
@@ -784,6 +796,87 @@ describe('SportsDataSyncService', () => {
         },
       },
     ]);
+  });
+
+  it('lists recent sync runs for the active tournament and provider', async () => {
+    const state = createInitialState({
+      syncRuns: [
+        {
+          id: 'sync-1',
+          providerKey: 'mock',
+          tournamentId: 'tournament-1',
+          syncType: 'IMPORT',
+          status: 'SUCCESS',
+          importedCount: 14,
+          updatedCount: 0,
+          stagedCount: 0,
+          skippedCount: 0,
+          errorMessage: null,
+          startedAt: new Date('2026-05-08T12:00:00.000Z'),
+          completedAt: new Date('2026-05-08T12:01:00.000Z'),
+        },
+        {
+          id: 'sync-2',
+          providerKey: 'mock',
+          tournamentId: 'tournament-1',
+          syncType: 'RESULTS',
+          status: 'SUCCESS',
+          importedCount: 0,
+          updatedCount: 0,
+          stagedCount: 4,
+          skippedCount: 0,
+          errorMessage: null,
+          startedAt: new Date('2026-05-08T13:00:00.000Z'),
+          completedAt: new Date('2026-05-08T13:01:00.000Z'),
+        },
+      ],
+    });
+    const prisma = createPrismaMock(state);
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      createProvider(),
+      createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+    );
+
+    const syncRuns = await service.listRecentSyncRuns();
+
+    expect(syncRuns).toEqual([
+      {
+        syncRunId: 'sync-2',
+        providerKey: 'mock',
+        tournamentId: 'tournament-1',
+        syncType: 'RESULTS',
+        status: 'SUCCESS',
+        importedCount: 0,
+        updatedCount: 0,
+        stagedCount: 4,
+        skippedCount: 0,
+        errorMessage: null,
+        startedAt: new Date('2026-05-08T13:00:00.000Z'),
+        completedAt: new Date('2026-05-08T13:01:00.000Z'),
+      },
+      {
+        syncRunId: 'sync-1',
+        providerKey: 'mock',
+        tournamentId: 'tournament-1',
+        syncType: 'IMPORT',
+        status: 'SUCCESS',
+        importedCount: 14,
+        updatedCount: 0,
+        stagedCount: 0,
+        skippedCount: 0,
+        errorMessage: null,
+        startedAt: new Date('2026-05-08T12:00:00.000Z'),
+        completedAt: new Date('2026-05-08T12:01:00.000Z'),
+      },
+    ]);
+    expect(prisma.externalSyncRun.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tournamentId: 'tournament-1', providerKey: 'mock' },
+        orderBy: { startedAt: 'desc' },
+        take: 6,
+      }),
+    );
   });
 
   it('stages final results idempotently without invoking match finalization', async () => {

@@ -112,6 +112,21 @@ export interface ExternalMatchMappingDiagnosticView {
   latestExternalResult: ExternalMatchMappingDiagnosticResultView | null;
 }
 
+export interface ExternalSyncRunView {
+  syncRunId: string;
+  providerKey: string;
+  tournamentId: string;
+  syncType: string;
+  status: string;
+  importedCount: number;
+  updatedCount: number;
+  stagedCount: number;
+  skippedCount: number;
+  errorMessage: string | null;
+  startedAt: string;
+  completedAt: string | null;
+}
+
 export interface ConfirmExternalMatchResultSummary {
   externalMatchResultId: string;
   externalMatchId: string;
@@ -460,6 +475,14 @@ export async function getExternalMatchMappingDiagnostics(
   accessToken: string,
 ): Promise<ExternalMatchMappingDiagnosticView[]> {
   return fetchJson<ExternalMatchMappingDiagnosticView[]>("/admin/sports-data/external-results/diagnostics/matches", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export async function getExternalSyncRuns(accessToken: string): Promise<ExternalSyncRunView[]> {
+  return fetchJson<ExternalSyncRunView[]>("/admin/sports-data/external-results/sync-runs", {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },

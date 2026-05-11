@@ -96,6 +96,21 @@ export interface ExternalMatchMappingDiagnosticSummary {
   latestExternalResult: ExternalMatchMappingDiagnosticResultSummary | null;
 }
 
+export interface ExternalSyncRunSummary {
+  syncRunId: string;
+  providerKey: string;
+  tournamentId: string;
+  syncType: SportsDataSyncType;
+  status: SportsDataSyncStatus;
+  importedCount: number;
+  updatedCount: number;
+  stagedCount: number;
+  skippedCount: number;
+  errorMessage: string | null;
+  startedAt: Date;
+  completedAt: Date | null;
+}
+
 @Injectable()
 export class SportsDataSyncService {
   constructor(
@@ -379,6 +394,49 @@ export class SportsDataSyncService {
         latestExternalResult,
       };
     });
+  }
+
+  async listRecentSyncRuns(limit = 6): Promise<ExternalSyncRunSummary[]> {
+    const tournamentId = await this.resolveTournamentId();
+    const syncRuns = await this.prisma.externalSyncRun.findMany({
+      where: {
+        tournamentId,
+        providerKey: this.provider.providerKey,
+      },
+      orderBy: {
+        startedAt: 'desc',
+      },
+      take: limit,
+      select: {
+        id: true,
+        providerKey: true,
+        tournamentId: true,
+        syncType: true,
+        status: true,
+        importedCount: true,
+        updatedCount: true,
+        stagedCount: true,
+        skippedCount: true,
+        errorMessage: true,
+        startedAt: true,
+        completedAt: true,
+      },
+    });
+
+    return syncRuns.map((syncRun) => ({
+      syncRunId: syncRun.id,
+      providerKey: syncRun.providerKey,
+      tournamentId: syncRun.tournamentId,
+      syncType: syncRun.syncType,
+      status: syncRun.status,
+      importedCount: syncRun.importedCount,
+      updatedCount: syncRun.updatedCount,
+      stagedCount: syncRun.stagedCount,
+      skippedCount: syncRun.skippedCount,
+      errorMessage: syncRun.errorMessage,
+      startedAt: syncRun.startedAt,
+      completedAt: syncRun.completedAt,
+    }));
   }
 
   async importTournament(tournamentId?: string): Promise<SportsDataSyncSummary> {
