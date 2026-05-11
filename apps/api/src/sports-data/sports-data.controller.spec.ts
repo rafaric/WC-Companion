@@ -3,11 +3,37 @@ import { SportsDataController } from './sports-data.controller';
 import type {
   ConfirmExternalMatchResultSummary,
   DiscardExternalMatchResultSummary,
+  ExternalMatchMappingDiagnosticSummary,
   ExternalMatchResultSummary,
   SportsDataSyncService,
 } from './sports-data-sync.service';
 
 describe('SportsDataController', () => {
+  it('lists match mapping diagnostics for admin review', async () => {
+    const diagnostics: ExternalMatchMappingDiagnosticSummary[] = [
+      {
+        matchId: 'match-1',
+        status: 'UPCOMING',
+        kickoffAt: new Date('2026-06-11T16:00:00.000Z'),
+        homeTeamName: 'Argentina',
+        awayTeamName: 'England',
+        stage: 'Group Stage',
+        groupName: 'Group A',
+        externalMatchId: 'fixture-arg-eng',
+        hasExternalReference: true,
+        latestExternalResult: null,
+      },
+    ];
+
+    const sportsDataSyncService = {
+      listExternalMatchMappingDiagnostics: jest.fn(async () => diagnostics),
+    } as unknown as SportsDataSyncService;
+    const controller = new SportsDataController(sportsDataSyncService);
+
+    await expect(controller.listExternalMatchMappingDiagnostics()).resolves.toEqual(diagnostics);
+    expect(sportsDataSyncService.listExternalMatchMappingDiagnostics).toHaveBeenCalledWith();
+  });
+
   it('lists pending staged results for admin review', async () => {
     const results: ExternalMatchResultSummary[] = [
       {
@@ -118,6 +144,15 @@ describe('SportsDataController', () => {
     const requiredPermissions = Reflect.getMetadata(
       AUTH_PERMISSION_METADATA_KEYS.REQUIRED_PERMISSIONS,
       SportsDataController.prototype.listExternalMatchResults,
+    ) as string[] | undefined;
+
+    expect(requiredPermissions).toEqual([AUTH_PERMISSIONS.MATCHES_FINALIZE]);
+  });
+
+  it('requires the matches finalize permission to list mapping diagnostics', () => {
+    const requiredPermissions = Reflect.getMetadata(
+      AUTH_PERMISSION_METADATA_KEYS.REQUIRED_PERMISSIONS,
+      SportsDataController.prototype.listExternalMatchMappingDiagnostics,
     ) as string[] | undefined;
 
     expect(requiredPermissions).toEqual([AUTH_PERMISSIONS.MATCHES_FINALIZE]);

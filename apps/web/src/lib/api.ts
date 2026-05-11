@@ -9,7 +9,13 @@ export const TOURNAMENT_STATUS = {
 } as const;
 
 export const MATCH_STATUS = {
+  FINISHED: "FINISHED",
   UPCOMING: "UPCOMING",
+} as const;
+
+export const PREDICTION_SCORING_STATUS = {
+  PENDING: "PENDING",
+  SCORED: "SCORED",
 } as const;
 
 export interface Tournament {
@@ -81,6 +87,29 @@ export interface ExternalMatchResultView {
   confirmedAt: string | null;
   discardedAt: string | null;
   match: ExternalMatchResultMatchView | null;
+}
+
+export interface ExternalMatchMappingDiagnosticResultView {
+  externalMatchId: string;
+  state: ExternalMatchResultState;
+  homeScore: number;
+  awayScore: number;
+  stagedAt: string;
+  confirmedAt: string | null;
+  discardedAt: string | null;
+}
+
+export interface ExternalMatchMappingDiagnosticView {
+  matchId: string;
+  status: string;
+  kickoffAt: string;
+  homeTeamName: string;
+  awayTeamName: string;
+  stage: string | null;
+  groupName: string | null;
+  externalMatchId: string | null;
+  hasExternalReference: boolean;
+  latestExternalResult: ExternalMatchMappingDiagnosticResultView | null;
 }
 
 export interface ConfirmExternalMatchResultSummary {
@@ -425,6 +454,16 @@ export async function getExternalMatchResults(
 
 export async function getPendingExternalMatchResults(accessToken: string): Promise<ExternalMatchResultView[]> {
   return getExternalMatchResults(accessToken, EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION);
+}
+
+export async function getExternalMatchMappingDiagnostics(
+  accessToken: string,
+): Promise<ExternalMatchMappingDiagnosticView[]> {
+  return fetchJson<ExternalMatchMappingDiagnosticView[]>("/admin/sports-data/external-results/diagnostics/matches", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
 }
 
 export async function confirmExternalMatchResult(

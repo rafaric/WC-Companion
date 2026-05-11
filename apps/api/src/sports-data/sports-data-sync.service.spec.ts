@@ -141,6 +141,7 @@ interface PrismaMock {
   match: {
     findUnique: jest.Mock<Promise<MatchRecord | null>, [unknown]>;
     findFirst: jest.Mock<Promise<MatchRecord | null>, [unknown]>;
+    findMany: jest.Mock<Promise<unknown[]>, [unknown]>;
     create: jest.Mock<Promise<Pick<MatchRecord, 'id'>>, [unknown]>;
     update: jest.Mock<Promise<MatchRecord>, [unknown]>;
   };
@@ -299,6 +300,47 @@ function createPrismaMock(state: PrismaState): PrismaMock {
               match.groupName === where.groupName,
           ) ?? null,
       ),
+      findMany: jest.fn(async ({ where }: { where: { tournamentId: string } }) => {
+        const matches = state.matches
+          .filter((match) => match.tournamentId === where.tournamentId)
+          .slice()
+          .sort((left, right) => left.kickoffAt.getTime() - right.kickoffAt.getTime());
+
+        return matches.map((match) => {
+          const homeTeam = state.teams.find((team) => team.id === match.homeTeamId);
+          const awayTeam = state.teams.find((team) => team.id === match.awayTeamId);
+          const externalRefs = state.externalMatchReferences
+            .filter((reference) => reference.matchId === match.id && reference.providerKey === 'mock')
+            .slice(0, 1)
+            .map((reference) => ({ externalId: reference.externalId }));
+          const externalResults = state.externalMatchResults
+            .filter((result) => result.matchId === match.id && result.providerKey === 'mock')
+            .slice()
+            .sort((left, right) => (right.stagedAt?.getTime() ?? 0) - (left.stagedAt?.getTime() ?? 0))
+            .slice(0, 1)
+            .map((result) => ({
+              externalMatchId: result.externalMatchId,
+              state: result.state,
+              homeScore: result.homeScore,
+              awayScore: result.awayScore,
+              stagedAt: result.stagedAt ?? new Date('2026-05-08T12:00:00.000Z'),
+              confirmedAt: result.confirmedAt,
+              discardedAt: result.discardedAt,
+            }));
+
+          return {
+            id: match.id,
+            status: match.status,
+            kickoffAt: match.kickoffAt,
+            stage: match.stage,
+            groupName: match.groupName,
+            homeTeam: { name: homeTeam?.name ?? '' },
+            awayTeam: { name: awayTeam?.name ?? '' },
+            externalRefs,
+            externalResults,
+          };
+        });
+      }),
       create: jest.fn(async ({ data }: { data: Omit<MatchRecord, 'id'> }) => {
         const record: MatchRecord = { id: `match-${state.matches.length + 1}`, ...data };
         state.matches.push(record);
@@ -508,12 +550,12 @@ describe('SportsDataSyncService', () => {
 
     expect(firstRun.status).toBe('SUCCESS');
     expect(secondRun.status).toBe('SUCCESS');
-    expect(state.teams).toHaveLength(4);
+    expect(state.teams).toHaveLength(8);
     expect(state.venues).toHaveLength(2);
-    expect(state.matches).toHaveLength(2);
-    expect(state.externalTeamReferences).toHaveLength(4);
+    expect(state.matches).toHaveLength(4);
+    expect(state.externalTeamReferences).toHaveLength(8);
     expect(state.externalVenueReferences).toHaveLength(2);
-    expect(state.externalMatchReferences).toHaveLength(2);
+    expect(state.externalMatchReferences).toHaveLength(4);
     expect(state.syncRuns).toHaveLength(2);
   });
 
@@ -646,6 +688,102 @@ describe('SportsDataSyncService', () => {
         orderBy: { stagedAt: 'desc' },
       }),
     );
+  });
+
+  it('lists external mapping diagnostics for active tournament matches', async () => {
+    const state = createInitialState({
+      teams: [
+        {
+          id: 'team-1',
+          tournamentId: 'tournament-1',
+          name: 'Argentina',
+          shortName: 'ARG',
+          countryCode: 'AR',
+          flagCode: 'ARG',
+          primaryColor: null,
+          secondaryColor: null,
+        },
+        {
+          id: 'team-2',
+          tournamentId: 'tournament-1',
+          name: 'England',
+          shortName: 'ENG',
+          countryCode: 'GB-ENG',
+          flagCode: 'ENG',
+          primaryColor: null,
+          secondaryColor: null,
+        },
+      ],
+      matches: [
+        {
+          id: 'match-1',
+          tournamentId: 'tournament-1',
+          homeTeamId: 'team-1',
+          awayTeamId: 'team-2',
+          venueId: null,
+          kickoffAt: new Date('2026-06-11T16:00:00.000Z'),
+          stage: 'Group Stage',
+          groupName: 'Group A',
+          status: MatchStatus.UPCOMING,
+        },
+      ],
+      externalMatchReferences: [
+        {
+          providerKey: 'mock',
+          tournamentId: 'tournament-1',
+          externalId: 'fixture-arg-eng',
+          matchId: 'match-1',
+        },
+      ],
+      externalMatchResults: [
+        {
+          id: 'external-result-1',
+          providerKey: 'mock',
+          tournamentId: 'tournament-1',
+          externalMatchId: 'fixture-arg-eng',
+          matchId: 'match-1',
+          externalSyncRunId: 'sync-1',
+          homeScore: 2,
+          awayScore: 1,
+          playedAt: new Date('2026-06-11T19:00:00.000Z'),
+          stagedAt: new Date('2026-06-11T20:00:00.000Z'),
+          state: 'PENDING_CONFIRMATION',
+          confirmedAt: null,
+          discardedAt: null,
+        },
+      ],
+    });
+    const prisma = createPrismaMock(state);
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      createProvider(),
+      createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+    );
+
+    const diagnostics = await service.listExternalMatchMappingDiagnostics();
+
+    expect(diagnostics).toEqual([
+      {
+        matchId: 'match-1',
+        status: MatchStatus.UPCOMING,
+        kickoffAt: new Date('2026-06-11T16:00:00.000Z'),
+        homeTeamName: 'Argentina',
+        awayTeamName: 'England',
+        stage: 'Group Stage',
+        groupName: 'Group A',
+        externalMatchId: 'fixture-arg-eng',
+        hasExternalReference: true,
+        latestExternalResult: {
+          externalMatchId: 'fixture-arg-eng',
+          state: 'PENDING_CONFIRMATION',
+          homeScore: 2,
+          awayScore: 1,
+          stagedAt: new Date('2026-06-11T20:00:00.000Z'),
+          confirmedAt: null,
+          discardedAt: null,
+        },
+      },
+    ]);
   });
 
   it('stages final results idempotently without invoking match finalization', async () => {

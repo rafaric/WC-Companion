@@ -8,6 +8,8 @@ import {
   getCurrentUserProfile,
   getGlobalRanking,
   getMyPredictions,
+  MATCH_STATUS,
+  PREDICTION_SCORING_STATUS,
   upsertMatchPrediction,
   ApiError,
   type MatchView,
@@ -108,8 +110,51 @@ function formatPredictionLabel(prediction: PredictionView | null): string {
   return `${prediction.homeScore} - ${prediction.awayScore}`;
 }
 
+function formatActualScoreLabel(match: MatchView): string {
+  if (match.homeScore === null || match.awayScore === null) {
+    return "Result pending";
+  }
+
+  return `${match.homeScore} - ${match.awayScore}`;
+}
+
+function formatPointsLabel(points: number): string {
+  return points === 1 ? "1 point" : `${points} points`;
+}
+
+function formatScoredAt(value: string | null): string {
+  if (!value) {
+    return "Not scored yet";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
 function isMatchOpenForPrediction(match: MatchView): boolean {
-  return match.status === "UPCOMING" && Date.now() < new Date(match.kickoffAt).getTime();
+  return match.status === MATCH_STATUS.UPCOMING && Date.now() < new Date(match.kickoffAt).getTime();
+}
+
+function isMatchFinished(match: MatchView): boolean {
+  return match.status === MATCH_STATUS.FINISHED || match.finalizedAt !== null;
+}
+
+function getPredictionOutcomeLabel(match: MatchPredictionCard): string {
+  if (!isMatchFinished(match)) {
+    return "Waiting for final result";
+  }
+
+  if (match.prediction === null) {
+    return "No prediction submitted";
+  }
+
+  if (match.prediction.scoringStatus === PREDICTION_SCORING_STATUS.SCORED) {
+    return `You earned ${formatPointsLabel(match.prediction.pointsAwarded)}`;
+  }
+
+  return "Prediction waiting to be scored";
 }
 
 function getPredictionSaveErrorCode(error: unknown): string {
@@ -423,7 +468,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
           <div className="space-y-4">
             {matchCards.length > 0 ? (
-              matchCards.map((match) => (
+              matchCards.map((match) => {
+                const matchFinished = isMatchFinished(match);
+
+                return (
                 <article key={match.id} className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1">
@@ -438,8 +486,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                         {match.groupName ? ` · ${match.groupName}` : ""} · {formatKickoff(match.kickoffAt)}
                       </p>
                     </div>
-                    <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-sm font-semibold text-cyan-300">
-                      {formatPredictionLabel(match.prediction)}
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-sm font-semibold text-cyan-300">
+                        {formatPredictionLabel(match.prediction)}
+                      </div>
+                      {matchFinished ? (
+                        <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+                          Final {formatActualScoreLabel(match)}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 
@@ -453,6 +508,39 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       <p className="mt-1 font-semibold text-white">{match.awayTeam.name}</p>
                     </div>
                   </div>
+
+                  {matchFinished ? (
+                    <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">Final result</p>
+                          <p className="mt-1 text-2xl font-black text-white">{formatActualScoreLabel(match)}</p>
+                          <p className="mt-1 text-sm text-emerald-100/80">{getPredictionOutcomeLabel(match)}</p>
+                        </div>
+
+                        {match.prediction ? (
+                          <div className="grid gap-3 sm:min-w-72 sm:grid-cols-2">
+                            <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-3">
+                              <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">Your pick</p>
+                              <p className="mt-1 text-lg font-bold text-white">{formatPredictionLabel(match.prediction)}</p>
+                            </div>
+                            <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-3">
+                              <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">Points earned</p>
+                              <p className="mt-1 text-lg font-bold text-white">{formatPointsLabel(match.prediction.pointsAwarded)}</p>
+                            </div>
+                            <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-3 sm:col-span-2">
+                              <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">Scored at</p>
+                              <p className="mt-1 text-sm font-semibold text-white">{formatScoredAt(match.prediction.scoredAt)}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-6 text-slate-300 sm:max-w-xs">
+                            You did not submit a prediction for this match, so no points were awarded.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
 
                   {profileComplete && isMatchOpenForPrediction(match) ? (
                     <form action={submitPrediction.bind(null, match.id)} className="mt-5 grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
@@ -493,7 +581,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                     </form>
                   ) : profileComplete ? (
                     <p className="mt-5 text-sm leading-6 text-slate-400">
-                      This match is no longer open for predictions.
+                      {matchFinished
+                        ? "This match is final, so predictions are locked."
+                        : "This match is no longer open for predictions."}
                     </p>
                   ) : (
                     <p className="mt-5 text-sm leading-6 text-slate-400">
@@ -501,7 +591,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                     </p>
                   )}
                 </article>
-              ))
+                );
+              })
             ) : (
               <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 text-sm leading-6 text-slate-300">
                 No active fixtures yet. When the tournament publishes matches, they will appear here.

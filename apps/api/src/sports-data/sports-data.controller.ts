@@ -9,6 +9,7 @@ import { ListExternalMatchResultsQueryDto } from './dto/list-external-match-resu
 import {
   ConfirmExternalMatchResultSummary,
   DiscardExternalMatchResultSummary,
+  ExternalMatchMappingDiagnosticSummary,
   ExternalMatchResultSummary,
   SportsDataSyncService,
 } from './sports-data-sync.service';
@@ -18,6 +19,12 @@ import type { SportsDataSyncSummary } from './sports-data.types';
 @UseGuards(Auth0JwtGuard, PermissionsGuard)
 export class SportsDataController {
   constructor(private readonly sportsDataSyncService: SportsDataSyncService) {}
+
+  @RequirePermissions(AUTH_PERMISSIONS.MATCHES_FINALIZE)
+  @Get('diagnostics/matches')
+  async listExternalMatchMappingDiagnostics(): Promise<ExternalMatchMappingDiagnosticSummary[]> {
+    return this.sportsDataSyncService.listExternalMatchMappingDiagnostics();
+  }
 
   @RequirePermissions(AUTH_PERMISSIONS.MATCHES_FINALIZE)
   @Get()

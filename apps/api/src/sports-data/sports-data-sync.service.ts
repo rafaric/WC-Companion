@@ -73,6 +73,29 @@ export interface ExternalMatchResultSummary {
   match: ExternalMatchResultMatchSummary | null;
 }
 
+export interface ExternalMatchMappingDiagnosticResultSummary {
+  externalMatchId: string;
+  state: ExternalMatchResultState;
+  homeScore: number;
+  awayScore: number;
+  stagedAt: Date;
+  confirmedAt: Date | null;
+  discardedAt: Date | null;
+}
+
+export interface ExternalMatchMappingDiagnosticSummary {
+  matchId: string;
+  status: MatchStatus;
+  kickoffAt: Date;
+  homeTeamName: string;
+  awayTeamName: string;
+  stage: string | null;
+  groupName: string | null;
+  externalMatchId: string | null;
+  hasExternalReference: boolean;
+  latestExternalResult: ExternalMatchMappingDiagnosticResultSummary | null;
+}
+
 @Injectable()
 export class SportsDataSyncService {
   constructor(
@@ -282,6 +305,80 @@ export class SportsDataSyncService {
           }
         : null,
     }));
+  }
+
+  async listExternalMatchMappingDiagnostics(): Promise<ExternalMatchMappingDiagnosticSummary[]> {
+    const tournamentId = await this.resolveTournamentId();
+    const matches = await this.prisma.match.findMany({
+      where: {
+        tournamentId,
+      },
+      orderBy: {
+        kickoffAt: 'asc',
+      },
+      select: {
+        id: true,
+        status: true,
+        kickoffAt: true,
+        stage: true,
+        groupName: true,
+        homeTeam: {
+          select: {
+            name: true,
+          },
+        },
+        awayTeam: {
+          select: {
+            name: true,
+          },
+        },
+        externalRefs: {
+          where: {
+            providerKey: this.provider.providerKey,
+          },
+          select: {
+            externalId: true,
+          },
+          take: 1,
+        },
+        externalResults: {
+          where: {
+            providerKey: this.provider.providerKey,
+          },
+          orderBy: {
+            stagedAt: 'desc',
+          },
+          select: {
+            externalMatchId: true,
+            state: true,
+            homeScore: true,
+            awayScore: true,
+            stagedAt: true,
+            confirmedAt: true,
+            discardedAt: true,
+          },
+          take: 1,
+        },
+      },
+    });
+
+    return matches.map((match) => {
+      const externalMatchId = match.externalRefs[0]?.externalId ?? null;
+      const latestExternalResult = match.externalResults[0] ?? null;
+
+      return {
+        matchId: match.id,
+        status: match.status,
+        kickoffAt: match.kickoffAt,
+        homeTeamName: match.homeTeam.name,
+        awayTeamName: match.awayTeam.name,
+        stage: match.stage,
+        groupName: match.groupName,
+        externalMatchId,
+        hasExternalReference: externalMatchId !== null,
+        latestExternalResult,
+      };
+    });
   }
 
   async importTournament(tournamentId?: string): Promise<SportsDataSyncSummary> {

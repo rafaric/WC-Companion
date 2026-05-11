@@ -680,6 +680,42 @@ Returns staged results with provider, external match ID, timestamps, proposed sc
 ]
 ```
 
+### List External Match Mapping Diagnostics
+
+```http
+GET /admin/sports-data/external-results/diagnostics/matches
+Authorization: Bearer <token>
+```
+
+Returns active-tournament matches with their provider mapping status. Use this to explain why a match visible on the user dashboard may not appear as a pending staged result.
+
+#### Response
+
+```json
+[
+  {
+    "matchId": "match-id",
+    "status": "UPCOMING",
+    "kickoffAt": "2026-06-11T16:00:00.000Z",
+    "homeTeamName": "Argentina",
+    "awayTeamName": "England",
+    "stage": "Group Stage",
+    "groupName": "Group A",
+    "externalMatchId": "fixture-arg-eng",
+    "hasExternalReference": true,
+    "latestExternalResult": {
+      "externalMatchId": "fixture-arg-eng",
+      "state": "PENDING_CONFIRMATION",
+      "homeScore": 2,
+      "awayScore": 1,
+      "stagedAt": "2026-05-08T12:00:00.000Z",
+      "confirmedAt": null,
+      "discardedAt": null
+    }
+  }
+]
+```
+
 #### Admin UI
 
 The web app exposes an admin review page at `/admin/external-results` for users with the `matches:finalize` permission. The page supports filtering by staged result state and lets admins confirm or discard pending provider results.

@@ -8,9 +8,11 @@ import {
   confirmExternalMatchResult,
   discardExternalMatchResult,
   EXTERNAL_MATCH_RESULT_STATES,
+  getExternalMatchMappingDiagnostics,
   getExternalMatchResults,
   importTournament,
   syncResults,
+  type ExternalMatchMappingDiagnosticView,
   type ExternalMatchResultState,
   type ExternalMatchResultView,
 } from "@/lib/api";
@@ -139,6 +141,38 @@ function getListLoadErrorMessage(error: unknown): string {
   return "We could not load staged results right now.";
 }
 
+function getDiagnosticStatusLabel(diagnostic: ExternalMatchMappingDiagnosticView): string {
+  if (!diagnostic.hasExternalReference) {
+    return "Missing external ref";
+  }
+
+  if (!diagnostic.latestExternalResult) {
+    return "No external result yet";
+  }
+
+  return formatStateLabel(diagnostic.latestExternalResult.state);
+}
+
+function getDiagnosticStatusClassName(diagnostic: ExternalMatchMappingDiagnosticView): string {
+  if (!diagnostic.hasExternalReference) {
+    return "border-rose-400/30 bg-rose-400/10 text-rose-100";
+  }
+
+  if (!diagnostic.latestExternalResult) {
+    return "border-amber-400/30 bg-amber-400/10 text-amber-100";
+  }
+
+  if (diagnostic.latestExternalResult.state === EXTERNAL_MATCH_RESULT_STATES.CONFIRMED) {
+    return "border-emerald-400/30 bg-emerald-400/10 text-emerald-100";
+  }
+
+  if (diagnostic.latestExternalResult.state === EXTERNAL_MATCH_RESULT_STATES.DISCARDED) {
+    return "border-slate-600 bg-slate-800/60 text-slate-200";
+  }
+
+  return "border-cyan-400/30 bg-cyan-400/10 text-cyan-100";
+}
+
 function ResultCard({
   result,
   onConfirm,
@@ -257,12 +291,20 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
   }
 
   let stagedResults: ExternalMatchResultView[] = [];
+  let matchDiagnostics: ExternalMatchMappingDiagnosticView[] = [];
   let loadErrorMessage: string | null = null;
+  let diagnosticsLoadErrorMessage: string | null = null;
 
   try {
     stagedResults = await getExternalMatchResults(accessToken, currentState);
   } catch (error) {
     loadErrorMessage = getListLoadErrorMessage(error);
+  }
+
+  try {
+    matchDiagnostics = await getExternalMatchMappingDiagnostics(accessToken);
+  } catch (error) {
+    diagnosticsLoadErrorMessage = getListLoadErrorMessage(error);
   }
 
   async function confirmExternalResult(formData: FormData) {
@@ -446,6 +488,74 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
               </form>
             </div>
           </div>
+
+          <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">External mapping diagnostic</p>
+                <h2 className="mt-1 text-lg font-semibold text-white">Matches visible to users</h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                  This shows every active-tournament match and whether the provider mapping/result exists. If a dashboard
+                  match is missing here as a pending result, look at its external ref and latest result state first.
+                </p>
+              </div>
+              <p className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs font-semibold text-slate-300">
+                {matchDiagnostics.length} matches
+              </p>
+            </div>
+
+            {diagnosticsLoadErrorMessage ? (
+              <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+                {diagnosticsLoadErrorMessage}
+              </div>
+            ) : null}
+
+            {matchDiagnostics.length > 0 ? (
+              <div className="mt-5 space-y-3">
+                {matchDiagnostics.map((diagnostic) => (
+                  <article key={diagnostic.matchId} className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 space-y-1">
+                        <p className="text-sm font-semibold text-white">
+                          {diagnostic.homeTeamName} vs {diagnostic.awayTeamName}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {diagnostic.stage ?? "Stage unavailable"}
+                          {diagnostic.groupName ? ` · ${diagnostic.groupName}` : ""} · {formatDateTime(diagnostic.kickoffAt)}
+                        </p>
+                        <p className="break-all text-xs text-slate-500">Internal: {diagnostic.matchId}</p>
+                      </div>
+
+                      <div className="grid gap-3 text-sm sm:grid-cols-3 lg:min-w-[520px]">
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-3">
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">External ref</p>
+                          <p className="mt-1 break-all font-semibold text-white">{diagnostic.externalMatchId ?? "Missing"}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-3">
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Latest result</p>
+                          {diagnostic.latestExternalResult ? (
+                            <p className="mt-1 font-semibold text-white">
+                              {diagnostic.latestExternalResult.homeScore} - {diagnostic.latestExternalResult.awayScore}
+                            </p>
+                          ) : (
+                            <p className="mt-1 font-semibold text-slate-400">Missing</p>
+                          )}
+                        </div>
+                        <div className={`rounded-2xl border p-3 ${getDiagnosticStatusClassName(diagnostic)}`}>
+                          <p className="text-[11px] uppercase tracking-[0.2em] opacity-70">Provider status</p>
+                          <p className="mt-1 font-semibold">{getDiagnosticStatusLabel(diagnostic)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : diagnosticsLoadErrorMessage ? null : (
+              <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-300">
+                No active-tournament matches found for diagnostics.
+              </div>
+            )}
+          </section>
 
           <div className="flex flex-wrap gap-2">
             {EXTERNAL_MATCH_RESULT_FILTERS.map((state) => {
