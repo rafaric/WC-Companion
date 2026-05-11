@@ -7,6 +7,7 @@ import {
   getActiveTournamentMatches,
   getCurrentUserProfile,
   getGlobalRanking,
+  getMyGroups,
   getMyPredictions,
   MATCH_STATUS,
   PREDICTION_SCORING_STATUS,
@@ -14,12 +15,14 @@ import {
   ApiError,
   type MatchView,
   type PredictionView,
+  type MyGroupView,
   type RankingEntry,
 } from "@/lib/api";
 import { formatCountryLabel, getTeamLabel, isProfileComplete } from "@/lib/profile";
 import { cn } from "@/lib/cn";
 import { GLOBAL_RANKING_PREVIEW_LIMIT, findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
 import { RecentlyScoredResults, type RecentlyScoredResultItem } from "./recently-scored-results";
+import { CopyInviteCodeButton } from "../groups/copy-invite-code-button";
 
 type DashboardSearchParams = {
   error?: string;
@@ -75,6 +78,10 @@ interface ScoringExplanation {
 
 function getDisplayName(user: Session["user"]): string {
   return user.name ?? user.nickname ?? user.email ?? user.sub;
+}
+
+function getGroupRoleLabel(role: MyGroupView["role"]): string {
+  return role === "OWNER" ? "Owner" : "Member";
 }
 
 function getUserPermissions(user: Session["user"]): string[] {
@@ -409,11 +416,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     redirect("/auth/login?returnTo=/dashboard");
   }
 
-  const [currentUserProfile, matches, predictions, globalRanking] = await Promise.all([
+  const [currentUserProfile, matches, predictions, globalRanking, myGroups] = await Promise.all([
     getCurrentUserProfile(accessToken).catch(() => null),
     getActiveTournamentMatches().catch(() => []),
     getMyPredictions(accessToken).catch(() => []),
     globalRankingPromise,
+    getMyGroups(accessToken).catch(() => [] as MyGroupView[]),
   ]);
 
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;
@@ -423,6 +431,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const recentlyScoredResultItems = getRecentlyScoredResultItems(matchCards);
   const currentUserRankingEntry = findRankingEntryByUserId(globalRanking, currentUserProfile?.id);
   const rankingPreview = getRankingPreview(globalRanking);
+  const primaryGroup = myGroups[0] ?? null;
 
   async function submitPrediction(matchId: string, formData: FormData) {
     "use server";
@@ -539,6 +548,42 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 </p>
               </div>
             </div>
+          ) : null}
+
+          {primaryGroup ? (
+            <section className="rounded-3xl border border-cyan-400/20 bg-cyan-400/10 p-5 shadow-xl shadow-cyan-950/20">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Your group</p>
+                  <h2 className="text-lg font-semibold text-white">{primaryGroup.name}</h2>
+                  <p className="text-sm leading-6 text-cyan-100/80">
+                    You are a {getGroupRoleLabel(primaryGroup.role)} here.
+                    {myGroups.length > 1 ? ` You are also in ${myGroups.length - 1} more group${myGroups.length - 1 === 1 ? "" : "s"}.` : ""}
+                  </p>
+                </div>
+
+                <Link
+                  href={`/groups/${primaryGroup.id}`}
+                  className="inline-flex rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
+                >
+                  Open group ranking
+                </Link>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2 text-xs text-cyan-100/80">
+                <span className="rounded-full border border-cyan-300/20 bg-slate-950/40 px-3 py-1">
+                  Invite {primaryGroup.inviteCode}
+                </span>
+                <span className="rounded-full border border-cyan-300/20 bg-slate-950/40 px-3 py-1">
+                  {getGroupRoleLabel(primaryGroup.role)}
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm leading-6 text-cyan-100/70">Copy the invite code or jump into the private leaderboard.</p>
+                <CopyInviteCodeButton inviteCode={primaryGroup.inviteCode} />
+              </div>
+            </section>
           ) : null}
 
           <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">

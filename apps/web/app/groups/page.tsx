@@ -176,7 +176,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
     }
 
     revalidatePath("/groups");
-    redirect(`/groups?success=created&groupId=${createdGroup.id}`);
+    redirect(`/groups/${createdGroup.id}`);
   }
 
   async function submitJoinGroup(formData: FormData) {
@@ -205,7 +205,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
     }
 
     revalidatePath("/groups");
-    redirect(`/groups?success=joined&groupId=${joinedGroup.id}`);
+    redirect(`/groups/${joinedGroup.id}`);
   }
 
   return (

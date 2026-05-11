@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth0 } from "@/lib/auth0";
 import { ApiError, getCurrentUserProfile, getGroupRanking, getMyGroups, type MyGroupView, type RankingEntry } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { CopyInviteCodeButton } from "../copy-invite-code-button";
 
 interface GroupDetailPageProps {
   params: Promise<{ groupId: string }>;
@@ -232,6 +233,7 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
                 <span className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1">
                   Invite {group.inviteCode}
                 </span>
+                <CopyInviteCodeButton inviteCode={group.inviteCode} />
                 <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-cyan-300">
                   {getGroupRoleLabel(group.role)}
                 </span>
@@ -262,6 +264,11 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
                   <p className="mt-2 break-all text-3xl font-black tracking-[0.15em] text-white">
                     {group?.inviteCode ?? "Unavailable"}
                   </p>
+                  {group ? (
+                    <div className="mt-4 flex justify-center">
+                      <CopyInviteCodeButton inviteCode={group.inviteCode} />
+                    </div>
+                  ) : null}
                   <p className="mt-2 text-xs leading-5 text-amber-100/70">
                     Send this code to friends. They can join from the Groups page.
                   </p>

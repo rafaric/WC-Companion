@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
 
-const RECENTLY_SCORED_LAST_SEEN_KEY = "worldpredict:dashboard:recently-scored:last-seen";
+const RECENTLY_SCORED_STATE_KEY = "worldpredict:dashboard:recently-scored:v2";
 
 export interface RecentlyScoredResultItem {
   id: string;
@@ -26,6 +26,11 @@ export interface RecentlyScoredResultItem {
 
 interface RecentlyScoredResultsProps {
   items: RecentlyScoredResultItem[];
+}
+
+interface RecentlyScoredState {
+  fingerprint: string;
+  lastSeenAt: string;
 }
 
 function formatDateTime(value: string): string {
@@ -52,34 +57,69 @@ function getExplanationClassName(kind: string): string {
   }
 }
 
+function buildFingerprint(items: RecentlyScoredResultItem[]): string {
+  return items.map((item) => `${item.id}:${item.scoredAt}`).join("|");
+}
+
+function isRecentlyScoredState(value: unknown): value is RecentlyScoredState {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+
+  return (
+    typeof candidate.fingerprint === "string" &&
+    typeof candidate.lastSeenAt === "string" &&
+    candidate.fingerprint.length > 0 &&
+    candidate.lastSeenAt.length > 0
+  );
+}
+
+function readStoredState(fingerprint: string): RecentlyScoredState | null {
+  const rawValue = window.localStorage.getItem(RECENTLY_SCORED_STATE_KEY);
+
+  if (!rawValue) {
+    return null;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(rawValue);
+
+    if (!isRecentlyScoredState(parsed) || parsed.fingerprint !== fingerprint) {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export function RecentlyScoredResults({ items }: RecentlyScoredResultsProps) {
-  const [lastSeenAt, setLastSeenAt] = useState<string | null>(null);
+  const [state, setState] = useState<RecentlyScoredState | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
+  const fingerprint = buildFingerprint(items);
 
   useEffect(() => {
-    setLastSeenAt(window.localStorage.getItem(RECENTLY_SCORED_LAST_SEEN_KEY));
+    setState(readStoredState(fingerprint));
     setHasHydrated(true);
-  }, []);
+  }, [fingerprint]);
 
-  const visibleItems = useMemo(() => {
-    if (!hasHydrated) {
-      return [];
-    }
-
-    if (!lastSeenAt) {
-      return items;
-    }
-
-    const lastSeenTime = new Date(lastSeenAt).getTime();
-
-    return items.filter((item) => new Date(item.scoredAt).getTime() > lastSeenTime);
-  }, [hasHydrated, items, lastSeenAt]);
+  const visibleItems =
+    !hasHydrated || !state
+      ? items
+      : items.filter((item) => new Date(item.scoredAt).getTime() > new Date(state.lastSeenAt).getTime());
 
   function clearRecentlyScored() {
     const newestScoredAt = visibleItems[0]?.scoredAt ?? new Date().toISOString();
+    const nextState = {
+      fingerprint,
+      lastSeenAt: newestScoredAt,
+    } satisfies RecentlyScoredState;
 
-    window.localStorage.setItem(RECENTLY_SCORED_LAST_SEEN_KEY, newestScoredAt);
-    setLastSeenAt(newestScoredAt);
+    window.localStorage.setItem(RECENTLY_SCORED_STATE_KEY, JSON.stringify(nextState));
+    setState(nextState);
   }
 
   if (!hasHydrated || visibleItems.length === 0) {
