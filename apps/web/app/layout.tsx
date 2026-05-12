@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { auth0 } from "@/lib/auth0";
 import { getCurrentUserProfile } from "@/lib/api";
-import { metadataBase, SITE_DESCRIPTION, SITE_NAME } from "@/lib/metadata";
+import { metadataBase, SITE_DESCRIPTION, SITE_KEYWORDS, SITE_NAME } from "@/lib/metadata";
 import { Providers } from "@/app/providers";
 import { AppChrome } from "./app-chrome";
 
@@ -28,6 +28,9 @@ function getUserPermissions(user: unknown): string[] {
 export const metadata: Metadata = {
   metadataBase,
   applicationName: SITE_NAME,
+  category: "sports",
+  keywords: [...SITE_KEYWORDS],
+  referrer: "origin-when-cross-origin",
   title: {
     default: SITE_NAME,
     template: `%s | ${SITE_NAME}`,
@@ -36,6 +39,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   openGraph: {
     type: "website",
+    locale: "en_US",
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
     siteName: SITE_NAME,
@@ -44,6 +48,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    creator: "@worldpredict",
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
     images: ["/assets/hero.png"],
@@ -55,6 +60,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: [{ url: "/icon.svg", type: "image/svg+xml" }],
     apple: [{ url: "/apple-icon.svg", type: "image/svg+xml" }],
   },
 };

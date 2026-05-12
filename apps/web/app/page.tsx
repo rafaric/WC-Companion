@@ -12,17 +12,51 @@ import {
   type RankingEntry,
   type Tournament,
 } from "@/lib/api";
-import { buildPageMetadata } from "@/lib/metadata";
+import { buildPageMetadata, metadataBase, SITE_DESCRIPTION, SITE_NAME } from "@/lib/metadata";
 import { formatCountryLabel, getTeamLabel, isProfileComplete } from "@/lib/profile";
 import { getFriendlyDisplayName, getFriendlyEmailLabel } from "@/lib/user-display";
 import Image from "next/image";
 
 export const metadata = buildPageMetadata({
-  title: "Social football predictions",
+  title: "Social football predictions with friends",
   description:
     "Predict football matches, climb rankings, and compete with friends in private groups with a mobile-first experience.",
+  keywords: [
+    "football prediction app",
+    "soccer prediction game",
+    "world cup predictions",
+    "prediction groups",
+    "friends leaderboard",
+  ],
   path: "/",
 });
+
+const LANDING_STRUCTURED_DATA = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: metadataBase.toString(),
+    description: SITE_DESCRIPTION,
+    inLanguage: "en",
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: SITE_NAME,
+    url: metadataBase.toString(),
+    logo: `${metadataBase.toString().replace(/\/$/, "")}/assets/LogoLong.png`,
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: SITE_NAME,
+    applicationCategory: "SportsApplication",
+    operatingSystem: "Web",
+    description: SITE_DESCRIPTION,
+    url: metadataBase.toString(),
+  },
+] as const;
 
 
 const STEPS = [
@@ -156,6 +190,10 @@ export default async function HomePage() {
 
   return (
     <main className="relative overflow-hidden bg-slate-950 text-slate-50">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(LANDING_STRUCTURED_DATA) }}
+      />
       <div className="worldpredict-aurora absolute inset-0 -z-10" />
 
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8">
