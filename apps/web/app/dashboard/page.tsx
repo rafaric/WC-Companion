@@ -13,7 +13,6 @@ import {
   PREDICTION_SCORING_STATUS,
   upsertMatchPrediction,
   ApiError,
-  type CurrentUserProfile,
   type MatchView,
   type PredictionView,
   type MyGroupView,
@@ -22,6 +21,7 @@ import {
 import { formatCountryLabel, getTeamLabel, isProfileComplete } from "@/lib/profile";
 import { cn } from "@/lib/cn";
 import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
+import { getFriendlyDisplayName, getFriendlyEmailLabel } from "@/lib/user-display";
 import { RecentlyScoredResults, type RecentlyScoredResultItem } from "./recently-scored-results";
 import { CopyInviteCodeButton } from "../groups/copy-invite-code-button";
 
@@ -36,10 +36,6 @@ interface DashboardPageProps {
 interface MatchPredictionCard extends MatchView {
   prediction: PredictionView | null;
 }
-
-type Session = NonNullable<Awaited<ReturnType<typeof auth0.getSession>>>;
-
-const MATCHES_FINALIZE_PERMISSION = "matches:finalize" as const;
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_input: "Enter whole numbers between 0 and 20 for both scores.",
@@ -77,61 +73,12 @@ interface ScoringExplanation {
   detail: string;
 }
 
-function getDisplayName(user: Session["user"]): string {
-  return user.name ?? user.nickname ?? user.email ?? user.sub;
-}
-
-function isPlaceholderEmail(email: string): boolean {
-  return email.endsWith("@users.invalid");
-}
-
-function looksLikeEmail(value: string | null | undefined): value is string {
-  return typeof value === "string" && value.includes("@");
-}
-
-function getProfileDisplayName(profile: CurrentUserProfile, user: Session["user"]): string {
-  const name = user.name;
-  if (name && !looksLikeEmail(name)) {
-    return name;
-  }
-  const nickname = user.nickname;
-  if (nickname && !looksLikeEmail(nickname)) {
-    return nickname;
-  }
-  return profile.username;
-}
-
-function getProfileEmailLabel(profile: CurrentUserProfile, user: Session["user"]): string {
-  const sessionEmail = user.email;
-  if (sessionEmail && !isPlaceholderEmail(sessionEmail)) {
-    return sessionEmail;
-  }
-  if (isPlaceholderEmail(profile.email)) {
-    return "Email not shared";
-  }
-  return profile.email;
-}
-
 function getGroupRoleLabel(role: MyGroupView["role"]): string {
   return role === "OWNER" ? "Owner" : "Member";
 }
 
 function formatMemberCount(memberCount: number): string {
   return `${memberCount} ${memberCount === 1 ? "member" : "members"}`;
-}
-
-function getUserPermissions(user: Session["user"]): string[] {
-  const permissions = (user as { permissions?: unknown }).permissions;
-
-  if (!Array.isArray(permissions) || permissions.some((permission) => typeof permission !== "string")) {
-    return [];
-  }
-
-  return permissions;
-}
-
-function canAccessExternalResults(user: Session["user"]): boolean {
-  return getUserPermissions(user).includes(MATCHES_FINALIZE_PERMISSION);
 }
 
 function formatKickoff(kickoffAt: string): string {
@@ -461,8 +408,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   ]);
 
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;
-  const displayName = currentUserProfile ? getProfileDisplayName(currentUserProfile, session.user) : getDisplayName(session.user);
-  const emailLabel = currentUserProfile ? getProfileEmailLabel(currentUserProfile, session.user) : null;
+  const displayName = getFriendlyDisplayName(session.user, currentUserProfile);
+  const emailLabel = getFriendlyEmailLabel(session.user, currentUserProfile);
   const matchCards = mergePredictions(matches, predictions);
   const upcomingMatchCards = getUpcomingMatchCards(matchCards);
   const recentlyScoredResultItems = getRecentlyScoredResultItems(matchCards);
@@ -508,47 +455,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-50">
-      <div className="worldpredict-aurora absolute inset-0 -z-10" />
-
-      <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between rounded-full border border-slate-800/80 bg-slate-900/60 px-4 py-3 backdrop-blur">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300">WorldPredict</p>
-            <p className="text-xs text-slate-400">Predictions dashboard</p>
-          </div>
-          <div className="flex items-center gap-3 text-xs text-slate-300">
-            <span className="hidden sm:inline">{displayName}</span>
-            <Link
-              href="/groups"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Groups
-            </Link>
-            <Link
-              href="/share"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Share cards
-            </Link>
-            {canAccessExternalResults(session.user) ? (
-              <Link
-                href="/admin/external-results"
-                className="rounded-full border border-amber-500/40 bg-amber-400/10 px-4 py-2 font-semibold text-amber-200 transition hover:border-amber-400/60 hover:bg-amber-400/20"
-              >
-                External results
-              </Link>
-            ) : null}
-            <Link
-              href="/auth/logout"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Log out
-            </Link>
-          </div>
-        </header>
-
-        <section className="space-y-6 py-8 sm:py-10">
+    <main className="mx-auto w-full max-w-5xl">
+      <section className="space-y-6 py-2 sm:py-4">
           <div className="space-y-3">
             <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
               Your match predictions
@@ -888,8 +796,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               </div>
             )}
           </section>
-        </section>
-      </div>
+      </section>
     </main>
   );
 }

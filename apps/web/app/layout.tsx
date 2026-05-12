@@ -1,9 +1,28 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
+import { auth0 } from "@/lib/auth0";
+import { getCurrentUserProfile } from "@/lib/api";
 import { Providers } from "@/app/providers";
+import { AppChrome } from "./app-chrome";
 
 import "./globals.css";
+
+const MATCHES_FINALIZE_PERMISSION = "matches:finalize" as const;
+
+function getUserPermissions(user: unknown): string[] {
+  if (typeof user !== "object" || user === null || !("permissions" in user)) {
+    return [];
+  }
+
+  const permissions = (user as { permissions?: unknown }).permissions;
+
+  if (!Array.isArray(permissions) || permissions.some((permission) => typeof permission !== "string")) {
+    return [];
+  }
+
+  return permissions;
+}
 
 export const metadata: Metadata = {
   applicationName: "WorldPredict",
@@ -33,11 +52,33 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+  const session = await auth0.getSession();
+  let currentUserProfile = null;
+
+  if (session) {
+    try {
+      const accessToken = (await auth0.getAccessToken()).token;
+      currentUserProfile = await getCurrentUserProfile(accessToken);
+    } catch {
+      currentUserProfile = null;
+    }
+  }
+
+  const canAccessExternalResults = session ? getUserPermissions(session.user).includes(MATCHES_FINALIZE_PERMISSION) : false;
+
   return (
     <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <AppChrome
+            canAccessExternalResults={canAccessExternalResults}
+            currentUserProfile={currentUserProfile}
+            sessionUser={session?.user ?? null}
+          >
+            {children}
+          </AppChrome>
+        </Providers>
       </body>
     </html>
   );

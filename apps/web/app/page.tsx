@@ -13,6 +13,9 @@ import {
   type Tournament,
 } from "@/lib/api";
 import { formatCountryLabel, getTeamLabel, isProfileComplete } from "@/lib/profile";
+import { getFriendlyDisplayName, getFriendlyEmailLabel } from "@/lib/user-display";
+import Image from "next/image";
+
 
 const STEPS = [
   {
@@ -36,12 +39,6 @@ interface LivePreviewItem {
   label: string;
   value: string;
   detail: string;
-}
-
-type Session = NonNullable<Awaited<ReturnType<typeof auth0.getSession>>>;
-
-function getDisplayName(user: Session["user"]): string {
-  return user.name ?? user.nickname ?? user.email ?? user.sub;
 }
 
 function formatTournamentLabel(tournament: Tournament | null): string {
@@ -128,7 +125,6 @@ export default async function HomePage() {
   ]);
 
   const user = session?.user;
-  const displayName = user ? getDisplayName(user) : null;
   const previewMatch = pickPreviewMatch(matches);
   const livePreview = buildPreviewItems(activeTournament, ranking);
   const rankingLeader = ranking[0] ?? null;
@@ -144,7 +140,9 @@ export default async function HomePage() {
     }
   }
 
-  const accountLabel = currentUserProfile?.username ?? displayName;
+  const displayName = user ? getFriendlyDisplayName(user, currentUserProfile) : null;
+  const accountLabel = user ? getFriendlyDisplayName(user, currentUserProfile) : displayName;
+  const accountEmail = user ? getFriendlyEmailLabel(user, currentUserProfile) : null;
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;
   const favoriteTeam = currentUserProfile ? getTeamById(matches, currentUserProfile.favoriteTeamId) : null;
 
@@ -155,7 +153,8 @@ export default async function HomePage() {
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between rounded-full border border-slate-800/80 bg-slate-900/60 px-4 py-3 backdrop-blur">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300">
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300">
+            <Image src="/icon.svg" alt="WorldPredict logo" width={24} height={24} />
               WorldPredict
             </p>
             <p className="text-xs text-slate-400">Social football prediction</p>
@@ -163,7 +162,7 @@ export default async function HomePage() {
           {user ? (
             <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-right text-xs text-emerald-300">
               <p className="font-medium text-emerald-200">{accountLabel}</p>
-              <p className="text-[11px] text-emerald-400/80">{user.email ?? "Authenticated"}</p>
+              <p className="text-[11px] text-emerald-400/80">{accountEmail ?? "Authenticated"}</p>
             </div>
           ) : (
             <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">
@@ -192,7 +191,7 @@ export default async function HomePage() {
                 <>
                   <Link
                     href={profileComplete ? "/dashboard" : "/onboarding"}
-                    className="rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
+                    className="rounded-full bg-gradient from-cyan-400 via-blue-400 to-violet-400 px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
                   >
                     {profileComplete ? "Open dashboard" : "Complete profile"}
                   </Link>
@@ -213,7 +212,7 @@ export default async function HomePage() {
                 <>
                   <Link
                     href="/auth/login?returnTo=/dashboard"
-                    className="rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
+                    className="rounded-full bg-gradient from-cyan-400 via-blue-400 to-violet-400 px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
                   >
                     Log in to predict
                   </Link>

@@ -7,13 +7,13 @@ import {
   getActiveTournamentMatches,
   getCurrentUserProfile,
   updateCurrentUserProfile,
-  type CurrentUserProfile,
 } from "@/lib/api";
 import {
   extractUniqueTeamsFromMatches,
   PROFILE_COUNTRY_OPTIONS,
   PROFILE_LANGUAGE_OPTIONS,
 } from "@/lib/profile";
+import { getFriendlyDisplayName } from "@/lib/user-display";
 
 type OnboardingSearchParams = {
   error?: string;
@@ -27,10 +27,6 @@ const ERROR_MESSAGES: Record<string, string> = {
   invalid_input: "Please choose a country, team, and language.",
   update_failed: "We could not save your profile right now. Try again.",
 };
-
-function getDisplayName(profile: CurrentUserProfile): string {
-  return profile.username;
-}
 
 export default async function OnboardingPage({ searchParams }: OnboardingPageProps) {
   const session = await auth0.getSession();
@@ -112,7 +108,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
               <p className="text-sm leading-6 text-slate-300">
                 We use country and favorite team to personalize your competition view.
               </p>
-              <p className="text-sm text-slate-400">Signed in as {getDisplayName(currentUserProfile)}</p>
+              <p className="text-sm text-slate-400">Signed in as {getFriendlyDisplayName(session.user, currentUserProfile)}</p>
             </div>
 
             {resolvedSearchParams?.error ? (

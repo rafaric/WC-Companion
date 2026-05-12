@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -22,6 +21,7 @@ import {
 } from "@/lib/api";
 import { formatCountryLabel, getTeamLabel } from "@/lib/profile";
 import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
+import { getFriendlyDisplayName } from "@/lib/user-display";
 
 import { ShareActions } from "./share-actions";
 
@@ -90,12 +90,6 @@ interface ShareContent {
   title: string;
   text: string;
   url: string;
-}
-
-type Session = NonNullable<Awaited<ReturnType<typeof auth0.getSession>>>;
-
-function getDisplayName(user: Session["user"]): string {
-  return user.name ?? user.nickname ?? user.email ?? user.sub;
 }
 
 function formatDate(date: string): string {
@@ -337,7 +331,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     getGlobalRanking().catch(() => [] as RankingEntry[]),
   ]);
 
-  const displayName = currentUserProfile?.username ?? getDisplayName(session.user);
+  const displayName = getFriendlyDisplayName(session.user, currentUserProfile);
   const currentUserRankingEntry = findRankingEntryByUserId(globalRanking, currentUserProfile?.id);
   const rankingPreview = getRankingPreview(globalRanking);
   const predictionOptions = mergePredictions(matches, predictions);
@@ -351,7 +345,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
       ? await getGroupRanking(accessToken, selectedGroupId).catch(() => [] as RankingEntry[])
       : [];
   const shareOrigin = await getRequestOrigin();
-  const shareUsername = currentUserProfile?.username ?? displayName;
+  const shareUsername = displayName;
 
   const predictionShareContent = selectedPrediction
     ? buildPredictionShareContent(shareOrigin, shareUsername, selectedPrediction)
@@ -465,39 +459,8 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     : [{ label: "Status", value: predictionOptions.length > 0 ? "Pick a saved prediction" : "No saved predictions yet" }];
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-50">
-      <div className="worldpredict-aurora absolute inset-0 -z-10" />
-
-      <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between gap-3 rounded-full border border-slate-800/80 bg-slate-900/60 px-4 py-3 backdrop-blur">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300">WorldPredict</p>
-            <p className="text-xs text-slate-400">Share cards</p>
-          </div>
-          <div className="flex items-center gap-3 text-xs text-slate-300">
-            <span className="hidden sm:inline">{displayName}</span>
-            <Link
-              href="/dashboard"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/groups"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Groups
-            </Link>
-            <Link
-              href="/rankings"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Rankings
-            </Link>
-          </div>
-        </header>
-
-        <section className="space-y-8 py-8 sm:py-10">
+    <main className="mx-auto w-full max-w-5xl">
+      <section className="space-y-8 py-2 sm:py-4">
           <SectionHeader
             eyebrow="Shareable snapshots"
             title="Preview the card before you share it."
@@ -711,8 +674,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
               }
             />
           </div>
-        </section>
-      </div>
+      </section>
     </main>
   );
 }

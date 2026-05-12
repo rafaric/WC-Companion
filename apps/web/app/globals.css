@@ -25,6 +25,11 @@ a {
   text-decoration: none;
 }
 
+:focus-visible {
+  outline: 2px solid rgb(34 211 238 / 0.9);
+  outline-offset: 2px;
+}
+
 .worldpredict-aurora {
   background:
     radial-gradient(circle at top, rgba(56, 189, 248, 0.16), transparent 34%),

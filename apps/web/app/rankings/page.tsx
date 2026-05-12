@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { auth0 } from "@/lib/auth0";
 import {
   getCurrentUserProfile,
@@ -8,6 +6,7 @@ import {
   type RankingEntry,
 } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { getFriendlyDisplayName } from "@/lib/user-display";
 
 function RankingRow({ entry, isCurrentUser }: { entry: RankingEntry; isCurrentUser: boolean }) {
   return (
@@ -56,40 +55,11 @@ export default async function RankingsPage() {
   const currentUserRankingEntry = currentUserProfile
     ? ranking.find((entry) => entry.userId === currentUserProfile.id) ?? null
     : null;
+  const displayName = session ? getFriendlyDisplayName(session.user, currentUserProfile) : "You";
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-50">
-      <div className="worldpredict-aurora absolute inset-0 -z-10" />
-
-      <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between gap-3 rounded-full border border-slate-800/80 bg-slate-900/60 px-4 py-3 backdrop-blur">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300">WorldPredict</p>
-            <p className="text-xs text-slate-400">Global ranking</p>
-          </div>
-          <div className="flex items-center gap-3 text-xs text-slate-300">
-            <Link
-              href="/dashboard"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/groups"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Groups
-            </Link>
-            <Link
-              href="/share"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Share cards
-            </Link>
-          </div>
-        </header>
-
-        <section className="space-y-6 py-8 sm:py-10">
+    <main className="mx-auto w-full max-w-4xl">
+      <section className="space-y-6 py-2 sm:py-4">
           <div className="space-y-3">
             <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
               Full leaderboard
@@ -120,7 +90,7 @@ export default async function RankingsPage() {
                 </div>
                 <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
                   <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Username</p>
-                  <p className="mt-1 text-lg font-bold text-white">{currentUserProfile?.username ?? "You"}</p>
+                  <p className="mt-1 text-lg font-bold text-white">{displayName}</p>
                 </div>
               </div>
             </div>
@@ -151,8 +121,7 @@ export default async function RankingsPage() {
               </div>
             )}
           </div>
-        </section>
-      </div>
+      </section>
     </main>
   );
 }

@@ -14,6 +14,7 @@ import {
   type MyGroupView,
 } from "@/lib/api";
 import { formatCountryLabel, isProfileComplete } from "@/lib/profile";
+import { getFriendlyDisplayName } from "@/lib/user-display";
 import { CopyInviteCodeButton } from "./copy-invite-code-button";
 
 type GroupsSearchParams = {
@@ -24,8 +25,6 @@ type GroupsSearchParams = {
 interface GroupsPageProps {
   searchParams?: Promise<GroupsSearchParams>;
 }
-
-type Session = NonNullable<Awaited<ReturnType<typeof auth0.getSession>>>;
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_input: "Use a short group name and a valid invite code.",
@@ -39,22 +38,6 @@ const SUCCESS_MESSAGES: Record<string, string> = {
   created: "Group created successfully.",
   joined: "You joined the group.",
 };
-
-function looksLikeEmail(value: string | null | undefined): value is string {
-  return typeof value === "string" && value.includes("@");
-}
-
-function getDisplayName(user: Session["user"]): string {
-  const name = user.name;
-  if (name && !looksLikeEmail(name)) {
-    return name;
-  }
-  const nickname = user.nickname;
-  if (nickname && !looksLikeEmail(nickname)) {
-    return nickname;
-  }
-  return user.email ?? user.sub;
-}
 
 function formatCreatedAt(createdAt: string): string {
   return new Intl.DateTimeFormat("en", {
@@ -91,13 +74,13 @@ function formatMemberCount(memberCount: number): string {
   return `${memberCount} ${memberCount === 1 ? "member" : "members"}`;
 }
 
-function renderProfileNote(profile: CurrentUserProfile | null, user: Session["user"]): string {
+function renderProfileNote(profile: CurrentUserProfile | null, user: NonNullable<Awaited<ReturnType<typeof auth0.getSession>>>["user"]): string {
   if (!profile) {
     return "We could not load your backend profile right now.";
   }
 
   const countryLabel = formatCountryLabel(profile.country);
-  const displayName = getDisplayName(user);
+  const displayName = getFriendlyDisplayName(user, profile);
 
   return `Signed in as ${displayName} · ${countryLabel}`;
 }
@@ -165,7 +148,6 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
   ]);
 
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;
-  const displayName = currentUserProfile ? getDisplayName(session.user) : session.user.name ?? session.user.nickname ?? session.user.email ?? "You";
 
   async function submitCreateGroup(formData: FormData) {
     "use server";
@@ -226,39 +208,8 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-50">
-      <div className="worldpredict-aurora absolute inset-0 -z-10" />
-
-      <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between gap-3 rounded-full border border-slate-800/80 bg-slate-900/60 px-4 py-3 backdrop-blur">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300">WorldPredict</p>
-            <p className="text-xs text-slate-400">Private groups</p>
-          </div>
-          <div className="flex items-center gap-3 text-xs text-slate-300">
-            <span className="hidden sm:inline">{displayName}</span>
-            <Link
-              href="/dashboard"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/share"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Share cards
-            </Link>
-            <Link
-              href="/auth/logout"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Log out
-            </Link>
-          </div>
-        </header>
-
-        <section className="space-y-6 py-8 sm:py-10">
+    <main className="mx-auto w-full max-w-5xl">
+      <section className="space-y-6 py-2 sm:py-4">
           <div className="space-y-3">
             <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
               Social groups
@@ -397,8 +348,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
               </div>
             )}
           </div>
-        </section>
-      </div>
+      </section>
     </main>
   );
 }

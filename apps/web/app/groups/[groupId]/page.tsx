@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth0 } from "@/lib/auth0";
-import { ApiError, getCurrentUserProfile, getGroupRanking, getMyGroups, type CurrentUserProfile, type MyGroupView, type RankingEntry } from "@/lib/api";
+import { ApiError, getCurrentUserProfile, getGroupRanking, getMyGroups, type MyGroupView, type RankingEntry } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { getFriendlyDisplayName } from "@/lib/user-display";
 import { CopyInviteCodeButton } from "../copy-invite-code-button";
 
 interface GroupDetailPageProps {
@@ -41,24 +41,6 @@ function getGroupRoleLabel(role: MyGroupView["role"]): string {
 
 function formatMemberCount(memberCount: number): string {
   return `${memberCount} ${memberCount === 1 ? "member" : "members"}`;
-}
-
-type Session = NonNullable<Awaited<ReturnType<typeof auth0.getSession>>>;
-
-function looksLikeEmail(value: string | null | undefined): value is string {
-  return typeof value === "string" && value.includes("@");
-}
-
-function getProfileDisplayName(profile: CurrentUserProfile, user: Session["user"]): string {
-  const name = user.name;
-  if (name && !looksLikeEmail(name)) {
-    return name;
-  }
-  const nickname = user.nickname;
-  if (nickname && !looksLikeEmail(nickname)) {
-    return nickname;
-  }
-  return profile.username;
 }
 
 function getLeader(ranking: RankingEntry[]): RankingEntry | null {
@@ -214,32 +196,8 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
   const isSingleMemberGroup = rankingResult.ranking.length === 1;
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-50">
-      <div className="worldpredict-aurora absolute inset-0 -z-10" />
-
-      <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between rounded-full border border-slate-800/80 bg-slate-900/60 px-4 py-3 backdrop-blur">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300">WorldPredict</p>
-            <p className="text-xs text-slate-400">Group ranking</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/groups"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Back to groups
-            </Link>
-            <Link
-              href="/share"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Share cards
-            </Link>
-          </div>
-        </header>
-
-        <section className="space-y-6 py-8 sm:py-10">
+    <main className="mx-auto w-full max-w-4xl">
+      <section className="space-y-6 py-2 sm:py-4">
           <div className="space-y-3">
             <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
               Private leaderboard
@@ -365,7 +323,7 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
                   <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
                     <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Username</p>
                     <p className="mt-1 text-lg font-bold text-white">
-                      {currentUserProfile ? getProfileDisplayName(currentUserProfile, session.user) : "You"}
+                      {currentUserProfile ? getFriendlyDisplayName(session.user, currentUserProfile) : "You"}
                     </p>
                   </div>
                 </div>
@@ -400,8 +358,7 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
               Ranking data is backend-owned and read-only.
             </p>
           </div>
-        </section>
-      </div>
+      </section>
     </main>
   );
 }

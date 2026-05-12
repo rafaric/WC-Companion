@@ -29,8 +29,6 @@ interface AdminExternalResultsPageProps {
   searchParams?: Promise<AdminExternalResultsSearchParams>;
 }
 
-type Session = NonNullable<Awaited<ReturnType<typeof auth0.getSession>>>;
-
 const RESULT_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "You need the matches:finalize permission to review or confirm staged results.",
   already_processed: "This staged result was already confirmed or discarded.",
@@ -53,10 +51,6 @@ const EXTERNAL_MATCH_RESULT_FILTERS = [
   EXTERNAL_MATCH_RESULT_STATES.CONFIRMED,
   EXTERNAL_MATCH_RESULT_STATES.DISCARDED,
 ] as const;
-
-function getDisplayName(user: Session["user"]): string {
-  return user.name ?? user.nickname ?? user.email ?? user.sub;
-}
 
 function formatDateTime(value: string | Date | null): string {
   if (!value) {
@@ -434,38 +428,12 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
     redirect(buildExternalResultsPath(EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { success: "synced" }));
   }
 
-  const displayName = getDisplayName(session.user);
   const latestImportSyncRun = getLatestSyncRunByType(syncRuns, "IMPORT");
   const latestResultsSyncRun = getLatestSyncRunByType(syncRuns, "RESULTS");
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-50">
-      <div className="worldpredict-aurora absolute inset-0 -z-10" />
-
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between gap-3 rounded-full border border-slate-800/80 bg-slate-900/60 px-4 py-3 backdrop-blur">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300">WorldPredict</p>
-            <p className="text-xs text-slate-400">Admin external results</p>
-          </div>
-          <div className="flex items-center gap-3 text-xs text-slate-300">
-            <span className="hidden sm:inline">{displayName}</span>
-            <Link
-              href="/dashboard"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/auth/logout"
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-            >
-              Log out
-            </Link>
-          </div>
-        </header>
-
-        <section className="space-y-6 py-8 sm:py-10">
+    <main className="mx-auto w-full max-w-6xl">
+      <section className="space-y-6 py-2 sm:py-4">
           <div className="space-y-3">
             <p className="inline-flex rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-200">
               Admin-only review queue
@@ -719,8 +687,7 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
               No {formatStateLabel(currentState)} staged results right now.
             </div>
           )}
-        </section>
-      </div>
+      </section>
     </main>
   );
 }
