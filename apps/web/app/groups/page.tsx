@@ -9,14 +9,13 @@ import {
   getCurrentUserProfile,
   getMyGroups,
   joinGroup,
-  type CurrentUserProfile,
   type GroupView,
   type MyGroupView,
 } from "@/lib/api";
 import { buildPageMetadata } from "@/lib/metadata";
-import { formatCountryLabel, isProfileComplete } from "@/lib/profile";
-import { getFriendlyDisplayName } from "@/lib/user-display";
+import { isProfileComplete } from "@/lib/profile";
 import { CopyInviteCodeButton } from "./copy-invite-code-button";
+import { GroupActionTabs } from "./group-action-tabs";
 
 export const metadata = buildPageMetadata({
   title: "Groups",
@@ -82,46 +81,29 @@ function formatMemberCount(memberCount: number): string {
   return `${memberCount} ${memberCount === 1 ? "member" : "members"}`;
 }
 
-function renderProfileNote(profile: CurrentUserProfile | null, user: NonNullable<Awaited<ReturnType<typeof auth0.getSession>>>["user"]): string {
-  if (!profile) {
-    return "We could not load your backend profile right now.";
-  }
-
-  const countryLabel = formatCountryLabel(profile.country);
-  const displayName = getFriendlyDisplayName(user, profile);
-
-  return `Signed in as ${displayName} · ${countryLabel}`;
-}
-
 function GroupCard({ group }: { group: MyGroupView }) {
   return (
     <article className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30 transition hover:border-slate-700">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Group</p>
-          <h3 className="text-lg font-semibold text-white">{group.name}</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-lg font-semibold text-white">{group.name}</h3>
+            <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300">
+              {getGroupRoleLabel(group.role)}
+            </span>
+          </div>
           <p className="text-sm text-slate-400">Created {formatCreatedAt(group.createdAt)}</p>
         </div>
-        <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300">
-          {getGroupRoleLabel(group.role)}
-        </span>
+        <p className="text-xs text-slate-500">{formatMemberCount(group.memberCount)} · private group</p>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Invite code</p>
-            <p className="mt-1 break-all text-2xl font-black tracking-[0.15em] text-white">{group.inviteCode}</p>
-          </div>
-          <CopyInviteCodeButton inviteCode={group.inviteCode} />
-        </div>
-        <p className="mt-3 text-xs leading-5 text-cyan-100/70">
-          Send this code to friends so they can join from the Groups page.
-        </p>
+      <div className="mt-4">
+        <CopyInviteCodeButton inviteCode={group.inviteCode} showCode />
       </div>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-slate-500">{formatMemberCount(group.memberCount)} · private group</p>
+        <p className="text-xs leading-5 text-slate-500">Share the invite code or open the private ranking.</p>
         <Link
           href={`/groups/${group.id}`}
           className="rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
@@ -243,94 +225,25 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             </div>
           ) : null}
 
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-2xl shadow-slate-950/30">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Profile</p>
-            <p className="mt-2 text-sm leading-6 text-slate-300">{renderProfileNote(currentUserProfile, session.user)}</p>
-            {!profileComplete ? (
-              <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-amber-100">
-                  Finish onboarding first. We keep group actions visible, but disabled until your profile is complete.
-                </p>
-                <Link
-                  href="/onboarding"
-                  className="inline-flex rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-110"
-                >
-                  Complete profile
-                </Link>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <form action={submitCreateGroup}>
-              <fieldset
-                disabled={!profileComplete}
-                className="h-full rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30 disabled:opacity-60"
+          {!profileComplete ? (
+            <div className="flex flex-col gap-3 rounded-3xl border border-amber-400/20 bg-amber-400/10 p-5 text-amber-100 shadow-xl shadow-slate-950/20 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm leading-6">
+                Finish onboarding first. Group actions stay visible, but disabled until your profile is complete.
+              </p>
+              <Link
+                href="/onboarding"
+                className="inline-flex rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-110"
               >
-                <div className="space-y-2">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Create</p>
-                  <h2 className="text-lg font-semibold text-white">New private group</h2>
-                  <p className="text-sm leading-6 text-slate-400">Pick a name, get an invite code, and start your crew ranking.</p>
-                </div>
+                Complete profile
+              </Link>
+            </div>
+          ) : null}
 
-                <label className="mt-5 block space-y-2">
-                  <span className="text-sm font-medium text-slate-200">Group name</span>
-                  <input
-                    name="name"
-                    type="text"
-                    maxLength={80}
-                    placeholder="Los Pibes del Mundial"
-                    className="w-full rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-400/50"
-                    required
-                  />
-                </label>
-
-                <div className="mt-5 flex items-center justify-between gap-3">
-                  <p className="text-xs text-slate-500">You can copy the invite code after creation.</p>
-                  <button
-                    type="submit"
-                    className="rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Create group
-                  </button>
-                </div>
-              </fieldset>
-            </form>
-
-            <form action={submitJoinGroup}>
-              <fieldset
-                disabled={!profileComplete}
-                className="h-full rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30 disabled:opacity-60"
-              >
-                <div className="space-y-2">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Join</p>
-                  <h2 className="text-lg font-semibold text-white">Enter an invite code</h2>
-                  <p className="text-sm leading-6 text-slate-400">Paste the code from a friend and jump into their private leaderboard.</p>
-                </div>
-
-                <label className="mt-5 block space-y-2">
-                  <span className="text-sm font-medium text-slate-200">Invite code</span>
-                  <input
-                    name="inviteCode"
-                    type="text"
-                    placeholder="ABC123XYZ"
-                    className="w-full rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm uppercase tracking-[0.2em] text-slate-100 outline-none transition placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-500 focus:border-cyan-400/50"
-                    required
-                  />
-                </label>
-
-                <div className="mt-5 flex items-center justify-between gap-3">
-                  <p className="text-xs text-slate-500">Already joined? Opening the ranking is enough.</p>
-                  <button
-                    type="submit"
-                    className="rounded-full border border-slate-700 bg-slate-900/80 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Join group
-                  </button>
-                </div>
-              </fieldset>
-            </form>
-          </div>
+          <GroupActionTabs
+            profileComplete={profileComplete}
+            submitCreateGroupAction={submitCreateGroup}
+            submitJoinGroupAction={submitJoinGroup}
+          />
 
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-3">
