@@ -102,7 +102,7 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
       <div className="worldpredict-aurora absolute inset-0 -z-10" />
 
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header className="sticky top-4 z-40 mb-6 rounded-full border border-slate-800/80 bg-slate-900/75 px-4 py-3 backdrop-blur">
+        <header className="fixed inset-x-4 top-4 z-40 mx-auto max-w-6xl rounded-full border border-slate-800/80 bg-slate-900/85 px-4 py-3 shadow-2xl shadow-slate-950/30 backdrop-blur sm:inset-x-6 lg:inset-x-8">
           <div className="flex items-center justify-between gap-4">
             <Link href="/dashboard" className="inline-flex min-w-0 items-center gap-3 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400">
               <Image src="/assets/LogoLong.png" alt="WorldPredict logo" width={144} height={40} priority className="h-8 w-auto object-contain" />
@@ -186,7 +186,7 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
           </div>
         </header>
 
-        <div className="flex-1">{children}</div>
+        <div className="flex-1 pt-24">{children}</div>
       </div>
     </div>
   );

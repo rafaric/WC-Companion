@@ -79,20 +79,27 @@ const STEPS = [
 
 const VALUE_PILLARS = [
   {
+    icon: "👥",
     title: "Private groups first",
     description: "Create your circle, invite friends, and keep the competition personal.",
   },
   {
+    icon: "⚡",
     title: "Fast match picks",
     description: "Set exact scores in seconds with a mobile-first flow built for quick check-ins.",
   },
   {
+    icon: "📈",
     title: "Live score tension",
     description: "Watch rankings move as confirmed results hit the board and exact picks land.",
   },
 ] as const;
 
-const ACCOUNT_REASSURANCE = ["Secure sign-in", "Live rankings", "Private groups"] as const;
+const ACCOUNT_REASSURANCE = [
+  { icon: "🔐", label: "Secure sign-in" },
+  { icon: "📈", label: "Live rankings" },
+  { icon: "👥", label: "Private groups" },
+] as const;
 
 interface LivePreviewItem {
   label: string;
@@ -233,35 +240,35 @@ export default async function HomePage() {
       />
       <div className="worldpredict-aurora absolute inset-0 -z-10" />
 
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between rounded-full border border-slate-800/80 bg-slate-900/60 px-4 py-3 backdrop-blur">
-          <div>
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+        <header className="flex items-center justify-between gap-3 rounded-full border border-slate-800/80 bg-slate-900/60 px-4 py-3 backdrop-blur">
+          <div className="min-w-0">
             <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300">
-            <Image src="/icon.svg" alt="WorldPredict logo" width={24} height={24} />
+              <Image src="/icon.svg" alt="WorldPredict logo" width={24} height={24} />
               WorldPredict
             </p>
             <p className="text-xs text-slate-400">Social football prediction</p>
           </div>
           {user ? (
-            <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-right text-xs text-emerald-300">
-              <p className="font-medium text-emerald-200">{accountLabel}</p>
-              <p className="text-[11px] text-emerald-400/80">{accountEmail ?? "Authenticated"}</p>
+            <div className="min-w-0 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-right text-xs text-emerald-300">
+              <p className="truncate font-medium text-emerald-200">{accountLabel}</p>
+              <p className="truncate text-[11px] text-emerald-400/80">{accountEmail ?? "Authenticated"}</p>
             </div>
           ) : (
             <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">
-              Installable app shell
+              Private groups ready
             </span>
           )}
         </header>
 
-        <section className="grid flex-1 items-start gap-10 py-10 lg:grid-cols-[1.1fr_0.9fr] lg:py-16">
-          <div className="space-y-8">
-            <div className="space-y-5">
+        <section className="grid flex-1 items-start gap-8 py-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-10 lg:py-16">
+          <div className="space-y-7 lg:space-y-8">
+            <div className="space-y-4 sm:space-y-5">
               <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
                 {formatTournamentLabel(activeTournament)}
               </p>
               <div className="space-y-4">
-                <h1 className="max-w-3xl text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">
+                <h1 className="max-w-3xl text-3xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">
                   Football predictions feel better when <span className="text-cyan-300">the rivalry is personal.</span>
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
@@ -274,13 +281,13 @@ export default async function HomePage() {
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
                 href={primaryCtaHref}
-                className="rounded-full bg-gradient from-cyan-400 via-blue-400 to-violet-400 px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
+                className="rounded-full bg-gradient from-cyan-400 via-blue-400 to-violet-400 px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 sm:min-w-40"
               >
                 {primaryCtaLabel}
               </Link>
               <Link
                 href={secondaryCtaHref}
-                className="rounded-full border border-slate-700 bg-slate-900/80 px-6 py-3 text-center text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
+                className="rounded-full border border-slate-700 bg-slate-900/80 px-6 py-3 text-center text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800 sm:min-w-40"
               >
                 {secondaryCtaLabel}
               </Link>
@@ -297,10 +304,11 @@ export default async function HomePage() {
             <div className="flex flex-wrap gap-2 text-xs font-medium text-slate-300">
               {ACCOUNT_REASSURANCE.map((item) => (
                 <span
-                  key={item}
-                  className="rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-slate-300"
+                  key={item.label}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-slate-300"
                 >
-                  {item}
+                  <span aria-hidden="true">{item.icon}</span>
+                  {item.label}
                 </span>
               ))}
             </div>
@@ -322,17 +330,20 @@ export default async function HomePage() {
               {VALUE_PILLARS.map((pillar) => (
                 <div
                   key={pillar.title}
-                  className="rounded-3xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur"
+                  className="rounded-3xl border border-slate-800/80 bg-slate-900/60 p-4 backdrop-blur sm:p-5"
                 >
-                  <p className="text-sm font-semibold text-white">{pillar.title}</p>
+                  <p className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <span aria-hidden="true">{pillar.icon}</span>
+                    {pillar.title}
+                  </p>
                   <p className="mt-2 text-sm leading-6 text-slate-400">{pillar.description}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <aside className="space-y-4 rounded-[2rem] border border-slate-800/80 bg-slate-900/70 p-5 shadow-2xl shadow-cyan-950/20 backdrop-blur">
-            <div className="rounded-[1.5rem] border border-cyan-400/20 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 p-5">
+          <aside className="space-y-4 rounded-[2rem] border border-slate-800/80 bg-slate-900/70 p-4 shadow-2xl shadow-cyan-950/20 backdrop-blur sm:p-5">
+            <div className="rounded-[1.5rem] border border-cyan-400/20 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 p-4 sm:p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Match to watch</p>
@@ -348,18 +359,18 @@ export default async function HomePage() {
               {previewMatch ? (
                 <>
                   <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center">
-                    <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-4">
+                    <div className="min-w-0 rounded-3xl border border-slate-800 bg-slate-900/80 p-3 sm:p-4">
                       <p className="text-3xl" aria-hidden="true">{homeFlag ?? "⚽"}</p>
                       <p className="mt-2 text-lg font-black text-white">{previewMatch.homeTeam.shortName}</p>
-                      <p className="text-xs text-slate-400">{previewMatch.homeTeam.name}</p>
+                      <p className="truncate text-xs text-slate-400">{previewMatch.homeTeam.name}</p>
                     </div>
                     <div className="rounded-full border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
                       VS
                     </div>
-                    <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-4">
+                    <div className="min-w-0 rounded-3xl border border-slate-800 bg-slate-900/80 p-3 sm:p-4">
                       <p className="text-3xl" aria-hidden="true">{awayFlag ?? "⚽"}</p>
                       <p className="mt-2 text-lg font-black text-white">{previewMatch.awayTeam.shortName}</p>
-                      <p className="text-xs text-slate-400">{previewMatch.awayTeam.name}</p>
+                      <p className="truncate text-xs text-slate-400">{previewMatch.awayTeam.name}</p>
                     </div>
                   </div>
 
@@ -470,8 +481,9 @@ export default async function HomePage() {
                   </p>
                   <div className="flex flex-wrap gap-2 text-xs text-slate-300">
                     {ACCOUNT_REASSURANCE.map((item) => (
-                      <span key={item} className="rounded-full bg-slate-900 px-3 py-1.5">
-                        {item}
+                      <span key={item.label} className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5">
+                        <span aria-hidden="true">{item.icon}</span>
+                        {item.label}
                       </span>
                     ))}
                   </div>

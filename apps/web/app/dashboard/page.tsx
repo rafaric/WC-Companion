@@ -718,7 +718,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Global ranking</p>
                 <h2 className="mt-1 text-base font-semibold text-white">Your overall standing</h2>
                 <p className="mt-1 text-sm leading-6 text-slate-400">
-                  See how your points compare across everyone playing, beyond your private groups.
+                  See how your points compare across all players, beyond your private groups.
                 </p>
               </div>
               <Link
