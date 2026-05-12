@@ -24,11 +24,12 @@ import { cn } from "@/lib/cn";
 import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
 import { getFriendlyDisplayName, getFriendlyEmailLabel } from "@/lib/user-display";
 import { RecentlyScoredResults, type RecentlyScoredResultItem } from "./recently-scored-results";
+import { MatchPredictionAccordion } from "./match-prediction-accordion";
 import { CopyInviteCodeButton } from "../groups/copy-invite-code-button";
 
 export const metadata = buildPageMetadata({
   title: "Dashboard",
-  description: "Review active fixtures, save predictions, and track your latest football competition results.",
+  description: "Review active World Cup fixtures, save predictions, and track your latest tournament results.",
   index: false,
   path: "/dashboard",
 });
@@ -89,23 +90,6 @@ function formatMemberCount(memberCount: number): string {
   return `${memberCount} ${memberCount === 1 ? "member" : "members"}`;
 }
 
-function formatKickoff(kickoffAt: string): string {
-  return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(kickoffAt));
-}
-
-function formatStatusLabel(status: string): string {
-  if (!status) {
-    return "Unknown";
-  }
-
-  const normalized = status.split("_").join(" ").toLowerCase();
-
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-}
-
 function buildDashboardPath(params: { error?: string } = {}): string {
   const searchParams = new URLSearchParams();
 
@@ -141,35 +125,8 @@ function mergePredictions(matches: MatchView[], predictions: PredictionView[]): 
   }));
 }
 
-function formatPredictionLabel(prediction: PredictionView | null): string {
-  if (!prediction) {
-    return "No prediction yet";
-  }
-
-  return `${prediction.homeScore} - ${prediction.awayScore}`;
-}
-
-function formatActualScoreLabel(match: MatchView): string {
-  if (match.homeScore === null || match.awayScore === null) {
-    return "Result pending";
-  }
-
-  return `${match.homeScore} - ${match.awayScore}`;
-}
-
 function formatPointsLabel(points: number): string {
   return points === 1 ? "1 point" : `${points} points`;
-}
-
-function formatScoredAt(value: string | null): string {
-  if (!value) {
-    return "Not scored yet";
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }
 
 function resolveOutcome(score: ScoreLine): MatchOutcome {
@@ -266,41 +223,12 @@ function getScoringExplanation(match: MatchPredictionCard): ScoringExplanation |
   };
 }
 
-function getScoringExplanationClassName(kind: ScoringExplanationKind): string {
-  switch (kind) {
-    case SCORING_EXPLANATION_KIND.EXACT_SCORE:
-      return "border-cyan-300/30 bg-cyan-300/10 text-cyan-100";
-    case SCORING_EXPLANATION_KIND.CORRECT_OUTCOME:
-      return "border-emerald-300/30 bg-emerald-300/10 text-emerald-100";
-    case SCORING_EXPLANATION_KIND.WRONG_OUTCOME:
-      return "border-rose-300/30 bg-rose-300/10 text-rose-100";
-    case SCORING_EXPLANATION_KIND.NOT_SCORED:
-      return "border-amber-300/30 bg-amber-300/10 text-amber-100";
-  }
-}
-
 function isMatchOpenForPrediction(match: MatchView): boolean {
   return match.status === MATCH_STATUS.UPCOMING && Date.now() < new Date(match.kickoffAt).getTime();
 }
 
 function isMatchFinished(match: MatchView): boolean {
   return match.status === MATCH_STATUS.FINISHED || match.finalizedAt !== null;
-}
-
-function getPredictionOutcomeLabel(match: MatchPredictionCard): string {
-  if (!isMatchFinished(match)) {
-    return "Waiting for final result";
-  }
-
-  if (match.prediction === null) {
-    return "No prediction submitted";
-  }
-
-  if (match.prediction.scoringStatus === PREDICTION_SCORING_STATUS.SCORED) {
-    return `You earned ${formatPointsLabel(match.prediction.pointsAwarded)}`;
-  }
-
-  return "Prediction waiting to be scored";
 }
 
 function getUpcomingMatchCards(matchCards: MatchPredictionCard[]): MatchPredictionCard[] {
@@ -467,13 +395,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <section className="space-y-6 py-2 sm:py-4">
           <div className="space-y-3">
             <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
-              Your match predictions
+              World Cup predictions
             </p>
             <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
-              Keep your pronósticos in one place.
+              Make every World Cup fixture count.
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-              Review active fixtures, save exact scores, and track your current estimations without leaving the dashboard.
+              Expand one match at a time, save exact scores, and keep your tournament picks easy to scan.
             </p>
           </div>
 
@@ -562,154 +490,18 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <div className="space-y-4">
             <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/30">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Upcoming predictions</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">World Cup predictions</p>
                 <p className="mt-1 text-sm text-slate-300">
-                  Showing only matches still open for prediction, so you can focus on what needs action.
+                  Compact rows show each fixture and pick status. Open a match to update the full prediction.
                 </p>
               </div>
             </div>
 
-            {upcomingMatchCards.length > 0 ? (
-              upcomingMatchCards.map((match) => {
-                const matchFinished = isMatchFinished(match);
-                const scoringExplanation = getScoringExplanation(match);
-
-                return (
-                <article key={match.id} className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                        {formatStatusLabel(match.status)}
-                      </p>
-                      <h2 className="text-lg font-semibold text-white">
-                        {getTeamLabel(match.homeTeam)} vs {getTeamLabel(match.awayTeam)}
-                      </h2>
-                      <p className="text-sm text-slate-400">
-                        {match.stage}
-                        {match.groupName ? ` · ${match.groupName}` : ""} · {formatKickoff(match.kickoffAt)}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-sm font-semibold text-cyan-300">
-                        {formatPredictionLabel(match.prediction)}
-                      </div>
-                      {matchFinished ? (
-                        <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                          Final {formatActualScoreLabel(match)}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Home</p>
-                      <p className="mt-1 font-semibold text-white">{match.homeTeam.name}</p>
-                    </div>
-                    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Away</p>
-                      <p className="mt-1 font-semibold text-white">{match.awayTeam.name}</p>
-                    </div>
-                  </div>
-
-                  {matchFinished ? (
-                    <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">Final result</p>
-                          <p className="mt-1 text-2xl font-black text-white">{formatActualScoreLabel(match)}</p>
-                          <p className="mt-1 text-sm text-emerald-100/80">{getPredictionOutcomeLabel(match)}</p>
-                        </div>
-
-                        {match.prediction ? (
-                          <div className="grid gap-3 sm:min-w-72 sm:grid-cols-2">
-                            <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-3">
-                              <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">Your pick</p>
-                              <p className="mt-1 text-lg font-bold text-white">{formatPredictionLabel(match.prediction)}</p>
-                            </div>
-                            <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-3">
-                              <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">Points earned</p>
-                              <p className="mt-1 text-lg font-bold text-white">{formatPointsLabel(match.prediction.pointsAwarded)}</p>
-                            </div>
-                            <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-3 sm:col-span-2">
-                              <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">Scored at</p>
-                              <p className="mt-1 text-sm font-semibold text-white">{formatScoredAt(match.prediction.scoredAt)}</p>
-                            </div>
-                            {scoringExplanation ? (
-                              <div
-                                className={`rounded-2xl border p-3 sm:col-span-2 ${getScoringExplanationClassName(scoringExplanation.kind)}`}
-                              >
-                                <p className="text-[11px] uppercase tracking-[0.2em] opacity-75">Why this score?</p>
-                                <p className="mt-1 text-sm font-bold">{scoringExplanation.title}</p>
-                                <p className="mt-1 text-xs leading-5 opacity-90">{scoringExplanation.detail}</p>
-                              </div>
-                            ) : null}
-                          </div>
-                        ) : (
-                          <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-6 text-slate-300 sm:max-w-xs">
-                            You did not submit a prediction for this match, so no points were awarded.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {profileComplete && isMatchOpenForPrediction(match) ? (
-                    <form action={submitPrediction.bind(null, match.id)} className="mt-5 grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-                      <label className="space-y-2">
-                        <span className="text-sm font-medium text-slate-200">Home goals</span>
-                        <input
-                          name="homeScore"
-                          type="number"
-                          min={0}
-                          max={20}
-                          step={1}
-                          defaultValue={match.prediction?.homeScore ?? ""}
-                          className="w-full rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-cyan-400/50"
-                          required
-                        />
-                      </label>
-
-                      <label className="space-y-2">
-                        <span className="text-sm font-medium text-slate-200">Away goals</span>
-                        <input
-                          name="awayScore"
-                          type="number"
-                          min={0}
-                          max={20}
-                          step={1}
-                          defaultValue={match.prediction?.awayScore ?? ""}
-                          className="w-full rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-cyan-400/50"
-                          required
-                        />
-                      </label>
-
-                      <button
-                        type="submit"
-                        className="rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
-                      >
-                        Save
-                      </button>
-                    </form>
-                  ) : profileComplete ? (
-                    <p className="mt-5 text-sm leading-6 text-slate-400">
-                      {matchFinished
-                        ? "This match is final, so predictions are locked."
-                        : "This match is no longer open for predictions."}
-                    </p>
-                  ) : (
-                    <p className="mt-5 text-sm leading-6 text-slate-400">
-                      Complete your profile to unlock the prediction form for this match.
-                    </p>
-                  )}
-                </article>
-                );
-              })
-            ) : (
-              <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 text-sm leading-6 text-slate-300">
-                No upcoming matches open for prediction right now. New scored matches will appear above when results land.
-              </div>
-            )}
+            <MatchPredictionAccordion
+              matches={upcomingMatchCards}
+              profileComplete={profileComplete}
+              submitPredictionAction={submitPrediction}
+            />
           </div>
 
           <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/30">

@@ -30,6 +30,11 @@ a {
   outline-offset: 2px;
 }
 
+.score-input:focus,
+.score-input:focus-visible {
+  outline: none;
+}
+
 .worldpredict-aurora {
   background:
     radial-gradient(circle at top, rgba(56, 189, 248, 0.16), transparent 34%),

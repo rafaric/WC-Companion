@@ -18,10 +18,12 @@ import { getFriendlyDisplayName, getFriendlyEmailLabel } from "@/lib/user-displa
 import Image from "next/image";
 
 export const metadata = buildPageMetadata({
-  title: "Social football predictions with friends",
+  title: "World Cup predictions with friends",
   description:
-    "Predict football matches, climb rankings, and compete with friends in private groups with a mobile-first experience.",
+    "Predict World Cup matches, climb rankings, and compete with friends in private groups with a mobile-first experience.",
   keywords: [
+    "world cup prediction app",
+    "world cup bracket friends",
     "football prediction app",
     "soccer prediction game",
     "world cup predictions",
@@ -85,8 +87,8 @@ const VALUE_PILLARS = [
   },
   {
     icon: "⚡",
-    title: "Fast match picks",
-    description: "Set exact scores in seconds with a mobile-first flow built for quick check-ins.",
+    title: "Fast World Cup picks",
+    description: "Set exact scores for tournament fixtures in seconds, right from your phone.",
   },
   {
     icon: "📈",
@@ -100,6 +102,17 @@ const ACCOUNT_REASSURANCE = [
   { icon: "📈", label: "Live rankings" },
   { icon: "👥", label: "Private groups" },
 ] as const;
+
+const FIFA_FLAG_EMOJI: Record<string, string> = {
+  ARG: "🇦🇷",
+  BRA: "🇧🇷",
+  ENG: "🏴",
+  ESP: "🇪🇸",
+  FRA: "🇫🇷",
+  GER: "🇩🇪",
+  POR: "🇵🇹",
+  URU: "🇺🇾",
+};
 
 interface LivePreviewItem {
   label: string;
@@ -140,6 +153,10 @@ function getFlagEmoji(flagCode: string | null): string | null {
   }
 
   const normalizedCode = flagCode.trim().toUpperCase();
+
+  if (FIFA_FLAG_EMOJI[normalizedCode]) {
+    return FIFA_FLAG_EMOJI[normalizedCode];
+  }
 
   if (!/^[A-Z]{2}$/.test(normalizedCode)) {
     return null;
@@ -225,8 +242,8 @@ export default async function HomePage() {
   const accountEmail = user ? getFriendlyEmailLabel(user, currentUserProfile) : null;
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;
   const favoriteTeam = currentUserProfile ? getTeamById(matches, currentUserProfile.favoriteTeamId) : null;
-  const homeFlag = getFlagEmoji(previewMatch?.homeTeam.flagCode ?? null);
-  const awayFlag = getFlagEmoji(previewMatch?.awayTeam.flagCode ?? null);
+  const homeFlag = getFlagEmoji(previewMatch?.homeTeam.flagCode ?? null) ?? getFlagEmoji(previewMatch?.homeTeam.countryCode ?? null);
+  const awayFlag = getFlagEmoji(previewMatch?.awayTeam.flagCode ?? null) ?? getFlagEmoji(previewMatch?.awayTeam.countryCode ?? null);
   const primaryCtaHref = user ? (profileComplete ? "/dashboard" : "/onboarding") : "/auth/login?returnTo=/dashboard";
   const primaryCtaLabel = user ? (profileComplete ? "Open dashboard" : "Complete profile") : "Log in to predict";
   const secondaryCtaHref = user ? "/groups" : "/auth/login";
@@ -269,11 +286,11 @@ export default async function HomePage() {
               </p>
               <div className="space-y-4">
                 <h1 className="max-w-3xl text-3xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">
-                  Football predictions feel better when <span className="text-cyan-300">the rivalry is personal.</span>
+                  World Cup predictions feel better when <span className="text-cyan-300">the rivalry is personal.</span>
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                  WorldPredict keeps the experience focused on quick match picks, private groups,
-                  and live rankings that make every confirmed result matter.
+                  WorldPredict keeps the tournament focused on quick match picks, private groups,
+                  and live rankings that make every confirmed World Cup result matter.
                 </p>
               </div>
             </div>
