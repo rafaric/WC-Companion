@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 import type { CurrentUserProfile } from "@/lib/api";
@@ -53,6 +53,8 @@ function getSectionLabel(pathname: string): string {
 export function AppChrome({ canAccessExternalResults, children, currentUserProfile, sessionUser }: AppChromeProps) {
   const pathname = usePathname();
   const menuId = useId();
+  const firstMenuLinkRef = useRef<HTMLAnchorElement | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -64,9 +66,12 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
       return undefined;
     }
 
+    firstMenuLinkRef.current?.focus();
+
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setMenuOpen(false);
+        menuButtonRef.current?.focus();
       }
     }
 
@@ -107,11 +112,25 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
             </Link>
 
             <div className="relative">
+              {menuOpen ? (
+                <button
+                  type="button"
+                  aria-label="Close navigation menu"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    menuButtonRef.current?.focus();
+                  }}
+                  className="fixed inset-0 z-30 cursor-default bg-slate-950/20"
+                />
+              ) : null}
+
               <button
+                ref={menuButtonRef}
                 type="button"
                 aria-controls={menuId}
                 aria-expanded={menuOpen}
-                aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+                aria-haspopup="dialog"
+                aria-label={menuOpen ? "Close primary navigation" : "Open primary navigation"}
                 onClick={() => setMenuOpen((current) => !current)}
                 className="inline-flex items-center gap-3 rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
               >
@@ -125,7 +144,8 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
               {menuOpen ? (
                 <div
                   id={menuId}
-                  className="absolute right-0 mt-3 w-72 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/95 p-3 shadow-2xl shadow-slate-950/40 backdrop-blur"
+                  aria-label="Primary navigation"
+                  className="absolute right-0 z-40 mt-3 w-72 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/95 p-3 shadow-2xl shadow-slate-950/40 backdrop-blur"
                 >
                   <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
                     <p className="text-sm font-semibold text-white">{displayName}</p>
@@ -133,13 +153,15 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
                   </div>
 
                   <nav aria-label="Primary" className="mt-3 grid gap-2">
-                    {navItems.map((item) => {
+                    {navItems.map((item, index) => {
                       const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
                       return (
                         <Link
+                          ref={index === 0 ? firstMenuLinkRef : undefined}
                           key={item.href}
                           href={item.href}
+                          aria-current={isActive ? "page" : undefined}
                           className={`rounded-2xl px-4 py-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 ${
                             isActive
                               ? "bg-cyan-400/10 text-cyan-200"

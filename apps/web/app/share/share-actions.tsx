@@ -106,6 +106,7 @@ export function ShareActions({ title, text, url }: ShareActionsProps) {
         <button
           type="button"
           onClick={handleCopyClick}
+          aria-label="Copy share text"
           className="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 bg-slate-950/70 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-900"
         >
           Copy
@@ -113,6 +114,7 @@ export function ShareActions({ title, text, url }: ShareActionsProps) {
         <button
           type="button"
           onClick={shareText}
+          aria-label="Open native share options"
           className="inline-flex flex-1 items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
         >
           Share

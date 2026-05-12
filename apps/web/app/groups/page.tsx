@@ -13,9 +13,17 @@ import {
   type GroupView,
   type MyGroupView,
 } from "@/lib/api";
+import { buildPageMetadata } from "@/lib/metadata";
 import { formatCountryLabel, isProfileComplete } from "@/lib/profile";
 import { getFriendlyDisplayName } from "@/lib/user-display";
 import { CopyInviteCodeButton } from "./copy-invite-code-button";
+
+export const metadata = buildPageMetadata({
+  title: "Groups",
+  description: "Create or join private football prediction groups and compete with your friends.",
+  index: false,
+  path: "/groups",
+});
 
 type GroupsSearchParams = {
   error?: string;

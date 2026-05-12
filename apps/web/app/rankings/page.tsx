@@ -6,7 +6,15 @@ import {
   type RankingEntry,
 } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { buildPageMetadata } from "@/lib/metadata";
 import { getFriendlyDisplayName } from "@/lib/user-display";
+
+export const metadata = buildPageMetadata({
+  title: "Rankings",
+  description: "Compare football prediction points, exact picks, and tournament standings across the active leaderboard.",
+  index: false,
+  path: "/rankings",
+});
 
 function RankingRow({ entry, isCurrentUser }: { entry: RankingEntry; isCurrentUser: boolean }) {
   return (

@@ -3,8 +3,16 @@ import { redirect } from "next/navigation";
 import { auth0 } from "@/lib/auth0";
 import { ApiError, getCurrentUserProfile, getGroupRanking, getMyGroups, type MyGroupView, type RankingEntry } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { buildPageMetadata } from "@/lib/metadata";
 import { getFriendlyDisplayName } from "@/lib/user-display";
 import { CopyInviteCodeButton } from "../copy-invite-code-button";
+
+export const metadata = buildPageMetadata({
+  title: "Group ranking",
+  description: "Track your private group leaderboard after confirmed football results land.",
+  index: false,
+  path: "/groups",
+});
 
 interface GroupDetailPageProps {
   params: Promise<{ groupId: string }>;

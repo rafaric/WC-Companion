@@ -18,6 +18,14 @@ import {
   type ExternalMatchResultView,
   type ExternalSyncRunView,
 } from "@/lib/api";
+import { buildPageMetadata } from "@/lib/metadata";
+
+export const metadata = buildPageMetadata({
+  title: "External results admin",
+  description: "Review staged football results from external providers before confirming or discarding them.",
+  index: false,
+  path: "/admin/external-results",
+});
 
 type AdminExternalResultsSearchParams = {
   error?: string;

@@ -18,12 +18,20 @@ import {
   type MyGroupView,
   type RankingEntry,
 } from "@/lib/api";
+import { buildPageMetadata } from "@/lib/metadata";
 import { formatCountryLabel, getTeamLabel, isProfileComplete } from "@/lib/profile";
 import { cn } from "@/lib/cn";
 import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
 import { getFriendlyDisplayName, getFriendlyEmailLabel } from "@/lib/user-display";
 import { RecentlyScoredResults, type RecentlyScoredResultItem } from "./recently-scored-results";
 import { CopyInviteCodeButton } from "../groups/copy-invite-code-button";
+
+export const metadata = buildPageMetadata({
+  title: "Dashboard",
+  description: "Review active fixtures, save predictions, and track your latest football competition results.",
+  index: false,
+  path: "/dashboard",
+});
 
 type DashboardSearchParams = {
   error?: string;

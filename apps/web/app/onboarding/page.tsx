@@ -8,12 +8,20 @@ import {
   getCurrentUserProfile,
   updateCurrentUserProfile,
 } from "@/lib/api";
+import { buildPageMetadata } from "@/lib/metadata";
 import {
   extractUniqueTeamsFromMatches,
   PROFILE_COUNTRY_OPTIONS,
   PROFILE_LANGUAGE_OPTIONS,
 } from "@/lib/profile";
 import { getFriendlyDisplayName } from "@/lib/user-display";
+
+export const metadata = buildPageMetadata({
+  title: "Complete profile",
+  description: "Choose your country, language, and favorite team before joining the football prediction competition.",
+  index: false,
+  path: "/onboarding",
+});
 
 type OnboardingSearchParams = {
   error?: string;

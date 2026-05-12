@@ -19,11 +19,19 @@ import {
   type PredictionView,
   type RankingEntry,
 } from "@/lib/api";
+import { buildPageMetadata } from "@/lib/metadata";
 import { formatCountryLabel, getTeamLabel } from "@/lib/profile";
 import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
 import { getFriendlyDisplayName } from "@/lib/user-display";
 
 import { ShareActions } from "./share-actions";
+
+export const metadata = buildPageMetadata({
+  title: "Share cards",
+  description: "Preview and share your football prediction snapshots, performance summaries, and private group standings.",
+  index: false,
+  path: "/share",
+});
 
 type ShareSearchParams = {
   error?: string;
@@ -464,7 +472,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
           <SectionHeader
             eyebrow="Shareable snapshots"
             title="Preview the card before you share it."
-            description="Create payload snapshots for your prediction, group standing, or performance summary. Image rendering is not wired yet, so this page focuses on the data that will be shared."
+            description="Preview your prediction, group standing, or performance summary with the current visual card treatment before you copy or share it."
           />
 
           {resolvedSearchParams?.success ? (
@@ -516,7 +524,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
               </label>
 
               <div className="mt-4 flex items-center justify-between gap-3">
-                <p className="text-xs leading-5 text-slate-500">Uses your saved prediction data. No image file is generated yet.</p>
+                <p className="text-xs leading-5 text-slate-500">Uses your saved prediction data and the current visual card background.</p>
                 <button
                   type="submit"
                   className="rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
@@ -536,7 +544,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                   : "Choose a saved prediction to see the payload that would be shared."
               }
               stats={predictionStats}
-              note="Current MVP cards store structured data only. That keeps the UX fast and lets image rendering land later without changing the flow."
+              note="This preview combines your saved prediction data with the current visual share-card treatment."
               backgroundImage="/assets/shareprediction.png"
               shareActions={
                 predictionShareContent ? (

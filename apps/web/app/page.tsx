@@ -12,9 +12,17 @@ import {
   type RankingEntry,
   type Tournament,
 } from "@/lib/api";
+import { buildPageMetadata } from "@/lib/metadata";
 import { formatCountryLabel, getTeamLabel, isProfileComplete } from "@/lib/profile";
 import { getFriendlyDisplayName, getFriendlyEmailLabel } from "@/lib/user-display";
 import Image from "next/image";
+
+export const metadata = buildPageMetadata({
+  title: "Social football predictions",
+  description:
+    "Predict football matches, climb rankings, and compete with friends in private groups with a mobile-first experience.",
+  path: "/",
+});
 
 
 const STEPS = [

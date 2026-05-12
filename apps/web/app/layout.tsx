@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { auth0 } from "@/lib/auth0";
 import { getCurrentUserProfile } from "@/lib/api";
+import { metadataBase, SITE_DESCRIPTION, SITE_NAME } from "@/lib/metadata";
 import { Providers } from "@/app/providers";
 import { AppChrome } from "./app-chrome";
 
@@ -25,17 +26,31 @@ function getUserPermissions(user: unknown): string[] {
 }
 
 export const metadata: Metadata = {
-  applicationName: "WorldPredict",
+  metadataBase,
+  applicationName: SITE_NAME,
   title: {
-    default: "WorldPredict",
-    template: "%s | WorldPredict",
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
   },
-  description:
-    "A social football prediction platform where fans compete, score, and share results — not a betting product.",
+  description: SITE_DESCRIPTION,
   manifest: "/manifest.webmanifest",
+  openGraph: {
+    type: "website",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    siteName: SITE_NAME,
+    url: "/",
+    images: [{ url: "/assets/hero.png" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    images: ["/assets/hero.png"],
+  },
   appleWebApp: {
     capable: true,
-    title: "WorldPredict",
+    title: SITE_NAME,
     statusBarStyle: "black-translucent",
   },
   icons: {
