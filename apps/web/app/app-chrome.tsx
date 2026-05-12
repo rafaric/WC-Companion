@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
-import type { CurrentUserProfile } from "@/lib/api";
+import type { CurrentUserProfile, TeamView } from "@/lib/api";
 import { getFriendlyDisplayName, getFriendlyEmailLabel, type SessionDisplayUser } from "@/lib/user-display";
 
 interface AppChromeProps {
   canAccessExternalResults: boolean;
   children: ReactNode;
   currentUserProfile: CurrentUserProfile | null;
+  favoriteTeam: TeamView | null;
   sessionUser: SessionDisplayUser | null;
 }
 
@@ -21,6 +22,17 @@ interface NavItem {
 }
 
 const AUTHENTICATED_PATH_PREFIXES = ["/admin", "/dashboard", "/groups", "/rankings", "/share"] as const;
+
+const FIFA_FLAG_EMOJI: Record<string, string> = {
+  ARG: "🇦🇷",
+  BRA: "🇧🇷",
+  ENG: "🏴",
+  ESP: "🇪🇸",
+  FRA: "🇫🇷",
+  GER: "🇩🇪",
+  POR: "🇵🇹",
+  URU: "🇺🇾",
+};
 
 function isAuthenticatedPath(pathname: string): boolean {
   return AUTHENTICATED_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -50,7 +62,25 @@ function getSectionLabel(pathname: string): string {
   return "Predictions dashboard";
 }
 
-export function AppChrome({ canAccessExternalResults, children, currentUserProfile, sessionUser }: AppChromeProps) {
+function getFlagEmoji(code: string | null): string | null {
+  if (!code) {
+    return null;
+  }
+
+  const normalizedCode = code.trim().toUpperCase();
+
+  if (FIFA_FLAG_EMOJI[normalizedCode]) {
+    return FIFA_FLAG_EMOJI[normalizedCode];
+  }
+
+  if (!/^[A-Z]{2}$/.test(normalizedCode)) {
+    return null;
+  }
+
+  return String.fromCodePoint(...Array.from(normalizedCode).map((char) => 127397 + char.charCodeAt(0)));
+}
+
+export function AppChrome({ canAccessExternalResults, children, currentUserProfile, favoriteTeam, sessionUser }: AppChromeProps) {
   const pathname = usePathname();
   const menuId = useId();
   const firstMenuLinkRef = useRef<HTMLAnchorElement | null>(null);
@@ -96,6 +126,9 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
 
   const displayName = getFriendlyDisplayName(sessionUser, currentUserProfile);
   const emailLabel = getFriendlyEmailLabel(sessionUser, currentUserProfile);
+  const countryFlag = getFlagEmoji(currentUserProfile?.country ?? null);
+  const favoriteTeamFlag = getFlagEmoji(favoriteTeam?.flagCode ?? null) ?? getFlagEmoji(favoriteTeam?.countryCode ?? null);
+  const favoriteTeamLabel = favoriteTeam?.shortName ?? "Team";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-50">
@@ -111,7 +144,34 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
               </div>
             </Link>
 
-            <div className="relative">
+            <nav aria-label="Primary" className="hidden items-center gap-2 md:flex">
+              {navItems.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 ${
+                      isActive
+                        ? "bg-cyan-400/10 text-cyan-200"
+                        : "text-slate-200 hover:bg-slate-800/80 hover:text-white"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+              <Link
+                href="/auth/logout"
+                className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
+              >
+                Log out
+              </Link>
+            </nav>
+
+            <div className="relative md:hidden">
               {menuOpen ? (
                 <button
                   type="button"
@@ -147,9 +207,21 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
                   aria-label="Primary navigation"
                   className="absolute right-0 z-40 mt-3 w-72 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/95 p-3 shadow-2xl shadow-slate-950/40 backdrop-blur"
                 >
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-                    <p className="text-sm font-semibold text-white">{displayName}</p>
-                    <p className="mt-1 text-xs text-slate-400">{emailLabel}</p>
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-white">{displayName}</p>
+                      <p className="mt-1 truncate text-xs text-slate-400">{emailLabel}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2 text-xs font-semibold text-slate-200">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-slate-800 bg-slate-900 px-2 py-1">
+                        <span aria-hidden="true">{countryFlag ?? "🌐"}</span>
+                        {currentUserProfile?.country ?? "--"}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-slate-800 bg-slate-900 px-2 py-1">
+                        <span aria-hidden="true">{favoriteTeamFlag ?? "⚽"}</span>
+                        {favoriteTeamLabel}
+                      </span>
+                    </div>
                   </div>
 
                   <nav aria-label="Primary" className="mt-3 grid gap-2">

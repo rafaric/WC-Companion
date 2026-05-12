@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import { auth0 } from "@/lib/auth0";
-import { getCurrentUserProfile } from "@/lib/api";
+import { getActiveTournamentMatches, getCurrentUserProfile, type MatchView } from "@/lib/api";
 import { metadataBase, SITE_DESCRIPTION, SITE_KEYWORDS, SITE_NAME } from "@/lib/metadata";
 import { Providers } from "@/app/providers";
 import { AppChrome } from "./app-chrome";
@@ -23,6 +23,24 @@ function getUserPermissions(user: unknown): string[] {
   }
 
   return permissions;
+}
+
+function findTeamById(matches: MatchView[], teamId: string | null): MatchView["homeTeam"] | null {
+  if (!teamId) {
+    return null;
+  }
+
+  for (const match of matches) {
+    if (match.homeTeam.id === teamId) {
+      return match.homeTeam;
+    }
+
+    if (match.awayTeam.id === teamId) {
+      return match.awayTeam;
+    }
+  }
+
+  return null;
 }
 
 export const metadata: Metadata = {
@@ -76,13 +94,21 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   const session = await auth0.getSession();
   let currentUserProfile = null;
+  let favoriteTeam = null;
 
   if (session) {
     try {
       const accessToken = (await auth0.getAccessToken()).token;
-      currentUserProfile = await getCurrentUserProfile(accessToken);
+      const [profile, matches] = await Promise.all([
+        getCurrentUserProfile(accessToken),
+        getActiveTournamentMatches().catch(() => []),
+      ]);
+
+      currentUserProfile = profile;
+      favoriteTeam = findTeamById(matches, profile.favoriteTeamId);
     } catch {
       currentUserProfile = null;
+      favoriteTeam = null;
     }
   }
 
@@ -101,6 +127,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           <AppChrome
             canAccessExternalResults={canAccessExternalResults}
             currentUserProfile={currentUserProfile}
+            favoriteTeam={favoriteTeam}
             sessionUser={session?.user ?? null}
           >
             {children}

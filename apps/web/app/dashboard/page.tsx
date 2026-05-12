@@ -19,10 +19,10 @@ import {
   type RankingEntry,
 } from "@/lib/api";
 import { buildPageMetadata } from "@/lib/metadata";
-import { formatCountryLabel, getTeamLabel, isProfileComplete } from "@/lib/profile";
+import { isProfileComplete } from "@/lib/profile";
 import { cn } from "@/lib/cn";
 import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
-import { getFriendlyDisplayName, getFriendlyEmailLabel } from "@/lib/user-display";
+import { getFriendlyDisplayName } from "@/lib/user-display";
 import { RecentlyScoredResults, type RecentlyScoredResultItem } from "./recently-scored-results";
 import { MatchPredictionAccordion } from "./match-prediction-accordion";
 import { CopyInviteCodeButton } from "../groups/copy-invite-code-button";
@@ -88,6 +88,20 @@ function getGroupRoleLabel(role: MyGroupView["role"]): string {
 
 function formatMemberCount(memberCount: number): string {
   return `${memberCount} ${memberCount === 1 ? "member" : "members"}`;
+}
+
+function selectFeaturedGroup(groups: MyGroupView[]): MyGroupView | null {
+  return [...groups].sort((left, right) => {
+    if (left.role !== right.role) {
+      return left.role === "OWNER" ? -1 : 1;
+    }
+
+    if (left.memberCount !== right.memberCount) {
+      return right.memberCount - left.memberCount;
+    }
+
+    return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+  })[0] ?? null;
 }
 
 function buildDashboardPath(params: { error?: string } = {}): string {
@@ -299,24 +313,6 @@ function getPredictionSaveErrorCode(error: unknown): string {
   return "update_failed";
 }
 
-function findTeamById(matches: MatchView[], teamId: string | null): MatchView["homeTeam"] | null {
-  if (!teamId) {
-    return null;
-  }
-
-  for (const match of matches) {
-    if (match.homeTeam.id === teamId) {
-      return match.homeTeam;
-    }
-
-    if (match.awayTeam.id === teamId) {
-      return match.awayTeam;
-    }
-  }
-
-  return null;
-}
-
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const session = await auth0.getSession();
 
@@ -345,13 +341,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;
   const displayName = getFriendlyDisplayName(session.user, currentUserProfile);
-  const emailLabel = getFriendlyEmailLabel(session.user, currentUserProfile);
   const matchCards = mergePredictions(matches, predictions);
   const upcomingMatchCards = getUpcomingMatchCards(matchCards);
   const recentlyScoredResultItems = getRecentlyScoredResultItems(matchCards);
   const currentUserRankingEntry = findRankingEntryByUserId(globalRanking, currentUserProfile?.id);
   const rankingPreview = getRankingPreview(globalRanking, 3);
-  const primaryGroup = myGroups[0] ?? null;
+  const featuredGroup = selectFeaturedGroup(myGroups);
+  const additionalGroupsCount = featuredGroup ? Math.max(myGroups.length - 1, 0) : 0;
 
   async function submitPrediction(matchId: string, formData: FormData) {
     "use server";
@@ -411,61 +407,54 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
           ) : null}
 
-          {currentUserProfile ? (
-            <div className="grid gap-4 rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-2xl shadow-slate-950/30 sm:grid-cols-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Profile</p>
-                <p className="mt-1 font-semibold text-white">{displayName}</p>
-                <p className="text-sm text-slate-400">{emailLabel}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Country</p>
-                <p className="mt-1 font-semibold text-white">{formatCountryLabel(currentUserProfile.country)}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Favorite team</p>
-                <p className="mt-1 font-semibold text-white">
-                  {getTeamLabel(findTeamById(matches, currentUserProfile.favoriteTeamId))}
-                </p>
-              </div>
-            </div>
-          ) : null}
-
-          {primaryGroup ? (
+          {featuredGroup ? (
             <section className="rounded-3xl border border-cyan-400/20 bg-cyan-400/10 p-5 shadow-xl shadow-cyan-950/20">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-2">
-                  <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Your group</p>
-                  <h2 className="text-lg font-semibold text-white">{primaryGroup.name}</h2>
-                  <p className="text-sm leading-6 text-cyan-100/80">
-                    You are a {getGroupRoleLabel(primaryGroup.role)} here.
-                    {myGroups.length > 1 ? ` You are also in ${myGroups.length - 1} more group${myGroups.length - 1 === 1 ? "" : "s"}.` : ""}
+                  <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">
+                    {myGroups.length > 1 ? "Your groups" : "Your group"}
                   </p>
+                  <div className="flex w-full grow flex-col">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h2 className="text-lg font-semibold text-white">{featuredGroup.name}</h2>
+                      <span className="rounded-full border border-cyan-300/20 bg-slate-950/40 px-3 py-1 text-xs text-cyan-100/80">
+                        {getGroupRoleLabel(featuredGroup.role)}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs text-cyan-100/80">
+                      <span className="rounded-full border border-cyan-300/20 bg-slate-950/40 px-3 py-1">
+                        {formatMemberCount(featuredGroup.memberCount)}
+                      </span>
+                      {additionalGroupsCount > 0 ? (
+                        <span className="rounded-full border border-cyan-300/20 bg-slate-950/40 px-3 py-1">
+                          +{additionalGroupsCount} more group{additionalGroupsCount === 1 ? "" : "s"}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
 
-                <Link
-                  href={`/groups/${primaryGroup.id}`}
-                  className="inline-flex rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
-                >
-                  Open group ranking
-                </Link>
+                <div className="flex flex-col gap-2 sm:items-end">
+                  <Link
+                    href={`/groups/${featuredGroup.id}`}
+                    className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-4 py-2 text-center text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 sm:w-auto"
+                  >
+                    Open featured group
+                  </Link>
+                  {myGroups.length > 1 ? (
+                    <Link href="/groups" className="text-center text-sm font-medium text-cyan-200 transition hover:text-white">
+                      View all groups
+                    </Link>
+                  ) : null}
+                </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2 text-xs text-cyan-100/80">
-                <span className="rounded-full border border-cyan-300/20 bg-slate-950/40 px-3 py-1">
-                  Invite {primaryGroup.inviteCode}
-                </span>
-                <span className="rounded-full border border-cyan-300/20 bg-slate-950/40 px-3 py-1">
-                  {getGroupRoleLabel(primaryGroup.role)}
-                </span>
-                <span className="rounded-full border border-cyan-300/20 bg-slate-950/40 px-3 py-1">
-                  {formatMemberCount(primaryGroup.memberCount)}
-                </span>
-              </div>
-
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm leading-6 text-cyan-100/70">Copy the invite code or jump into the private leaderboard.</p>
-                <CopyInviteCodeButton inviteCode={primaryGroup.inviteCode} />
+              <div className="mt-4 grid gap-1 sm:grid-cols-[1fr_auto] sm:items-center">
+                <p className="px-2 text-sm leading-6 text-cyan-100/70">
+                  Share this code with friends so they can join this group:
+                </p>
+                <CopyInviteCodeButton inviteCode={featuredGroup.inviteCode} showCode />
               </div>
             </section>
           ) : null}
@@ -515,37 +504,41 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               </div>
               <Link
                 href="/rankings"
-                className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
+                className="whitespace-nowrap rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
               >
                 View all
               </Link>
             </div>
 
             {currentUserRankingEntry ? (
-              <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Current position</p>
-                    <p className="mt-1 text-2xl font-black text-white">#{currentUserRankingEntry.position}</p>
+              <div className="mt-4 overflow-hidden rounded-3xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/15 via-slate-900/80 to-violet-400/10 p-4 shadow-xl shadow-cyan-950/20">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl border border-cyan-300/30 bg-slate-950/70 shadow-lg shadow-cyan-500/10">
+                      <span className="text-2xl font-black text-cyan-200">#{currentUserRankingEntry.position}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Current position</p>
+                      <p className="mt-1 truncate text-sm font-semibold text-white">{displayName}</p>
+                      <p className="text-xs text-cyan-100/70">Your place in the global board</p>
+                    </div>
                   </div>
-                  <div className="text-right">
+
+                  <div className="shrink-0 text-right">
                     <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Points</p>
-                    <p className="mt-1 text-2xl font-black text-white">{currentUserRankingEntry.totalPoints}</p>
+                    <p className="mt-1 text-3xl font-black tabular-nums text-white">{currentUserRankingEntry.totalPoints}</p>
+                    <p className="text-xs font-semibold text-cyan-100/70">pts</p>
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Exact</p>
-                    <p className="mt-1 text-lg font-bold text-white">{currentUserRankingEntry.exactPredictions}</p>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 text-center">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Exact picks</p>
+                    <p className="mt-1 text-xl font-black text-white">{currentUserRankingEntry.exactPredictions}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                  <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 text-center">
                     <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Predictions</p>
-                    <p className="mt-1 text-lg font-bold text-white">{currentUserRankingEntry.predictionsCount}</p>
-                  </div>
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Username</p>
-                    <p className="mt-1 text-lg font-bold text-white">{displayName}</p>
+                    <p className="mt-1 text-xl font-black text-white">{currentUserRankingEntry.predictionsCount}</p>
                   </div>
                 </div>
               </div>
