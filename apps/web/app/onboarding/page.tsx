@@ -89,7 +89,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-50">
+    <main id="main-content" tabIndex={-1} className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-50">
       <div className="worldpredict-aurora absolute inset-0 -z-10" />
 
       <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 py-6 sm:px-6 lg:px-8">
@@ -120,7 +120,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
             </div>
 
             {resolvedSearchParams?.error ? (
-              <div className="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+              <div role="alert" aria-live="assertive" className="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
                 {ERROR_MESSAGES[resolvedSearchParams.error] ?? "Something went wrong. Please try again."}
               </div>
             ) : null}

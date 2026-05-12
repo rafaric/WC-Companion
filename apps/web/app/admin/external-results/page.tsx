@@ -440,7 +440,7 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
   const latestResultsSyncRun = getLatestSyncRunByType(syncRuns, "RESULTS");
 
   return (
-    <main className="mx-auto w-full max-w-6xl">
+    <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl">
       <section className="space-y-6 py-2 sm:py-4">
           <div className="space-y-3">
             <p className="inline-flex rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-200">
@@ -455,19 +455,19 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
           </div>
 
           {resolvedSearchParams?.error ? (
-            <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
+            <div role="alert" aria-live="assertive" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
               {RESULT_ERROR_MESSAGES[resolvedSearchParams.error] ?? RESULT_ERROR_MESSAGES.bad_request}
             </div>
           ) : null}
 
           {resolvedSearchParams?.success ? (
-            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
+            <div role="status" aria-live="polite" className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
               {RESULT_SUCCESS_MESSAGES[resolvedSearchParams.success] ?? RESULT_SUCCESS_MESSAGES.confirmed}
             </div>
           ) : null}
 
           {loadErrorMessage ? (
-            <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+            <div role="alert" aria-live="assertive" className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
               {loadErrorMessage}
             </div>
           ) : null}

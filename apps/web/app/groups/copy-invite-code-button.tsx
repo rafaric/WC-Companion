@@ -33,6 +33,9 @@ export function CopyInviteCodeButton({ inviteCode }: CopyInviteCodeButtonProps) 
         />
         {copied ? "Copied" : "Copy invite"}
       </span>
+      <span className="sr-only" aria-live="polite">
+        {copied ? "Invite code copied to clipboard" : ""}
+      </span>
     </button>
   );
 }

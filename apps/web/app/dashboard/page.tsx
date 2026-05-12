@@ -463,7 +463,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl">
+    <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-5xl">
       <section className="space-y-6 py-2 sm:py-4">
           <div className="space-y-3">
             <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
@@ -478,7 +478,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </div>
 
           {resolvedSearchParams?.error ? (
-            <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+            <div role="alert" aria-live="assertive" className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
               {ERROR_MESSAGES[resolvedSearchParams.error] ?? "Something went wrong. Please try again."}
             </div>
           ) : null}
@@ -716,9 +716,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Global ranking</p>
-                <h2 className="mt-1 text-base font-semibold text-white">Secondary context</h2>
+                <h2 className="mt-1 text-base font-semibold text-white">Your overall standing</h2>
                 <p className="mt-1 text-sm leading-6 text-slate-400">
-                  Useful, but the group story stays front and center for demo sessions.
+                  See how your points compare across everyone playing, beyond your private groups.
                 </p>
               </div>
               <Link

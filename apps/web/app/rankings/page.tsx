@@ -66,7 +66,7 @@ export default async function RankingsPage() {
   const displayName = session ? getFriendlyDisplayName(session.user, currentUserProfile) : "You";
 
   return (
-    <main className="mx-auto w-full max-w-4xl">
+    <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-4xl">
       <section className="space-y-6 py-2 sm:py-4">
           <div className="space-y-3">
             <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">

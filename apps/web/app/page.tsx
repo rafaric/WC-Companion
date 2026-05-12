@@ -77,6 +77,23 @@ const STEPS = [
   },
 ] as const;
 
+const VALUE_PILLARS = [
+  {
+    title: "Private groups first",
+    description: "Create your circle, invite friends, and keep the competition personal.",
+  },
+  {
+    title: "Fast match picks",
+    description: "Set exact scores in seconds with a mobile-first flow built for quick check-ins.",
+  },
+  {
+    title: "Live score tension",
+    description: "Watch rankings move as confirmed results hit the board and exact picks land.",
+  },
+] as const;
+
+const ACCOUNT_REASSURANCE = ["Secure sign-in", "Live rankings", "Private groups"] as const;
+
 interface LivePreviewItem {
   label: string;
   value: string;
@@ -108,6 +125,20 @@ function formatKickoff(kickoffAt: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(kickoffAt));
+}
+
+function getFlagEmoji(flagCode: string | null): string | null {
+  if (!flagCode) {
+    return null;
+  }
+
+  const normalizedCode = flagCode.trim().toUpperCase();
+
+  if (!/^[A-Z]{2}$/.test(normalizedCode)) {
+    return null;
+  }
+
+  return String.fromCodePoint(...Array.from(normalizedCode).map((char) => 127397 + char.charCodeAt(0)));
 }
 
 function buildPreviewItems(
@@ -187,9 +218,15 @@ export default async function HomePage() {
   const accountEmail = user ? getFriendlyEmailLabel(user, currentUserProfile) : null;
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;
   const favoriteTeam = currentUserProfile ? getTeamById(matches, currentUserProfile.favoriteTeamId) : null;
+  const homeFlag = getFlagEmoji(previewMatch?.homeTeam.flagCode ?? null);
+  const awayFlag = getFlagEmoji(previewMatch?.awayTeam.flagCode ?? null);
+  const primaryCtaHref = user ? (profileComplete ? "/dashboard" : "/onboarding") : "/auth/login?returnTo=/dashboard";
+  const primaryCtaLabel = user ? (profileComplete ? "Open dashboard" : "Complete profile") : "Log in to predict";
+  const secondaryCtaHref = user ? "/groups" : "/auth/login";
+  const secondaryCtaLabel = user ? "My groups" : "Secure sign in";
 
   return (
-    <main className="relative overflow-hidden bg-slate-950 text-slate-50">
+    <main id="main-content" tabIndex={-1} className="relative overflow-hidden bg-slate-950 text-slate-50">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(LANDING_STRUCTURED_DATA) }}
@@ -217,59 +254,55 @@ export default async function HomePage() {
           )}
         </header>
 
-        <section className="grid flex-1 items-center gap-10 py-10 lg:grid-cols-[1.2fr_0.8fr] lg:py-16">
+        <section className="grid flex-1 items-start gap-10 py-10 lg:grid-cols-[1.1fr_0.9fr] lg:py-16">
           <div className="space-y-8">
-            <div className="space-y-4">
+            <div className="space-y-5">
               <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
                 {formatTournamentLabel(activeTournament)}
               </p>
-              <h1 className="max-w-2xl text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">
-                Predict matches. Score points. <span className="text-cyan-300">Compete with friends.</span>
-              </h1>
-              <p className="max-w-xl text-base leading-7 text-slate-300 sm:text-lg">
-                WorldPredict is a mobile-first football prediction platform for tournaments,
-                built around friendly competition, live rankings, and shareable moments.
-              </p>
+              <div className="space-y-4">
+                <h1 className="max-w-3xl text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">
+                  Football predictions feel better when <span className="text-cyan-300">the rivalry is personal.</span>
+                </h1>
+                <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+                  WorldPredict keeps the experience focused on quick match picks, private groups,
+                  and live rankings that make every confirmed result matter.
+                </p>
+              </div>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href={primaryCtaHref}
+                className="rounded-full bg-gradient from-cyan-400 via-blue-400 to-violet-400 px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
+              >
+                {primaryCtaLabel}
+              </Link>
+              <Link
+                href={secondaryCtaHref}
+                className="rounded-full border border-slate-700 bg-slate-900/80 px-6 py-3 text-center text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
+              >
+                {secondaryCtaLabel}
+              </Link>
               {user ? (
-                <>
-                  <Link
-                    href={profileComplete ? "/dashboard" : "/onboarding"}
-                    className="rounded-full bg-gradient from-cyan-400 via-blue-400 to-violet-400 px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
-                  >
-                    {profileComplete ? "Open dashboard" : "Complete profile"}
-                  </Link>
-                  <Link
-                    href="/groups"
-                    className="rounded-full border border-slate-700 bg-slate-900/80 px-6 py-3 text-center text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-                  >
-                    My groups
-                  </Link>
-                  <Link
-                    href="/auth/logout"
-                    className="rounded-full border border-slate-700 bg-slate-900/80 px-6 py-3 text-center text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-                  >
-                    Log out
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link
-                    href="/auth/login?returnTo=/dashboard"
-                    className="rounded-full bg-gradient from-cyan-400 via-blue-400 to-violet-400 px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
-                  >
-                    Log in to predict
-                  </Link>
-                  <Link
-                    href="/auth/login"
-                    className="rounded-full border border-slate-700 bg-slate-900/80 px-6 py-3 text-center text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
-                  >
-                    Sign in with Auth0
-                  </Link>
-                </>
-              )}
+                <Link
+                  href="/auth/logout"
+                  className="rounded-full border border-slate-700 bg-slate-900/80 px-6 py-3 text-center text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
+                >
+                  Log out
+                </Link>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap gap-2 text-xs font-medium text-slate-300">
+              {ACCOUNT_REASSURANCE.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-slate-300"
+                >
+                  {item}
+                </span>
+              ))}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
@@ -284,14 +317,26 @@ export default async function HomePage() {
                 </div>
               ))}
             </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              {VALUE_PILLARS.map((pillar) => (
+                <div
+                  key={pillar.title}
+                  className="rounded-3xl border border-slate-800/80 bg-slate-900/60 p-5 backdrop-blur"
+                >
+                  <p className="text-sm font-semibold text-white">{pillar.title}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-400">{pillar.description}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <aside className="rounded-[2rem] border border-slate-800/80 bg-slate-900/70 p-5 shadow-2xl shadow-cyan-950/20 backdrop-blur">
-            <div className="rounded-[1.5rem] border border-slate-800 bg-slate-950/70 p-4">
-              <div className="flex items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <aside className="space-y-4 rounded-[2rem] border border-slate-800/80 bg-slate-900/70 p-5 shadow-2xl shadow-cyan-950/20 backdrop-blur">
+            <div className="rounded-[1.5rem] border border-cyan-400/20 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 p-5">
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Upcoming match</p>
-                  <p className="mt-2 text-lg font-semibold text-white">
+                  <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Match to watch</p>
+                  <p className="mt-2 text-xl font-semibold text-white">
                     {previewMatch ? `${previewMatch.homeTeam.name} vs ${previewMatch.awayTeam.name}` : "No matches scheduled"}
                   </p>
                 </div>
@@ -302,151 +347,168 @@ export default async function HomePage() {
 
               {previewMatch ? (
                 <>
-                  <div className="grid grid-cols-3 gap-3 py-4 text-center">
-                    <div className="rounded-2xl bg-slate-900 p-3">
-                      <p className="text-2xl font-black text-white">{previewMatch.homeTeam.shortName}</p>
-                      <p className="text-xs text-slate-400">Home</p>
+                  <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center">
+                    <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-4">
+                      <p className="text-3xl" aria-hidden="true">{homeFlag ?? "⚽"}</p>
+                      <p className="mt-2 text-lg font-black text-white">{previewMatch.homeTeam.shortName}</p>
+                      <p className="text-xs text-slate-400">{previewMatch.homeTeam.name}</p>
                     </div>
-                    <div className="rounded-2xl bg-slate-900 p-3">
-                      <p className="text-xs uppercase tracking-[0.3em] text-slate-500">VS</p>
+                    <div className="rounded-full border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
+                      VS
                     </div>
-                    <div className="rounded-2xl bg-slate-900 p-3">
-                      <p className="text-2xl font-black text-white">{previewMatch.awayTeam.shortName}</p>
-                      <p className="text-xs text-slate-400">Away</p>
+                    <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-4">
+                      <p className="text-3xl" aria-hidden="true">{awayFlag ?? "⚽"}</p>
+                      <p className="mt-2 text-lg font-black text-white">{previewMatch.awayTeam.shortName}</p>
+                      <p className="text-xs text-slate-400">{previewMatch.awayTeam.name}</p>
                     </div>
                   </div>
 
-                  <p className="pb-4 text-sm text-slate-400">
-                    {previewMatch.stage}
-                    {previewMatch.groupName ? ` · ${previewMatch.groupName}` : ""} · {formatKickoff(previewMatch.kickoffAt)}
-                  </p>
+                  <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300">
+                    <p>
+                      {previewMatch.stage}
+                      {previewMatch.groupName ? ` · ${previewMatch.groupName}` : ""}
+                    </p>
+                    <p className="mt-1 text-slate-400">Kickoff {formatKickoff(previewMatch.kickoffAt)}</p>
+                  </div>
                 </>
               ) : (
-                <div className="py-4 text-sm text-slate-400">
+                <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-400">
                   The backend has not published upcoming matches yet.
                 </div>
               )}
+            </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Global ranking</p>
-                {rankingLeader ? (
-                  <div className="mt-4 space-y-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-white">
-                          #{rankingLeader.position} {rankingLeader.username}
-                        </p>
-                        <p className="text-sm text-slate-400">{ranking.length} players on the board</p>
-                      </div>
-                      <p className="text-lg font-black text-cyan-300">{rankingLeader.totalPoints} pts</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 text-center text-sm">
-                      <div className="rounded-2xl bg-slate-900 p-3">
-                        <p className="text-lg font-bold text-white">{rankingLeader.exactPredictions}</p>
-                        <p className="text-xs text-slate-400">Exact picks</p>
-                      </div>
-                      <div className="rounded-2xl bg-slate-900 p-3">
-                        <p className="text-lg font-bold text-white">{rankingLeader.predictionsCount}</p>
-                        <p className="text-xs text-slate-400">Predictions</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="mt-4 text-sm leading-6 text-slate-400">
-                    No public ranking data yet. Be the first to score when the tournament starts.
-                  </p>
-                )}
-              </div>
-
-              <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">How it works</p>
-                <div className="mt-4 space-y-3">
-                  {STEPS.map((step) => (
-                    <div key={step.number} className="flex items-start gap-3">
-                      <span className="mt-0.5 rounded-full bg-cyan-400/10 px-2 py-1 text-[11px] font-semibold text-cyan-300">
-                        {step.number}
-                      </span>
-                      <div>
-                        <p className="font-semibold text-white">{step.title}</p>
-                        <p className="text-sm leading-6 text-slate-400">{step.description}</p>
-                      </div>
-                    </div>
-                  ))}
+            <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">How it works</p>
+                  <p className="mt-1 text-sm text-slate-500">Three fast steps from pick to bragging rights.</p>
                 </div>
               </div>
+              <div className="mt-4 space-y-3">
+                {STEPS.map((step) => (
+                  <div key={step.number} className="flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-3">
+                    <span className="mt-0.5 rounded-full bg-cyan-400/10 px-2 py-1 text-[11px] font-semibold text-cyan-300">
+                      {step.number}
+                    </span>
+                    <div>
+                      <p className="font-semibold text-white">{step.title}</p>
+                      <p className="text-sm leading-6 text-slate-400">{step.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-              <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Auth0 session</p>
-                {user ? (
-                  <div className="mt-3 space-y-1">
+            <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                {user ? "Your account" : "Ready when you are"}
+              </p>
+              {user ? (
+                <div className="mt-4 space-y-4">
+                  <div>
                     <p className="font-semibold text-white">{accountLabel}</p>
-                    <p className="text-sm text-slate-400">{user.email ?? "Logged in"}</p>
+                    <p className="text-sm text-slate-400">{accountEmail ?? "Authenticated account"}</p>
                     {currentUserProfile ? (
-                      <p className="text-xs text-cyan-300">
-                        Synced profile: {currentUserProfile.country ?? "country pending"}
+                      <p className="mt-1 text-xs text-cyan-300">
+                        {profileComplete
+                          ? "Profile ready to compete."
+                          : "Finish your profile to unlock your full summary."}
                       </p>
                     ) : currentUserProfileError ? (
-                      <p className="text-xs text-slate-500">
-                        Backend profile unavailable; using Auth0 session only.
+                      <p className="mt-1 text-xs text-slate-500">
+                        Profile details are temporarily unavailable, but your session is active.
                       </p>
                     ) : null}
-                    <Link href="/auth/logout" className="inline-flex text-sm font-medium text-cyan-300">
-                      Log out
-                    </Link>
                   </div>
-                ) : (
-                  <div className="mt-3 space-y-1">
-                    <p className="font-semibold text-white">Guest mode</p>
-                    <p className="text-sm text-slate-400">Log in to sync your predictions and ranking.</p>
-                    <Link href="/auth/login?returnTo=/" className="inline-flex text-sm font-medium text-cyan-300">
-                      Log in
-                    </Link>
-                  </div>
-                )}
-              </div>
 
-              {currentUserProfile ? (
-                <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Profile status</p>
-                      <p className="mt-1 font-semibold text-white">{profileComplete ? "Complete" : "Needs setup"}</p>
-                    </div>
+                  {currentUserProfile ? (
+                    profileComplete ? (
+                      <div className="grid gap-3 text-sm sm:grid-cols-2">
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Country</p>
+                          <p className="mt-1 font-semibold text-white">{formatCountryLabel(currentUserProfile.country)}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Favorite team</p>
+                          <p className="mt-1 font-semibold text-white">{getTeamLabel(favoriteTeam)}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Preferred language</p>
+                          <p className="mt-1 font-semibold text-white">
+                            {currentUserProfile.preferredLanguage ?? "Not set"}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Username</p>
+                          <p className="mt-1 font-semibold text-white">{currentUserProfile.username}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-200">
+                        Add your country and favorite team so the app can personalize your competition view.
+                      </div>
+                    )
+                  ) : null}
+
+                  <div className="flex flex-wrap gap-3">
                     <Link
                       href="/onboarding"
-                      className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300"
+                      className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-xs font-medium text-cyan-300"
                     >
-                      {profileComplete ? "Edit" : "Finish now"}
+                      {profileComplete ? "Edit profile" : "Finish profile"}
+                    </Link>
+                    <Link href="/groups" className="rounded-full border border-slate-700 px-4 py-2 text-xs font-medium text-slate-200">
+                      Open groups
                     </Link>
                   </div>
-                  {profileComplete ? (
-                    <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Country</p>
-                        <p className="mt-1 font-semibold text-white">{formatCountryLabel(currentUserProfile.country)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Favorite team</p>
-                        <p className="mt-1 font-semibold text-white">{getTeamLabel(favoriteTeam)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Preferred language</p>
-                        <p className="mt-1 font-semibold text-white">
-                          {currentUserProfile.preferredLanguage ?? "Not set"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Username</p>
-                        <p className="mt-1 font-semibold text-white">{currentUserProfile.username}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="mt-4 text-sm leading-6 text-amber-300">
-                      Finish country and favorite team to unlock your profile summary.
-                    </p>
-                  )}
                 </div>
-              ) : null}
+              ) : (
+                <div className="mt-4 space-y-4">
+                  <p className="text-sm leading-6 text-slate-400">
+                    Sign in to save predictions, join private groups, and follow the ranking as results are confirmed.
+                  </p>
+                  <div className="flex flex-wrap gap-2 text-xs text-slate-300">
+                    {ACCOUNT_REASSURANCE.map((item) => (
+                      <span key={item} className="rounded-full bg-slate-900 px-3 py-1.5">
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                  <Link href="/auth/login?returnTo=/" className="inline-flex text-sm font-medium text-cyan-300">
+                    Log in
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Live competition snapshot</p>
+              {rankingLeader ? (
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-white">#{rankingLeader.position} {rankingLeader.username}</p>
+                      <p className="text-sm text-slate-400">{ranking.length} players currently ranked</p>
+                    </div>
+                    <p className="text-lg font-black text-cyan-300">{rankingLeader.totalPoints} pts</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-center text-sm">
+                    <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
+                      <p className="text-lg font-bold text-white">{rankingLeader.exactPredictions}</p>
+                      <p className="text-xs text-slate-400">Exact picks</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
+                      <p className="text-lg font-bold text-white">{rankingLeader.predictionsCount}</p>
+                      <p className="text-xs text-slate-400">Predictions made</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm leading-6 text-slate-400">
+                  No public ranking data yet. As soon as results are confirmed, the board starts moving.
+                </p>
+              )}
             </div>
           </aside>
         </section>
