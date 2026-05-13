@@ -56,7 +56,7 @@ export function CopyInviteCodeButton({ inviteCode, showCode = false }: CopyInvit
             height={16}
             className="object-contain opacity-80 transition group-hover:opacity-100"
           />
-          {copied ? "Copied" : "Copy invite"}
+          {copied ? "Copied" : "Copy code"}
         </span>
       )}
       <span className="sr-only" aria-live="polite">

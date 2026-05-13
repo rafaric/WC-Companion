@@ -138,7 +138,7 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
         <header className="fixed inset-x-4 top-4 z-40 mx-auto max-w-6xl rounded-full border border-slate-800/80 bg-slate-900/85 px-4 py-3 shadow-2xl shadow-slate-950/30 backdrop-blur sm:inset-x-6 lg:inset-x-8">
           <div className="flex items-center justify-between gap-4">
             <Link href="/dashboard" className="inline-flex min-w-0 items-center gap-3 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400">
-              <Image src="/assets/LogoLong.png" alt="WorldPredict logo" width={144} height={40} priority className="h-8 w-auto object-contain" />
+              <Image src="/assets/LogoLong.png" alt="WorldPredict logo" width={144} height={40} priority className="h-8 w-auto object-contain pb-1" />
               <div className="min-w-0">
                 <p className="truncate text-xs text-slate-400">{getSectionLabel(pathname)}</p>
               </div>

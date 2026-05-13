@@ -93,21 +93,32 @@ function getSingleMemberInviteMessage(group: MyGroupView | null): string {
     return "Invite friends from your groups list to turn this into a real competition.";
   }
 
-  return `Share invite code ${group.inviteCode} with your friends so this group becomes a real race.`;
+  return "Share the code with friends so the leaderboard starts moving.";
 }
 
 function PodiumCard({ entry, isCurrentUser }: { entry: RankingEntry; isCurrentUser: boolean }) {
+  const isLeader = entry.position === 1;
+
   return (
     <article
       className={cn(
-        "rounded-3xl border p-4 shadow-xl shadow-slate-950/20",
-        isCurrentUser ? "border-cyan-400/40 bg-cyan-400/10" : "border-slate-800 bg-slate-950/60",
+        "rounded-3xl border p-4 shadow-xl shadow-slate-950/20 transition",
+        isLeader
+          ? "border-amber-300/30 bg-gradient-to-br from-amber-400/15 via-slate-900/80 to-slate-950 shadow-amber-950/20"
+          : isCurrentUser
+            ? "border-cyan-400/40 bg-cyan-400/10"
+            : "border-slate-800 bg-slate-950/60",
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">#{entry.position}</p>
+          <p className={cn("text-xs uppercase tracking-[0.2em]", isLeader ? "text-amber-200" : "text-slate-500")}>
+            {isLeader ? "Leader" : `#${entry.position}`}
+          </p>
           <p className="mt-1 truncate text-lg font-black text-white">{entry.username}</p>
+          <p className={cn("mt-1 text-sm", isLeader ? "text-amber-100/80" : "text-slate-400")}>
+            {entry.totalPoints} points · {entry.exactPredictions} exact
+          </p>
         </div>
         {isCurrentUser ? (
           <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
@@ -142,7 +153,7 @@ function RankingRow({ entry, isCurrentUser }: { entry: RankingEntry; isCurrentUs
   return (
     <li
       className={cn(
-        "flex items-start justify-between gap-4 rounded-2xl border px-4 py-3",
+        "flex items-center justify-between gap-4 rounded-2xl border px-4 py-3",
         isCurrentUser ? "border-cyan-400/40 bg-cyan-400/10" : "border-slate-800 bg-slate-950/60",
       )}
     >
@@ -157,13 +168,11 @@ function RankingRow({ entry, isCurrentUser }: { entry: RankingEntry; isCurrentUs
             </span>
           ) : null}
         </div>
-        <p className="text-xs text-slate-500">Last scored: {formatLastScoredAt(entry.lastScoredAt)}</p>
+        <p className="text-xs text-slate-500">
+          {entry.exactPredictions} exact · {entry.predictionsCount} predictions
+        </p>
       </div>
-      <div className="grid grid-cols-3 gap-2 text-right">
-        <RankingStats label="Points" value={entry.totalPoints} />
-        <RankingStats label="Exact" value={entry.exactPredictions} />
-        <RankingStats label="Predictions" value={entry.predictionsCount} />
-      </div>
+      <p className="shrink-0 text-lg font-black text-cyan-300">{entry.totalPoints} pts</p>
     </li>
   );
 }
@@ -200,37 +209,45 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
   const leader = getLeader(rankingResult.ranking);
   const latestScoredEntry = getLatestScoredEntry(rankingResult.ranking);
   const podiumEntries = rankingResult.ranking.slice(0, 3);
+  const remainingEntries = rankingResult.ranking.slice(3);
   const scoredPlayersCount = rankingResult.ranking.filter((entry) => entry.lastScoredAt !== null).length;
   const isSingleMemberGroup = rankingResult.ranking.length === 1;
+  const currentUserDisplayName = currentUserProfile ? getFriendlyDisplayName(session.user, currentUserProfile) : "You";
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-4xl">
       <section className="space-y-6 py-2 sm:py-4">
-          <div className="space-y-3">
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-3">
             <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
               Private leaderboard
             </p>
+            {group ? (
+              <span className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300 sm:hidden">
+                {getGroupRoleLabel(group.role)}
+              </span>
+            ) : null}
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
               {group?.name ?? `Group ${groupId}`}
             </h1>
-            <p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-              Track your crew after every scored match. The board updates when confirmed results recalculate predictions.
-            </p>
             {group ? (
-              <div className="flex flex-wrap gap-2 text-xs text-slate-400">
-                <span className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1">
-                  Invite {group.inviteCode}
-                </span>
-                <CopyInviteCodeButton inviteCode={group.inviteCode} />
-                <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-cyan-300">
-                  {getGroupRoleLabel(group.role)}
-                </span>
-                <span className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1">
-                  {formatMemberCount(group.memberCount)}
-                </span>
-              </div>
+              <span className="hidden rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300 sm:inline-flex">
+                {getGroupRoleLabel(group.role)}
+              </span>
             ) : null}
           </div>
+          <p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
+            Track your crew after every scored match. The board updates when confirmed results recalculate predictions.
+          </p>
+          {group ? (
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+              <span className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1">{formatMemberCount(group.memberCount)}</span>
+              <CopyInviteCodeButton inviteCode={group.inviteCode} />
+            </div>
+          ) : null}
+        </div>
 
           {rankingResult.error ? (
             <div role="alert" aria-live="assertive" className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
@@ -239,7 +256,7 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
           ) : null}
 
           {isSingleMemberGroup ? (
-            <section className="rounded-3xl border border-amber-400/20 bg-amber-400/10 p-5 shadow-xl shadow-amber-950/20">
+            <section className="rounded-3xl border border-amber-400/20 bg-gradient-to-br from-amber-400/15 via-slate-900/80 to-slate-950 p-5 shadow-xl shadow-amber-950/20">
               <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div className="max-w-2xl">
                   <p className="text-xs uppercase tracking-[0.2em] text-amber-200">Invite your first rival</p>
@@ -250,42 +267,56 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
                   </p>
                 </div>
 
-                <div className="rounded-3xl border border-amber-300/20 bg-slate-950/50 p-4 text-center lg:min-w-72">
-                  <p className="text-xs uppercase tracking-[0.2em] text-amber-200">Invite code</p>
-                  <p className="mt-2 break-all text-3xl font-black tracking-[0.15em] text-white">
-                    {group?.inviteCode ?? "Unavailable"}
-                  </p>
-                  {group ? (
-                    <div className="mt-4 flex justify-center">
-                      <CopyInviteCodeButton inviteCode={group.inviteCode} />
-                    </div>
-                  ) : null}
-                  <p className="mt-2 text-xs leading-5 text-amber-100/70">
-                    Send this code to friends. They can join from the Groups page.
-                  </p>
+                <div className="rounded-3xl border border-amber-300/20 bg-slate-950/55 p-4 lg:min-w-80">
+                  <p className="text-xs uppercase tracking-[0.2em] text-amber-200">Share this code</p>
+                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="font-mono text-2xl font-black tracking-[0.18em] text-white">{group?.inviteCode ?? "Unavailable"}</p>
+                    {group ? <CopyInviteCodeButton inviteCode={group.inviteCode} /> : null}
+                  </div>
+                  <p className="mt-3 text-xs leading-5 text-amber-100/70">Friends can join from the Groups page with this code.</p>
                 </div>
               </div>
             </section>
           ) : null}
 
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Leader</p>
-              {leader ? (
-                <>
-                  <p className="mt-2 text-xl font-black text-white">#{leader.position} {leader.username}</p>
-                  <p className="mt-1 text-sm text-cyan-300">{leader.totalPoints} points</p>
-                </>
-              ) : (
-                <p className="mt-2 text-sm leading-6 text-slate-300">No leader yet.</p>
-              )}
+            <div className="rounded-3xl border border-amber-300/20 bg-gradient-to-br from-amber-400/15 via-slate-900/80 to-slate-950 p-5 shadow-2xl shadow-amber-950/20 md:col-span-1">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs uppercase tracking-[0.2em] text-amber-200">Leader</p>
+                  {leader ? (
+                    <>
+                      <p className="mt-2 text-3xl font-black text-white">#{leader.position}</p>
+                      <p className="mt-1 truncate text-xl font-semibold text-white">{leader.username}</p>
+                      <p className="mt-1 text-sm text-amber-100/80">{leader.totalPoints} points</p>
+                    </>
+                  ) : (
+                    <p className="mt-2 text-sm leading-6 text-amber-50/80">No leader yet.</p>
+                  )}
+                </div>
+                {leader ? (
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl border border-amber-300/30 bg-slate-950/70 shadow-lg shadow-amber-500/10">
+                    <span className="text-xl font-black text-amber-200">#1</span>
+                  </div>
+                ) : null}
+              </div>
+              {leader ? <p className="mt-4 text-sm leading-6 text-amber-50/80">The current front-runner sets the pace for the group.</p> : null}
             </div>
             <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Latest scored</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Latest scoring update</p>
               {latestScoredEntry ? (
                 <>
-                  <p className="mt-2 text-xl font-black text-white">{latestScoredEntry.username}</p>
-                  <p className="mt-1 text-sm text-emerald-300">{formatLastScoredAt(latestScoredEntry.lastScoredAt)}</p>
+                  <div className="mt-2 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-xl font-black text-white">{latestScoredEntry.username}</p>
+                      <p className="mt-1 text-sm text-slate-300">#{latestScoredEntry.position} · {latestScoredEntry.totalPoints} points</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-medium text-emerald-300">{latestScoredEntry.exactPredictions} exact</p>
+                      <p className="mt-1 text-xs text-slate-500">{formatLastScoredAt(latestScoredEntry.lastScoredAt)}</p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs leading-5 text-slate-400">This shows the most recent player whose points changed after a scored result.</p>
                 </>
               ) : (
                 <p className="mt-2 text-sm leading-6 text-slate-300">No scored predictions yet.</p>
@@ -293,7 +324,9 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
             </div>
             <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Competition</p>
-              <p className="mt-2 text-xl font-black text-white">{scoredPlayersCount}/{rankingResult.ranking.length}</p>
+              <p className="mt-2 text-3xl font-black text-white">
+                {scoredPlayersCount}/{rankingResult.ranking.length}
+              </p>
               <p className="mt-1 text-sm text-slate-300">players with scored predictions</p>
             </div>
           </div>
@@ -308,20 +341,27 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
             </div>
 
             {currentUserRankingEntry ? (
-              <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Your standing</p>
-                    <p className="mt-1 text-2xl font-black text-white">#{currentUserRankingEntry.position}</p>
+              <div className="mt-4 overflow-hidden rounded-3xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/15 via-slate-900/80 to-violet-400/10 p-4 shadow-xl shadow-cyan-950/20">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl border border-cyan-300/30 bg-slate-950/70 shadow-lg shadow-cyan-500/10">
+                      <span className="text-2xl font-black text-cyan-200">#{currentUserRankingEntry.position}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Your standing</p>
+                      <p className="mt-1 truncate text-base font-semibold text-white">{currentUserDisplayName}</p>
+                      <p className="text-xs text-cyan-100/70">{getPositionContext(currentUserRankingEntry, leader)}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-cyan-100">{currentUserRankingEntry.totalPoints} points</p>
-                    <p className="mt-1 text-xs text-cyan-100/70">{getPositionContext(currentUserRankingEntry, leader)}</p>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Points</p>
+                    <p className="mt-1 text-3xl font-black tabular-nums text-white">{currentUserRankingEntry.totalPoints}</p>
+                    <p className="text-xs font-semibold text-cyan-100/70">pts</p>
                   </div>
                 </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Exact predictions</p>
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Exact</p>
                     <p className="mt-1 text-lg font-bold text-white">{currentUserRankingEntry.exactPredictions}</p>
                   </div>
                   <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
@@ -329,10 +369,8 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
                     <p className="mt-1 text-lg font-bold text-white">{currentUserRankingEntry.predictionsCount}</p>
                   </div>
                   <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Username</p>
-                    <p className="mt-1 text-lg font-bold text-white">
-                      {currentUserProfile ? getFriendlyDisplayName(session.user, currentUserProfile) : "You"}
-                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Position</p>
+                    <p className="mt-1 text-lg font-bold text-white">#{currentUserRankingEntry.position}</p>
                   </div>
                 </div>
               </div>
@@ -346,25 +384,29 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
               </div>
             ) : null}
 
-            {rankingResult.ranking.length > 0 ? (
-              <ul className="mt-4 space-y-3">
-                {rankingResult.ranking.map((entry) => (
-                  <RankingRow
-                    key={entry.userId}
-                    entry={entry}
-                    isCurrentUser={entry.userId === currentUserProfile?.id}
-                  />
-                ))}
-              </ul>
-            ) : (
+            {remainingEntries.length > 0 ? (
+              <div className="mt-5">
+                <div className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-slate-500">
+                  <span className="h-px flex-1 bg-slate-800" />
+                  Remaining positions
+                  <span className="h-px flex-1 bg-slate-800" />
+                </div>
+                <ul className="mt-4 space-y-3">
+                  {remainingEntries.map((entry) => (
+                    <RankingRow
+                      key={entry.userId}
+                      entry={entry}
+                      isCurrentUser={entry.userId === currentUserProfile?.id}
+                    />
+                  ))}
+                </ul>
+              </div>
+            ) : rankingResult.ranking.length > 0 ? null : (
               <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">
-                No ranking data yet. Share the invite code and come back after the first scores land.
+                No ranking data yet. Invite a friend and come back after the first scores land.
               </div>
             )}
 
-            <p className="mt-4 text-xs text-slate-500">
-              Ranking data is backend-owned and read-only.
-            </p>
           </div>
       </section>
     </main>
