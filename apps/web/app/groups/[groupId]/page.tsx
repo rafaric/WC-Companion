@@ -96,8 +96,42 @@ function getSingleMemberInviteMessage(group: MyGroupView | null): string {
   return "Share the code with friends so the leaderboard starts moving.";
 }
 
-function PodiumCard({ entry, isCurrentUser }: { entry: RankingEntry; isCurrentUser: boolean }) {
+function looksTechnicalUsername(username: string): boolean {
+  const normalized = username.trim();
+
+  return (
+    /^\d+$/.test(normalized) ||
+    /^[a-f0-9]{12,}$/i.test(normalized) ||
+    /^[a-f0-9-]{20,}$/i.test(normalized) ||
+    normalized.startsWith("auth0-")
+  );
+}
+
+function getRankingDisplayName(entry: RankingEntry, currentUserId: string | null, currentUserDisplayName: string): string {
+  if (entry.userId === currentUserId) {
+    return currentUserDisplayName;
+  }
+
+  if (looksTechnicalUsername(entry.username)) {
+    return `Player #${entry.position}`;
+  }
+
+  return entry.username;
+}
+
+function PodiumCard({
+  entry,
+  isCurrentUser,
+  currentUserId,
+  currentUserDisplayName,
+}: {
+  entry: RankingEntry;
+  isCurrentUser: boolean;
+  currentUserId: string | null;
+  currentUserDisplayName: string;
+}) {
   const isLeader = entry.position === 1;
+  const displayName = getRankingDisplayName(entry, currentUserId, currentUserDisplayName);
 
   return (
     <article
@@ -115,7 +149,7 @@ function PodiumCard({ entry, isCurrentUser }: { entry: RankingEntry; isCurrentUs
           <p className={cn("text-xs uppercase tracking-[0.2em]", isLeader ? "text-amber-200" : "text-slate-500")}>
             {isLeader ? "Leader" : `#${entry.position}`}
           </p>
-          <p className="mt-1 truncate text-lg font-black text-white">{entry.username}</p>
+          <p className="mt-1 truncate text-lg font-black text-white">{displayName}</p>
           <p className={cn("mt-1 text-sm", isLeader ? "text-amber-100/80" : "text-slate-400")}>
             {entry.totalPoints} points · {entry.exactPredictions} exact
           </p>
@@ -149,7 +183,19 @@ function getRankingErrorMessage(error: unknown): string {
   return "We could not load this ranking right now.";
 }
 
-function RankingRow({ entry, isCurrentUser }: { entry: RankingEntry; isCurrentUser: boolean }) {
+function RankingRow({
+  entry,
+  isCurrentUser,
+  currentUserId,
+  currentUserDisplayName,
+}: {
+  entry: RankingEntry;
+  isCurrentUser: boolean;
+  currentUserId: string | null;
+  currentUserDisplayName: string;
+}) {
+  const displayName = getRankingDisplayName(entry, currentUserId, currentUserDisplayName);
+
   return (
     <li
       className={cn(
@@ -160,7 +206,7 @@ function RankingRow({ entry, isCurrentUser }: { entry: RankingEntry; isCurrentUs
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <p className="truncate font-semibold text-white">
-            #{entry.position} {entry.username}
+            #{entry.position} {displayName}
           </p>
           {isCurrentUser ? (
             <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
@@ -213,6 +259,11 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
   const scoredPlayersCount = rankingResult.ranking.filter((entry) => entry.lastScoredAt !== null).length;
   const isSingleMemberGroup = rankingResult.ranking.length === 1;
   const currentUserDisplayName = currentUserProfile ? getFriendlyDisplayName(session.user, currentUserProfile) : "You";
+  const currentUserId = currentUserProfile?.id ?? null;
+  const leaderDisplayName = leader ? getRankingDisplayName(leader, currentUserId, currentUserDisplayName) : null;
+  const latestScoredDisplayName = latestScoredEntry
+    ? getRankingDisplayName(latestScoredEntry, currentUserId, currentUserDisplayName)
+    : null;
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-4xl">
@@ -287,7 +338,7 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
                   {leader ? (
                     <>
                       <p className="mt-2 text-3xl font-black text-white">#{leader.position}</p>
-                      <p className="mt-1 truncate text-xl font-semibold text-white">{leader.username}</p>
+                      <p className="mt-1 truncate text-xl font-semibold text-white">{leaderDisplayName}</p>
                       <p className="mt-1 text-sm text-amber-100/80">{leader.totalPoints} points</p>
                     </>
                   ) : (
@@ -308,7 +359,7 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
                 <>
                   <div className="mt-2 flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-xl font-black text-white">{latestScoredEntry.username}</p>
+                      <p className="truncate text-xl font-black text-white">{latestScoredDisplayName}</p>
                       <p className="mt-1 text-sm text-slate-300">#{latestScoredEntry.position} · {latestScoredEntry.totalPoints} points</p>
                     </div>
                     <div className="shrink-0 text-right">
@@ -379,8 +430,14 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
             {podiumEntries.length > 0 ? (
               <div className="mt-4 grid gap-3 md:grid-cols-3">
                 {podiumEntries.map((entry) => (
-                  <PodiumCard key={entry.userId} entry={entry} isCurrentUser={entry.userId === currentUserProfile?.id} />
-                ))}
+                    <PodiumCard
+                      key={entry.userId}
+                      entry={entry}
+                      isCurrentUser={entry.userId === currentUserId}
+                      currentUserId={currentUserId}
+                      currentUserDisplayName={currentUserDisplayName}
+                    />
+                  ))}
               </div>
             ) : null}
 
@@ -393,12 +450,14 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
                 </div>
                 <ul className="mt-4 space-y-3">
                   {remainingEntries.map((entry) => (
-                    <RankingRow
-                      key={entry.userId}
-                      entry={entry}
-                      isCurrentUser={entry.userId === currentUserProfile?.id}
-                    />
-                  ))}
+                      <RankingRow
+                        key={entry.userId}
+                        entry={entry}
+                        isCurrentUser={entry.userId === currentUserId}
+                        currentUserId={currentUserId}
+                        currentUserDisplayName={currentUserDisplayName}
+                      />
+                    ))}
                 </ul>
               </div>
             ) : rankingResult.ranking.length > 0 ? null : (
