@@ -94,11 +94,29 @@ interface PreviewCardProps {
   backgroundImage?: string;
 }
 
+interface PredictionShareTemplateProps {
+  predictionOption: { prediction: PredictionView; match: MatchView | null } | null;
+  predictedBy: string;
+  captureTargetId?: string;
+  shareActions?: ReactNode;
+}
+
 interface ShareContent {
   title: string;
   text: string;
   url: string;
 }
+
+const FIFA_FLAG_EMOJI: Record<string, string> = {
+  ARG: "🇦🇷",
+  BRA: "🇧🇷",
+  ENG: "🏴",
+  ESP: "🇪🇸",
+  FRA: "🇫🇷",
+  GER: "🇩🇪",
+  POR: "🇵🇹",
+  URU: "🇺🇾",
+};
 
 function formatDate(date: string): string {
   return new Intl.DateTimeFormat("en", {
@@ -113,6 +131,24 @@ function formatMatchLabel(match: MatchView): string {
 
 function formatPredictionLabel(prediction: PredictionView): string {
   return `${prediction.homeScore} - ${prediction.awayScore}`;
+}
+
+function getFlagEmoji(code: string | null): string | null {
+  if (!code) {
+    return null;
+  }
+
+  const normalizedCode = code.trim().toUpperCase();
+
+  if (FIFA_FLAG_EMOJI[normalizedCode]) {
+    return FIFA_FLAG_EMOJI[normalizedCode];
+  }
+
+  if (!/^[A-Z]{2}$/.test(normalizedCode)) {
+    return null;
+  }
+
+  return String.fromCodePoint(...Array.from(normalizedCode).map((char) => 127397 + char.charCodeAt(0)));
 }
 
 async function getRequestOrigin(): Promise<string> {
@@ -242,11 +278,15 @@ function PreviewCard({ eyebrow, title, description, stats, note, shareActions, b
   return (
     <article
       className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl shadow-slate-950/30"
-      style={backgroundImage ? {
-        backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.85)), url(${backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      } : undefined}
+      style={
+        backgroundImage
+          ? {
+              backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.85)), url(${backgroundImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }
+          : undefined
+      }
     >
       <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">{eyebrow}</p>
       <h3 className="mt-2 text-xl font-semibold text-white">{title}</h3>
@@ -267,6 +307,90 @@ function PreviewCard({ eyebrow, title, description, stats, note, shareActions, b
   );
 }
 
+function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetId, shareActions }: PredictionShareTemplateProps) {
+  const match = predictionOption?.match ?? null;
+  const prediction = predictionOption?.prediction ?? null;
+  const homeFlag = match ? getFlagEmoji(match.homeTeam.flagCode) ?? getFlagEmoji(match.homeTeam.countryCode) : null;
+  const awayFlag = match ? getFlagEmoji(match.awayTeam.flagCode) ?? getFlagEmoji(match.awayTeam.countryCode) : null;
+
+  return (
+    <article className="relative overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-slate-950 p-5 shadow-2xl shadow-cyan-950/30">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.2),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.18),transparent_32%)]" />
+
+      <div
+        id={captureTargetId}
+        className="relative mx-auto max-w-sm rounded-[1.75rem] border border-cyan-300/40 bg-slate-950/80 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur"
+        style={{
+          backgroundImage: "linear-gradient(to bottom, rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.8)), url(/assets/WCLogo.png)",
+          backgroundPosition: "center",
+          backgroundSize: "contain",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        <p className="text-center text-[11px] font-black uppercase tracking-[0.28em] text-cyan-200">Share my prediction</p>
+
+        <div className="mt-5 rounded-3xl border border-slate-800 bg-slate-900/80 p-4">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Predicted by</p>
+          <p className="mt-1 truncate text-base font-semibold text-white">{predictedBy}</p>
+        </div>
+
+        <div className="mt-5">
+          <p className="text-center text-[11px] font-bold uppercase tracking-[0.24em] text-slate-300">Selected match</p>
+          <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+            <div className="rounded-3xl border border-cyan-300/30 bg-cyan-400/10 p-4 text-center">
+              <p className="text-3xl" aria-hidden="true">{homeFlag ?? "⚽"}</p>
+              <p className="mt-2 text-xl font-black text-white">{match?.homeTeam.shortName ?? "---"}</p>
+              <p className="mt-1 truncate text-xs text-cyan-100/70">{match?.homeTeam.name ?? "Home team"}</p>
+            </div>
+            <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">vs</span>
+            <div className="rounded-3xl border border-violet-300/30 bg-violet-400/10 p-4 text-center">
+              <p className="text-3xl" aria-hidden="true">{awayFlag ?? "⚽"}</p>
+              <p className="mt-2 text-xl font-black text-white">{match?.awayTeam.shortName ?? "---"}</p>
+              <p className="mt-1 truncate text-xs text-violet-100/70">{match?.awayTeam.name ?? "Away team"}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 mb-2 text-center">
+          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-300">Predicted score</p>
+          <p className="mt-4 flex items-center justify-center gap-6 text-5xl font-black tabular-nums text-white">
+            <span>{prediction?.homeScore ?? "?"}</span>
+            <span className="text-slate-500">–</span>
+            <span>{prediction?.awayScore ?? "?"}</span>
+          </p>
+        </div>
+
+        <div className="mt-5 rounded-3xl border border-slate-800 bg-slate-900/80 p-4">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Match context</p>
+          <p className="mt-2 text-sm font-semibold text-white">
+            {match ? `${match.stage}${match.groupName ? ` · ${match.groupName}` : ""}` : "Choose a saved prediction"}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            {match ? formatDate(match.kickoffAt) : "Preview the card before sharing."}
+          </p>
+        </div>
+
+        <p className="mt-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Share with your crew</p>
+
+        {prediction ? (
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3 text-center">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Points</p>
+              <p className="mt-1 text-sm font-bold text-white">{prediction.pointsAwarded}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3 text-center">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Status</p>
+              <p className="mt-1 truncate text-sm font-bold text-white">{prediction.scoringStatus}</p>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {shareActions ? <div className="relative mt-4">{shareActions}</div> : null}
+    </article>
+  );
+}
+
 function SectionHeader({
   eyebrow,
   title,
@@ -281,8 +405,8 @@ function SectionHeader({
       className="space-y-3 rounded-3xl border border-slate-800/50 p-6"
       style={{
         backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.85)), url(/assets/hero.png)`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        backgroundSize: "cover",
+        backgroundPosition: "center",
       }}
     >
       <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
@@ -457,15 +581,6 @@ export default async function SharePage({ searchParams }: SharePageProps) {
       ]
     : [{ label: "Status", value: selectedGroup ? "Ranking not ready yet" : "Choose a group" }];
 
-  const predictionStats = selectedPrediction
-    ? [
-        { label: "Match", value: selectedPrediction.match ? formatMatchLabel(selectedPrediction.match) : selectedPrediction.prediction.matchId },
-        { label: "Your score", value: formatPredictionLabel(selectedPrediction.prediction) },
-        { label: "Points", value: `${selectedPrediction.prediction.pointsAwarded}` },
-        { label: "Status", value: selectedPrediction.prediction.scoringStatus },
-      ]
-    : [{ label: "Status", value: predictionOptions.length > 0 ? "Pick a saved prediction" : "No saved predictions yet" }];
-
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-5xl">
       <section className="space-y-8 py-2 sm:py-4">
@@ -535,22 +650,21 @@ export default async function SharePage({ searchParams }: SharePageProps) {
               </div>
             </form>
 
-            <PreviewCard
-              eyebrow="Preview payload"
-              title={selectedPrediction ? "Prediction snapshot" : "No prediction selected"}
-              description={
-                selectedPrediction
-                  ? `${selectedPrediction.match ? formatMatchLabel(selectedPrediction.match) : "Saved prediction"} · ${formatDate(selectedPrediction.prediction.updatedAt)}`
-                  : "Choose a saved prediction to see the payload that would be shared."
-              }
-              stats={predictionStats}
-              note="This preview combines your saved prediction data with the current visual share-card treatment."
-              backgroundImage="/assets/shareprediction.png"
+            <PredictionShareTemplate
+              predictionOption={selectedPrediction}
+              predictedBy={shareUsername}
+              captureTargetId={selectedPrediction ? `prediction-share-card-${selectedPrediction.prediction.matchId}` : undefined}
               shareActions={
                 predictionShareContent ? (
-                  <ShareActions title={predictionShareContent.title} text={predictionShareContent.text} url={predictionShareContent.url} />
+                  <ShareActions
+                    title={predictionShareContent.title}
+                    text={predictionShareContent.text}
+                    url={predictionShareContent.url}
+                    matchId={selectedPrediction?.prediction.matchId}
+                    captureTargetId={selectedPrediction ? `prediction-share-card-${selectedPrediction.prediction.matchId}` : undefined}
+                  />
                 ) : (
-                  <p className="text-xs leading-5 text-slate-500">Pick a saved prediction to enable copy/share.</p>
+                  <p className="text-center text-xs leading-5 text-slate-400">Pick a saved prediction to enable copy/share.</p>
                 )
               }
             />

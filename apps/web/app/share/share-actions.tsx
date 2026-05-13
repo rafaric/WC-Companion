@@ -1,11 +1,14 @@
 "use client";
 
+import { toBlob } from "html-to-image";
 import { useEffect, useState } from "react";
 
 interface ShareActionsProps {
   title: string;
   text: string;
   url?: string;
+  matchId?: string;
+  captureTargetId?: string;
 }
 
 function isAbortError(error: unknown): boolean {
@@ -37,9 +40,27 @@ function fallbackCopyText(text: string): boolean {
   return copied;
 }
 
-export function ShareActions({ title, text, url }: ShareActionsProps) {
+export function ShareActions({ title, text, url, matchId, captureTargetId }: ShareActionsProps) {
   const [status, setStatus] = useState<string | null>(null);
-  const clipboardText = url ? `${text}\n${url}` : text;
+  const clipboardText = text;
+
+  async function createShareImageBlob(): Promise<Blob | null> {
+    if (!captureTargetId) {
+      return null;
+    }
+
+    const element = document.getElementById(captureTargetId);
+
+    if (!element) {
+      return null;
+    }
+
+    return await toBlob(element, {
+      cacheBust: true,
+      pixelRatio: 2,
+      backgroundColor: "transparent",
+    });
+  }
 
   useEffect(() => {
     if (!status) {
@@ -75,6 +96,24 @@ export function ShareActions({ title, text, url }: ShareActionsProps) {
 
     if (canShare) {
       try {
+        const imageBlob = await createShareImageBlob();
+
+        if (imageBlob && matchId) {
+          const shareFile = new File([imageBlob], `worldpredict-prediction-${matchId}.png`, {
+            type: imageBlob.type || "image/png",
+          });
+
+          if (typeof navigator.canShare === "function" && navigator.canShare({ files: [shareFile] })) {
+            await navigator.share({
+              title,
+              text,
+              files: [shareFile],
+            });
+            setStatus("Share sheet opened");
+            return;
+          }
+        }
+
         await navigator.share({ title, text, url });
         setStatus("Share sheet opened");
         return;
@@ -100,6 +139,37 @@ export function ShareActions({ title, text, url }: ShareActionsProps) {
     setStatus(copied ? "Copied" : "Could not copy");
   }
 
+  async function downloadImage(): Promise<void> {
+    if (!matchId || !captureTargetId) {
+      setStatus("No prediction selected");
+      return;
+    }
+
+    setStatus("Generating image...");
+
+    try {
+      const blob = await createShareImageBlob();
+
+      if (!blob) {
+        throw new Error("Failed to generate image");
+      }
+
+      const blobUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `worldpredict-prediction-${matchId}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      URL.revokeObjectURL(blobUrl);
+      setStatus("Image downloaded");
+    } catch {
+      setStatus("Could not generate image");
+    }
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -111,6 +181,16 @@ export function ShareActions({ title, text, url }: ShareActionsProps) {
         >
           Copy
         </button>
+        {matchId && (
+          <button
+            type="button"
+            onClick={downloadImage}
+            aria-label="Download share image"
+            className="inline-flex flex-1 items-center justify-center rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-200 transition hover:border-violet-500/50 hover:bg-violet-500/20"
+          >
+            Download PNG
+          </button>
+        )}
         <button
           type="button"
           onClick={shareText}
