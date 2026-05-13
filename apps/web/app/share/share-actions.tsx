@@ -177,7 +177,7 @@ export function ShareActions({ title, text, url, matchId, captureTargetId }: Sha
           type="button"
           onClick={handleCopyClick}
           aria-label="Copy share text"
-          className="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 bg-slate-950/70 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-900"
+          className="inline-flex flex-1 items-center justify-center rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1.5 text-xs font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-900 sm:px-4 sm:py-2 sm:text-sm"
         >
           Copy
         </button>
@@ -186,7 +186,7 @@ export function ShareActions({ title, text, url, matchId, captureTargetId }: Sha
             type="button"
             onClick={downloadImage}
             aria-label="Download share image"
-            className="inline-flex flex-1 items-center justify-center rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-200 transition hover:border-violet-500/50 hover:bg-violet-500/20"
+            className="inline-flex flex-1 items-center justify-center rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-200 transition hover:border-violet-500/50 hover:bg-violet-500/20 sm:px-4 sm:py-2 sm:text-sm"
           >
             Download PNG
           </button>
@@ -195,7 +195,7 @@ export function ShareActions({ title, text, url, matchId, captureTargetId }: Sha
           type="button"
           onClick={shareText}
           aria-label="Open native share options"
-          className="inline-flex flex-1 items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
+          className="inline-flex flex-1 items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-3 py-1.5 text-xs font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 sm:px-4 sm:py-2 sm:text-sm"
         >
           Share
         </button>

@@ -79,24 +79,26 @@ const ERROR_MESSAGES: Record<ShareError, string> = {
   create_failed: "We could not generate the share card right now. Try again.",
 };
 
-interface PreviewStat {
-  label: string;
-  value: string;
-}
-
-interface PreviewCardProps {
-  eyebrow: string;
-  title: string;
-  description: string;
-  stats: PreviewStat[];
-  note: string;
-  shareActions?: ReactNode;
-  backgroundImage?: string;
-}
-
 interface PredictionShareTemplateProps {
   predictionOption: { prediction: PredictionView; match: MatchView | null } | null;
   predictedBy: string;
+  captureTargetId?: string;
+  shareActions?: ReactNode;
+}
+
+interface PerformanceSummaryShareTemplateProps {
+  rankingEntry: RankingEntry | null;
+  displayName: string;
+  countryLabel?: string | null;
+  leaderboardCount: number;
+  captureTargetId?: string;
+  shareActions?: ReactNode;
+}
+
+interface GroupShareTemplateProps {
+  group: MyGroupView | null;
+  rankingEntry: RankingEntry | null;
+  previewId?: string;
   captureTargetId?: string;
   shareActions?: ReactNode;
 }
@@ -274,39 +276,6 @@ function getShareErrorCode(error: unknown, kind: "prediction" | "performance" | 
   return error.status === 400 ? SHARE_ERROR.INVALID_INPUT : SHARE_ERROR.CREATE_FAILED;
 }
 
-function PreviewCard({ eyebrow, title, description, stats, note, shareActions, backgroundImage }: PreviewCardProps) {
-  return (
-    <article
-      className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl shadow-slate-950/30"
-      style={
-        backgroundImage
-          ? {
-              backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.85)), url(${backgroundImage})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }
-          : undefined
-      }
-    >
-      <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">{eyebrow}</p>
-      <h3 className="mt-2 text-xl font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-300">{description}</p>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {stats.map((stat) => (
-          <div key={stat.label} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{stat.label}</p>
-            <p className="mt-1 text-base font-semibold text-white">{stat.value}</p>
-          </div>
-        ))}
-      </div>
-
-      <p className="mt-4 text-xs leading-5 text-slate-500">{note}</p>
-      {shareActions ? <div className="mt-4">{shareActions}</div> : null}
-    </article>
-  );
-}
-
 function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetId, shareActions }: PredictionShareTemplateProps) {
   const match = predictionOption?.match ?? null;
   const prediction = predictionOption?.prediction ?? null;
@@ -314,7 +283,7 @@ function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetI
   const awayFlag = match ? getFlagEmoji(match.awayTeam.flagCode) ?? getFlagEmoji(match.awayTeam.countryCode) : null;
 
   return (
-    <article className="relative overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-slate-950 p-5 shadow-2xl shadow-cyan-950/30">
+    <article id="prediction-preview" className="relative scroll-mt-24 overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-slate-950 p-5 shadow-2xl shadow-cyan-950/30">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.2),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.18),transparent_32%)]" />
 
       <div
@@ -384,6 +353,138 @@ function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetI
             </div>
           </div>
         ) : null}
+      </div>
+
+      {shareActions ? <div className="relative mt-4">{shareActions}</div> : null}
+    </article>
+  );
+}
+
+function PerformanceSummaryShareTemplate({
+  rankingEntry,
+  displayName,
+  countryLabel,
+  leaderboardCount,
+  captureTargetId,
+  shareActions,
+}: PerformanceSummaryShareTemplateProps) {
+  return (
+    <article id="performance-preview" className="relative scroll-mt-24 overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-slate-950 p-5 shadow-2xl shadow-cyan-950/30">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.2),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.16),transparent_32%)]" />
+
+      <div
+        id={captureTargetId}
+        className="relative mx-auto max-w-sm overflow-hidden rounded-[1.75rem] border border-cyan-300/40 bg-slate-950/85 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur"
+        style={{
+          backgroundImage: "linear-gradient(to bottom, rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.8)), url(/assets/WCLogo.png)",
+          backgroundPosition: "center",
+          backgroundSize: "contain",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-400 via-cyan-300 to-violet-400" />
+
+        <div className="relative text-center">
+          <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-200">My squad performance</p>
+          <div className="mx-auto mt-4 flex h-20 w-20 items-center justify-center rounded-full border border-cyan-300/40 bg-slate-900/70 text-4xl shadow-lg shadow-cyan-500/10">
+            <span aria-hidden="true">👤</span>
+          </div>
+          <p className="mt-3 truncate text-lg font-black text-white">{displayName}</p>
+          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-400">{countryLabel ?? "World Cup contender"}</p>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          <div className="rounded-3xl border border-violet-400/25 bg-gradient-to-r from-violet-500/30 via-violet-400/15 to-cyan-400/15 p-4">
+            <p className="text-center text-[11px] font-bold uppercase tracking-[0.22em] text-white/80">Total points</p>
+            <p className="mt-3 text-center text-4xl font-black tabular-nums text-white">{rankingEntry ? rankingEntry.totalPoints : "---"}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-3xl border border-cyan-300/20 bg-slate-900/75 p-4 text-center">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Exact picks</p>
+              <p className="mt-2 text-3xl font-black text-white tabular-nums">{rankingEntry ? rankingEntry.exactPredictions : "--"}</p>
+            </div>
+            <div className="rounded-3xl border border-cyan-300/20 bg-slate-900/75 p-4 text-center">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Rank</p>
+              <p className="mt-2 text-3xl font-black text-white tabular-nums">{rankingEntry ? `#${rankingEntry.position}` : "--"}</p>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-cyan-300/20 bg-slate-900/75 p-4 text-center">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Saved predictions</p>
+            <p className="mt-2 text-3xl font-black text-white tabular-nums">{rankingEntry ? rankingEntry.predictionsCount : "--"}</p>
+          </div>
+
+          <div className="rounded-3xl border border-cyan-300/20 bg-gradient-to-r from-violet-500/30 via-cyan-400/20 to-cyan-300/30 p-4">
+            <p className="text-lg font-black uppercase leading-6 text-white">Subtle celebration</p>
+            <p className="mt-1 text-sm text-white/80">
+              {rankingEntry ? `Currently in the top ${Math.min(rankingEntry.position, leaderboardCount)} of ${leaderboardCount}.` : "Your tournament progress will show up here once your ranking is ready."}
+            </p>
+          </div>
+        </div>
+
+        <p className="mt-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Share with your squad</p>
+      </div>
+
+      {shareActions ? <div className="relative mt-4">{shareActions}</div> : null}
+    </article>
+  );
+}
+
+function GroupShareTemplate({ group, rankingEntry, previewId, captureTargetId, shareActions }: GroupShareTemplateProps) {
+  return (
+    <article id={previewId} className="relative scroll-mt-24 overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-slate-950 p-5 shadow-2xl shadow-cyan-950/30">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.2),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.16),transparent_32%)]" />
+
+      <div
+        id={captureTargetId}
+        className="relative mx-auto max-w-sm overflow-hidden rounded-[1.75rem] border border-cyan-300/40 bg-slate-950/85 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur"
+        style={{
+          backgroundImage: "linear-gradient(to bottom, rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.8)), url(/assets/WCLogo.png)",
+          backgroundPosition: "center",
+          backgroundSize: "contain",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-400 via-cyan-300 to-violet-400" />
+
+        <div className="relative text-center">
+          <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-200">Group standing</p>
+          <div className="mx-auto mt-4 flex h-20 w-20 items-center justify-center rounded-full border border-cyan-300/40 bg-slate-900/70 text-4xl shadow-lg shadow-cyan-500/10">
+            <span aria-hidden="true">🏆</span>
+          </div>
+          <p className="mt-3 truncate text-lg font-black text-white">{group?.name ?? "Choose a group"}</p>
+          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-400">Share your squad table</p>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          <div className="rounded-3xl border border-violet-400/25 bg-gradient-to-r from-violet-500/30 via-violet-400/15 to-cyan-400/15 p-4">
+            <p className="text-center text-[11px] font-bold uppercase tracking-[0.22em] text-white/80">Current place</p>
+            <p className="mt-3 text-center text-4xl font-black tabular-nums text-white">{rankingEntry ? `#${rankingEntry.position}` : "---"}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-3xl border border-cyan-300/20 bg-slate-900/75 p-4 text-center">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Points</p>
+              <p className="mt-2 text-3xl font-black text-white tabular-nums">{rankingEntry ? rankingEntry.totalPoints : "--"}</p>
+            </div>
+            <div className="rounded-3xl border border-cyan-300/20 bg-slate-900/75 p-4 text-center">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Predictions</p>
+              <p className="mt-2 text-3xl font-black text-white tabular-nums">{rankingEntry ? rankingEntry.predictionsCount : "--"}</p>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-cyan-300/20 bg-gradient-to-r from-violet-500/30 via-cyan-400/20 to-cyan-300/30 p-4">
+            <p className="text-lg font-black uppercase leading-6 text-white">Squad snapshot</p>
+            <p className="mt-1 text-sm text-white/80">
+              {rankingEntry
+                ? `Your group is live with ${rankingEntry.totalPoints} points and ${rankingEntry.predictionsCount} predictions on the board.`
+                : "Pick one of your groups to preview the current table before sharing it."}
+            </p>
+          </div>
+        </div>
+
+        <p className="mt-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Share with your squad</p>
       </div>
 
       {shareActions ? <div className="relative mt-4">{shareActions}</div> : null}
@@ -489,13 +590,19 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     ? buildGroupRankingShareContent(shareOrigin, shareUsername, selectedGroup.name, selectedGroupRanking[0], selectedGroup.id)
     : null;
 
+  const PREVIEW_HASH = {
+    prediction: "#prediction-preview",
+    performance: "#performance-preview",
+    group: "#group-preview",
+  } as const;
+
   async function submitPredictionPreview(formData: FormData) {
     "use server";
 
     const matchId = String(formData.get("matchId") ?? "").trim();
 
     if (!matchId) {
-      redirect("/share?error=invalid_input");
+      redirect(`/share?error=invalid_input${PREVIEW_HASH.prediction}`);
     }
 
     let actionToken: string;
@@ -509,10 +616,10 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     try {
       await createPredictionShareCard(actionToken, matchId);
     } catch (error) {
-      redirect(`/share?error=${getShareErrorCode(error, "prediction")}`);
+      redirect(`/share?error=${getShareErrorCode(error, "prediction")}${PREVIEW_HASH.prediction}`);
     }
 
-    redirect(`/share?success=${SHARE_SUCCESS.PREDICTION}&matchId=${matchId}`);
+    redirect(`/share?success=${SHARE_SUCCESS.PREDICTION}&matchId=${matchId}${PREVIEW_HASH.prediction}`);
   }
 
   async function submitPerformanceSummaryPreview(_formData: FormData) {
@@ -531,10 +638,10 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     try {
       await createMyPerformanceSummaryShareCard(actionToken);
     } catch (error) {
-      redirect(`/share?error=${getShareErrorCode(error, "performance")}`);
+      redirect(`/share?error=${getShareErrorCode(error, "performance")}${PREVIEW_HASH.performance}`);
     }
 
-    redirect(`/share?success=${SHARE_SUCCESS.PERFORMANCE_SUMMARY}`);
+    redirect(`/share?success=${SHARE_SUCCESS.PERFORMANCE_SUMMARY}${PREVIEW_HASH.performance}`);
   }
 
   async function submitGroupRankingPreview(formData: FormData) {
@@ -543,7 +650,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     const groupId = String(formData.get("groupId") ?? "").trim();
 
     if (!groupId) {
-      redirect("/share?error=invalid_input");
+      redirect(`/share?error=invalid_input${PREVIEW_HASH.group}`);
     }
 
     let actionToken: string;
@@ -557,29 +664,11 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     try {
       await createGroupRankingShareCard(actionToken, groupId);
     } catch (error) {
-      redirect(`/share?error=${getShareErrorCode(error, "group")}&groupId=${groupId}`);
+      redirect(`/share?error=${getShareErrorCode(error, "group")}&groupId=${groupId}${PREVIEW_HASH.group}`);
     }
 
-    redirect(`/share?success=${SHARE_SUCCESS.GROUP_RANKING}&groupId=${groupId}`);
+    redirect(`/share?success=${SHARE_SUCCESS.GROUP_RANKING}&groupId=${groupId}${PREVIEW_HASH.group}`);
   }
-
-  const performanceSummaryStats = currentUserRankingEntry
-    ? [
-        { label: "Position", value: `#${currentUserRankingEntry.position}` },
-        { label: "Points", value: `${currentUserRankingEntry.totalPoints}` },
-        { label: "Exact", value: `${currentUserRankingEntry.exactPredictions}` },
-        { label: "Predictions", value: `${currentUserRankingEntry.predictionsCount}` },
-      ]
-    : [{ label: "Status", value: "No ranking entry yet" }];
-
-  const groupRankingStats = selectedGroupRanking[0]
-    ? [
-        { label: "Group", value: selectedGroup?.name ?? selectedGroupId ?? "Selected group" },
-        { label: "Position", value: `#${selectedGroupRanking[0].position}` },
-        { label: "Points", value: `${selectedGroupRanking[0].totalPoints}` },
-        { label: "Predictions", value: `${selectedGroupRanking[0].predictionsCount}` },
-      ]
-    : [{ label: "Status", value: selectedGroup ? "Ranking not ready yet" : "Choose a group" }];
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-5xl">
@@ -609,13 +698,10 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Prediction</p>
                   <h2 className="mt-1 text-lg font-semibold text-white">Share your prediction</h2>
                 </div>
-                <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300">
-                  Backend snapshot
-                </span>
               </div>
 
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Pick one of your saved predictions and create a backend-owned payload snapshot.
+                Pick one of your saved predictions and turn it into a clean share card.
               </p>
 
               <label className="mt-4 block space-y-2">
@@ -638,11 +724,11 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                 </select>
               </label>
 
-              <div className="mt-4 flex items-center justify-between gap-3">
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs leading-5 text-slate-500">Uses your saved prediction data and the current visual card background.</p>
                 <button
                   type="submit"
-                  className="rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full whitespace-nowrap rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-5 sm:py-2.5 sm:text-sm"
                   disabled={predictionOptions.length === 0}
                 >
                   Preview prediction
@@ -675,47 +761,38 @@ export default async function SharePage({ searchParams }: SharePageProps) {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Performance summary</p>
-                  <h2 className="mt-1 text-lg font-semibold text-white">Share your performance summary</h2>
+                  <h2 className="mt-1 text-lg font-semibold text-white">Share your tournament progress</h2>
                 </div>
-                <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300">
-                  Backend snapshot
-                </span>
               </div>
 
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Capture your current tournament standing as a backend-owned payload snapshot.
+                Create a clean share card with your points, exact picks, and current place in the World Cup race.
               </p>
 
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <p className="text-xs leading-5 text-slate-500">
-                  This uses the existing share-card endpoint. If your ranking is not ready yet, you will get a specific message.
-                </p>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-5 text-slate-500">Show your points, exact picks, and current position in one card.</p>
                 <button
                   type="submit"
-                  className="rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
+                  className="w-full whitespace-nowrap rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 sm:w-auto sm:px-5 sm:py-2.5 sm:text-sm"
                 >
-                  Generate summary
+                  Preview summary
                 </button>
               </div>
             </form>
 
-            <PreviewCard
-              eyebrow="Performance preview"
-              title={currentUserRankingEntry ? `#${currentUserRankingEntry.position} · ${displayName}` : "No performance snapshot yet"}
-              description={
-                currentUserRankingEntry
-                  ? `Tournament standing for ${currentUserProfile ? formatCountryLabel(currentUserProfile.country) : "your profile"}.`
-                  : "Your ranking entry will appear here once backend scoring is available."
-              }
-              stats={performanceSummaryStats}
-              note={`Top of leaderboard preview: ${rankingPreview.length > 0 ? rankingPreview.length : 0} ranked players loaded.`}
-              backgroundImage="/assets/squadPerformance.png"
+            <PerformanceSummaryShareTemplate
+              rankingEntry={currentUserRankingEntry}
+              displayName={displayName}
+              countryLabel={currentUserProfile ? formatCountryLabel(currentUserProfile.country) : null}
+              leaderboardCount={rankingPreview.length > 0 ? rankingPreview.length : globalRanking.length}
+              captureTargetId={currentUserRankingEntry ? `performance-share-card-${currentUserRankingEntry.userId}` : undefined}
               shareActions={
                 performanceSummaryShareContent ? (
                   <ShareActions
                     title={performanceSummaryShareContent.title}
                     text={performanceSummaryShareContent.text}
                     url={performanceSummaryShareContent.url}
+                    captureTargetId={currentUserRankingEntry ? `performance-share-card-${currentUserRankingEntry.userId}` : undefined}
                   />
                 ) : null
               }
@@ -729,13 +806,10 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Group standing</p>
                   <h2 className="mt-1 text-lg font-semibold text-white">Share group standing</h2>
                 </div>
-                <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300">
-                  Private
-                </span>
               </div>
 
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Choose one of your groups and create a backend snapshot of the current ranking.
+                Choose one of your groups and turn the current table into a clean share card.
               </p>
 
               <label className="mt-4 block space-y-2">
@@ -758,11 +832,11 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                 </select>
               </label>
 
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <p className="text-xs leading-5 text-slate-500">Members only. The backend validates access before creating the snapshot.</p>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-5 text-slate-500">Show your group name, current place, points, and predictions in one card.</p>
                 <button
                   type="submit"
-                  className="rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full whitespace-nowrap rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-5 sm:py-2.5 sm:text-sm"
                   disabled={myGroups.length === 0}
                 >
                   Generate group card
@@ -770,28 +844,21 @@ export default async function SharePage({ searchParams }: SharePageProps) {
               </div>
             </form>
 
-            <PreviewCard
-              eyebrow="Group preview"
-              title={selectedGroup?.name ?? selectedGroupId ?? "No group selected"}
-              description={
-                selectedGroup
-                  ? `Current ranking preview for ${selectedGroup.name}.`
-                  : selectedGroupId
-                    ? `Current ranking preview for ${selectedGroupId}.`
-                    : "Pick a group to preview the standing card payload."
-              }
-              stats={groupRankingStats}
-              backgroundImage="/assets/groupLeaderb.png"
-              note={
-                selectedGroup
-                  ? `Created at ${formatDate(selectedGroup.createdAt)} · invite code stays private.`
-                  : "The card preview will surface the group's current position, points, and prediction counts."
-              }
+            <GroupShareTemplate
+              group={selectedGroup}
+              rankingEntry={selectedGroupRanking[0] ?? null}
+              previewId="group-preview"
+              captureTargetId={selectedGroupRanking[0] ? `group-share-card-${selectedGroupRanking[0].userId}-${selectedGroup?.id ?? selectedGroupId ?? "group"}` : undefined}
               shareActions={
                 groupRankingShareContent ? (
-                  <ShareActions title={groupRankingShareContent.title} text={groupRankingShareContent.text} url={groupRankingShareContent.url} />
+                  <ShareActions
+                    title={groupRankingShareContent.title}
+                    text={groupRankingShareContent.text}
+                    url={groupRankingShareContent.url}
+                    captureTargetId={selectedGroupRanking[0] ? `group-share-card-${selectedGroupRanking[0].userId}-${selectedGroup?.id ?? selectedGroupId ?? "group"}` : undefined}
+                  />
                 ) : selectedGroup ? (
-                  <p className="text-xs leading-5 text-slate-500">Generate the group card to enable copy/share.</p>
+                  <p className="text-center text-xs leading-5 text-slate-400">Generate the group card to enable copy/share.</p>
                 ) : null
               }
             />
