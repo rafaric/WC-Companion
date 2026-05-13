@@ -8,6 +8,7 @@ import type { SportsDataFinalResultDTO } from './sports-data.types';
 
 interface TournamentRecord {
   id: string;
+  slug: string;
   status: TournamentStatus;
 }
 
@@ -184,6 +185,7 @@ function createInitialState(overrides: Partial<PrismaState> = {}): PrismaState {
     tournaments: [
       {
         id: 'tournament-1',
+        slug: 'world-cup-2026-demo',
         status: TournamentStatus.ACTIVE,
       },
     ],
@@ -569,6 +571,37 @@ describe('SportsDataSyncService', () => {
     expect(state.externalVenueReferences).toHaveLength(2);
     expect(state.externalMatchReferences).toHaveLength(4);
     expect(state.syncRuns).toHaveLength(2);
+  });
+
+  it('resolves the tournament slug before invoking a football-data provider', async () => {
+    const state = createInitialState({
+      tournaments: [
+        {
+          id: 'tournament-db-id',
+          slug: 'world-cup-2026-demo',
+          status: TournamentStatus.ACTIVE,
+        },
+      ],
+    });
+    const prisma = createPrismaMock(state);
+    const provider = {
+      providerKey: 'football-data',
+      listTeams: jest.fn(async () => []),
+      listVenues: jest.fn(async () => []),
+      listFixtures: jest.fn(async () => []),
+      listFinalResults: jest.fn(async () => []),
+    };
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      provider as unknown as MockSportsDataProvider,
+      createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-db-id')) as unknown as MatchesService,
+    );
+
+    await service.importTournament('tournament-db-id');
+
+    expect(provider.listTeams).toHaveBeenCalledWith('world-cup-2026-demo');
+    expect(provider.listVenues).toHaveBeenCalledWith('world-cup-2026-demo');
+    expect(provider.listFixtures).toHaveBeenCalledWith('world-cup-2026-demo');
   });
 
   it('records success with zero staged results when the provider has nothing to finalize', async () => {

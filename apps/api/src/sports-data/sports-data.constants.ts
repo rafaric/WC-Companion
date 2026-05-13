@@ -1,5 +1,6 @@
 export const SPORTS_DATA_PROVIDER_KEYS = {
   MOCK: 'mock',
+  FOOTBALL_DATA: 'football-data',
 } as const;
 
 export type SportsDataProviderKey = (typeof SPORTS_DATA_PROVIDER_KEYS)[keyof typeof SPORTS_DATA_PROVIDER_KEYS];

@@ -7,6 +7,7 @@ import {
   EXTERNAL_MATCH_RESULT_STATES,
   type ExternalMatchResultState,
   SPORTS_DATA_PROVIDER,
+  SPORTS_DATA_PROVIDER_KEYS,
   SPORTS_DATA_SYNC_STATUSES,
   SPORTS_DATA_SYNC_TYPES,
   type SportsDataSyncStatus,
@@ -109,6 +110,11 @@ export interface ExternalSyncRunSummary {
   errorMessage: string | null;
   startedAt: Date;
   completedAt: Date | null;
+}
+
+interface ResolvedTournamentContext {
+  id: string;
+  slug: string;
 }
 
 @Injectable()
@@ -323,7 +329,7 @@ export class SportsDataSyncService {
   }
 
   async listExternalMatchMappingDiagnostics(): Promise<ExternalMatchMappingDiagnosticSummary[]> {
-    const tournamentId = await this.resolveTournamentId();
+    const tournamentId = (await this.resolveTournamentContext()).id;
     const matches = await this.prisma.match.findMany({
       where: {
         tournamentId,
@@ -397,7 +403,7 @@ export class SportsDataSyncService {
   }
 
   async listRecentSyncRuns(limit = 6): Promise<ExternalSyncRunSummary[]> {
-    const tournamentId = await this.resolveTournamentId();
+    const tournamentId = (await this.resolveTournamentContext()).id;
     const syncRuns = await this.prisma.externalSyncRun.findMany({
       where: {
         tournamentId,
@@ -440,30 +446,31 @@ export class SportsDataSyncService {
   }
 
   async importTournament(tournamentId?: string): Promise<SportsDataSyncSummary> {
-    const resolvedTournamentId = await this.resolveTournamentId(tournamentId);
-    const syncRun = await this.startSyncRun(resolvedTournamentId, SPORTS_DATA_SYNC_TYPES.IMPORT);
+    const resolvedTournament = await this.resolveTournamentContext(tournamentId);
+    const providerTournamentKey = this.resolveProviderTournamentKey(resolvedTournament);
+    const syncRun = await this.startSyncRun(resolvedTournament.id, SPORTS_DATA_SYNC_TYPES.IMPORT);
 
     let importedCount = 0;
     let updatedCount = 0;
 
     try {
-      const teams = await this.provider.listTeams(resolvedTournamentId);
+      const teams = await this.provider.listTeams(providerTournamentKey);
       for (const team of teams) {
-        const outcome = await this.syncTeam(resolvedTournamentId, team);
+        const outcome = await this.syncTeam(resolvedTournament.id, team);
         importedCount += outcome.created ? 1 : 0;
         updatedCount += outcome.updated ? 1 : 0;
       }
 
-      const venues = await this.provider.listVenues(resolvedTournamentId);
+      const venues = await this.provider.listVenues(providerTournamentKey);
       for (const venue of venues) {
-        const outcome = await this.syncVenue(resolvedTournamentId, venue);
+        const outcome = await this.syncVenue(resolvedTournament.id, venue);
         importedCount += outcome.created ? 1 : 0;
         updatedCount += outcome.updated ? 1 : 0;
       }
 
-      const fixtures = await this.provider.listFixtures(resolvedTournamentId);
+      const fixtures = await this.provider.listFixtures(providerTournamentKey);
       for (const fixture of fixtures) {
-        const outcome = await this.syncFixture(resolvedTournamentId, fixture);
+        const outcome = await this.syncFixture(resolvedTournament.id, fixture);
         importedCount += outcome.created ? 1 : 0;
         updatedCount += outcome.updated ? 1 : 0;
       }
@@ -490,16 +497,17 @@ export class SportsDataSyncService {
   }
 
   async syncResults(tournamentId?: string): Promise<SportsDataSyncSummary> {
-    const resolvedTournamentId = await this.resolveTournamentId(tournamentId);
-    const syncRun = await this.startSyncRun(resolvedTournamentId, SPORTS_DATA_SYNC_TYPES.RESULTS);
+    const resolvedTournament = await this.resolveTournamentContext(tournamentId);
+    const providerTournamentKey = this.resolveProviderTournamentKey(resolvedTournament);
+    const syncRun = await this.startSyncRun(resolvedTournament.id, SPORTS_DATA_SYNC_TYPES.RESULTS);
 
     let stagedCount = 0;
 
     try {
-      const results = await this.provider.listFinalResults(resolvedTournamentId);
+      const results = await this.provider.listFinalResults(providerTournamentKey);
 
       for (const result of results) {
-        const staged = await this.stageResult(resolvedTournamentId, syncRun.id, result);
+        const staged = await this.stageResult(resolvedTournament.id, syncRun.id, result);
         stagedCount += staged ? 1 : 0;
       }
 
@@ -524,30 +532,34 @@ export class SportsDataSyncService {
     }
   }
 
-  private async resolveTournamentId(tournamentId?: string): Promise<string> {
+  private async resolveTournamentContext(tournamentId?: string): Promise<ResolvedTournamentContext> {
     if (tournamentId !== undefined) {
       const tournament = await this.prisma.tournament.findUnique({
         where: { id: tournamentId },
-        select: { id: true },
+        select: { id: true, slug: true },
       });
 
       if (tournament === null) {
         throw new NotFoundException(`Tournament ${tournamentId} was not found`);
       }
 
-      return tournament.id;
+      return tournament;
     }
 
     const activeTournament = await this.prisma.tournament.findFirst({
       where: { status: TournamentStatus.ACTIVE },
-      select: { id: true },
+      select: { id: true, slug: true },
     });
 
     if (activeTournament === null) {
       throw new NotFoundException('Active tournament not found');
     }
 
-    return activeTournament.id;
+    return activeTournament;
+  }
+
+  private resolveProviderTournamentKey(tournament: ResolvedTournamentContext): string {
+    return this.provider.providerKey === SPORTS_DATA_PROVIDER_KEYS.FOOTBALL_DATA ? tournament.slug : tournament.id;
   }
 
   private async startSyncRun(tournamentId: string, syncType: SportsDataSyncType) {
