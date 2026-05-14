@@ -2,8 +2,10 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import { auth0 } from "@/lib/auth0";
-import { getActiveTournamentMatches, getCurrentUserProfile, type MatchView } from "@/lib/api";
+import { getActiveTournamentMatches, getCurrentUserProfile, type MatchView, type TeamView } from "@/lib/api";
 import { metadataBase, SITE_DESCRIPTION, SITE_KEYWORDS, SITE_NAME } from "@/lib/metadata";
+import { extractUniqueTeamsFromMatches } from "@/lib/profile";
+import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
 import { Providers } from "@/app/providers";
 import { AppChrome } from "./app-chrome";
 import { TournamentSelectorServer } from "@/components/tournaments/tournament-selector-server";
@@ -94,22 +96,26 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   const session = await auth0.getSession();
+  const tournamentSlug = await resolveTournamentSlug();
   let currentUserProfile = null;
   let favoriteTeam = null;
+  let availableTeams: TeamView[] = [];
 
   if (session) {
     try {
       const accessToken = (await auth0.getAccessToken()).token;
       const [profile, matches] = await Promise.all([
         getCurrentUserProfile(accessToken),
-        getActiveTournamentMatches().catch(() => []),
+        getActiveTournamentMatches(tournamentSlug).catch(() => []),
       ]);
 
       currentUserProfile = profile;
       favoriteTeam = findTeamById(matches, profile.favoriteTeamId);
+      availableTeams = extractUniqueTeamsFromMatches(matches);
     } catch {
       currentUserProfile = null;
       favoriteTeam = null;
+      availableTeams = [];
     }
   }
 
@@ -126,6 +132,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         </a>
         <Providers>
           <AppChrome
+            availableTeams={availableTeams}
             canAccessExternalResults={canAccessExternalResults}
             currentUserProfile={currentUserProfile}
             favoriteTeam={favoriteTeam}

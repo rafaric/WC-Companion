@@ -9,6 +9,7 @@
     "test": "node scripts/run-jest.cjs --runInBand",
     "smoke:mvp": "pnpm exec ts-node scripts/smoke-mvp-flow.ts",
     "demo:social": "pnpm exec ts-node scripts/demo-social-flow.ts",
+    "repair:provider-team-links": "pnpm exec ts-node scripts/repair-provider-team-links.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",

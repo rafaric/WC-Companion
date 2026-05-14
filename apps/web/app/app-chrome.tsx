@@ -7,8 +7,10 @@ import { usePathname } from "next/navigation";
 
 import type { CurrentUserProfile, TeamView } from "@/lib/api";
 import { getFriendlyDisplayName, getFriendlyEmailLabel, type SessionDisplayUser } from "@/lib/user-display";
+import { ProfileEditModal } from "./profile-edit-modal";
 
 interface AppChromeProps {
+  availableTeams: TeamView[];
   canAccessExternalResults: boolean;
   children: ReactNode;
   currentUserProfile: CurrentUserProfile | null;
@@ -82,15 +84,21 @@ function getFlagEmoji(code: string | null): string | null {
   return String.fromCodePoint(...Array.from(normalizedCode).map((char) => 127397 + char.charCodeAt(0)));
 }
 
-export function AppChrome({ canAccessExternalResults, children, currentUserProfile, favoriteTeam, sessionUser, tournamentSelector }: AppChromeProps) {
+export function AppChrome({ availableTeams, canAccessExternalResults, children, currentUserProfile, favoriteTeam, sessionUser, tournamentSelector }: AppChromeProps) {
   const pathname = usePathname();
   const menuId = useId();
   const firstMenuLinkRef = useRef<HTMLAnchorElement | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   useEffect(() => {
     setMenuOpen(false);
+  }, [pathname]);
+
+  // Close profile modal on navigation
+  useEffect(() => {
+    setProfileModalOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -168,6 +176,13 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
                   </Link>
                 );
               })}
+              <button
+                type="button"
+                onClick={() => setProfileModalOpen(true)}
+                className="rounded-full px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800/80 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
+              >
+                {displayName}
+              </button>
               <Link
                 href="/auth/logout"
                 className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
@@ -212,7 +227,14 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
                   aria-label="Primary navigation"
                   className="absolute right-0 z-40 mt-3 w-72 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/95 p-3 shadow-2xl shadow-slate-950/40 backdrop-blur"
                 >
-                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setProfileModalOpen(true);
+                    }}
+                    className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-left transition hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
+                  >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-white">{displayName}</p>
                       <p className="mt-1 truncate text-xs text-slate-400">{emailLabel}</p>
@@ -227,7 +249,7 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
                         {favoriteTeamLabel}
                       </span>
                     </div>
-                  </div>
+                  </button>
 
                   {/* Tournament selector for mobile */}
                   {tournamentSelector && (
@@ -273,6 +295,15 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
 
         <div className="flex-1 pt-24">{children}</div>
       </div>
+
+      {currentUserProfile && (
+        <ProfileEditModal
+          availableTeams={availableTeams}
+          currentUserProfile={currentUserProfile}
+          isOpen={profileModalOpen}
+          onClose={() => setProfileModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

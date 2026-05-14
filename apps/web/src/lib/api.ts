@@ -252,6 +252,7 @@ export interface UpdateCurrentUserProfileInput {
   country: string;
   favoriteTeamId: string;
   preferredLanguage: string;
+  tournamentSlug?: string | null;
 }
 
 export interface UpsertMatchPredictionInput {
@@ -447,13 +448,21 @@ export async function updateCurrentUserProfile(
   accessToken: string,
   input: UpdateCurrentUserProfileInput,
 ): Promise<CurrentUserProfile> {
-  return fetchJson<CurrentUserProfile>("/users/me/profile", {
+  const url = input.tournamentSlug
+    ? `/users/me/profile?tournamentSlug=${encodeURIComponent(input.tournamentSlug)}`
+    : "/users/me/profile";
+
+  return fetchJson<CurrentUserProfile>(url, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      country: input.country,
+      favoriteTeamId: input.favoriteTeamId,
+      preferredLanguage: input.preferredLanguage,
+    }),
   });
 }
 

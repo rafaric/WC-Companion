@@ -664,12 +664,11 @@ export class SportsDataSyncService {
     tournamentId: string,
     team: SportsDataTeamDTO,
   ): Promise<{ created: boolean; updated: boolean }> {
-    const existingReference = await this.prisma.externalTeamReference.findUnique({
+    const existingReference = await this.prisma.externalTeamReference.findFirst({
       where: {
-        providerKey_externalId: {
-          providerKey: this.provider.providerKey,
-          externalId: team.externalId,
-        },
+        providerKey: this.provider.providerKey,
+        tournamentId,
+        externalId: team.externalId,
       },
       select: {
         teamId: true,
@@ -686,25 +685,6 @@ export class SportsDataSyncService {
           flagCode: team.flagCode,
           primaryColor: team.primaryColor,
           secondaryColor: team.secondaryColor,
-        },
-      });
-
-      await this.prisma.externalTeamReference.upsert({
-        where: {
-          providerKey_externalId: {
-            providerKey: this.provider.providerKey,
-            externalId: team.externalId,
-          },
-        },
-        create: {
-          providerKey: this.provider.providerKey,
-          tournamentId,
-          externalId: team.externalId,
-          teamId: existingReference.teamId,
-        },
-        update: {
-          tournamentId,
-          teamId: existingReference.teamId,
         },
       });
 
@@ -735,12 +715,22 @@ export class SportsDataSyncService {
         },
       });
 
-      await this.prisma.externalTeamReference.create({
-        data: {
+      await this.prisma.externalTeamReference.upsert({
+        where: {
+          providerKey_tournamentId_teamId: {
+            providerKey: this.provider.providerKey,
+            tournamentId,
+            teamId: existingTeam.id,
+          },
+        },
+        create: {
           providerKey: this.provider.providerKey,
           tournamentId,
           externalId: team.externalId,
           teamId: existingTeam.id,
+        },
+        update: {
+          externalId: team.externalId,
         },
       });
 
@@ -882,8 +872,8 @@ export class SportsDataSyncService {
     tournamentId: string,
     fixture: SportsDataFixtureDTO,
   ): Promise<{ created: boolean; updated: boolean }> {
-    const homeTeam = await this.resolveTeamId(fixture.homeTeamExternalId);
-    const awayTeam = await this.resolveTeamId(fixture.awayTeamExternalId);
+    const homeTeam = await this.resolveTeamIdForTournament(tournamentId, fixture.homeTeamExternalId);
+    const awayTeam = await this.resolveTeamIdForTournament(tournamentId, fixture.awayTeamExternalId);
     const venueId = await this.resolveVenueId(fixture.venueExternalId);
 
     const existingReference = await this.prisma.externalMatchReference.findUnique({
@@ -1013,12 +1003,15 @@ export class SportsDataSyncService {
   }
 
   private async resolveTeamId(externalTeamId: string): Promise<string> {
-    const reference = await this.prisma.externalTeamReference.findUnique({
+    throw new Error('resolveTeamId now requires tournamentId; use resolveTeamIdForTournament instead');
+  }
+
+  private async resolveTeamIdForTournament(tournamentId: string, externalTeamId: string): Promise<string> {
+    const reference = await this.prisma.externalTeamReference.findFirst({
       where: {
-        providerKey_externalId: {
-          providerKey: this.provider.providerKey,
-          externalId: externalTeamId,
-        },
+        providerKey: this.provider.providerKey,
+        tournamentId,
+        externalId: externalTeamId,
       },
       select: {
         teamId: true,
@@ -1026,7 +1019,7 @@ export class SportsDataSyncService {
     });
 
     if (reference === null) {
-      throw new NotFoundException(`External team ${externalTeamId} was not found`);
+      throw new NotFoundException(`External team ${externalTeamId} was not found for tournament ${tournamentId}`);
     }
 
     return reference.teamId;
