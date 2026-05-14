@@ -24,6 +24,7 @@ import { formatCountryLabel, getTeamLabel } from "@/lib/profile";
 import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
 import { getFriendlyDisplayName } from "@/lib/user-display";
 import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
+import { getTeamFlagEmoji } from "@/lib/flags";
 
 import { ShareActions } from "./share-actions";
 
@@ -110,17 +111,6 @@ interface ShareContent {
   url: string;
 }
 
-const FIFA_FLAG_EMOJI: Record<string, string> = {
-  ARG: "🇦🇷",
-  BRA: "🇧🇷",
-  ENG: "🏴",
-  ESP: "🇪🇸",
-  FRA: "🇫🇷",
-  GER: "🇩🇪",
-  POR: "🇵🇹",
-  URU: "🇺🇾",
-};
-
 function formatDate(date: string): string {
   return new Intl.DateTimeFormat("en", {
     dateStyle: "medium",
@@ -134,24 +124,6 @@ function formatMatchLabel(match: MatchView): string {
 
 function formatPredictionLabel(prediction: PredictionView): string {
   return `${prediction.homeScore} - ${prediction.awayScore}`;
-}
-
-function getFlagEmoji(code: string | null): string | null {
-  if (!code) {
-    return null;
-  }
-
-  const normalizedCode = code.trim().toUpperCase();
-
-  if (FIFA_FLAG_EMOJI[normalizedCode]) {
-    return FIFA_FLAG_EMOJI[normalizedCode];
-  }
-
-  if (!/^[A-Z]{2}$/.test(normalizedCode)) {
-    return null;
-  }
-
-  return String.fromCodePoint(...Array.from(normalizedCode).map((char) => 127397 + char.charCodeAt(0)));
 }
 
 async function getRequestOrigin(): Promise<string> {
@@ -280,8 +252,8 @@ function getShareErrorCode(error: unknown, kind: "prediction" | "performance" | 
 function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetId, shareActions }: PredictionShareTemplateProps) {
   const match = predictionOption?.match ?? null;
   const prediction = predictionOption?.prediction ?? null;
-  const homeFlag = match ? getFlagEmoji(match.homeTeam.flagCode) ?? getFlagEmoji(match.homeTeam.countryCode) : null;
-  const awayFlag = match ? getFlagEmoji(match.awayTeam.flagCode) ?? getFlagEmoji(match.awayTeam.countryCode) : null;
+  const homeFlag = match ? getTeamFlagEmoji(match.homeTeam.flagCode, match.homeTeam.countryCode) : null;
+  const awayFlag = match ? getTeamFlagEmoji(match.awayTeam.flagCode, match.awayTeam.countryCode) : null;
 
   return (
     <article id="prediction-preview" className="relative scroll-mt-24 overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-slate-950 p-5 shadow-2xl shadow-cyan-950/30">

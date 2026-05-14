@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import type { MatchView, PredictionView } from "@/lib/api";
+import { getTeamFlagEmoji } from "@/lib/flags";
 
 interface MatchPredictionCard extends MatchView {
   prediction: PredictionView | null;
@@ -30,17 +33,6 @@ const CLIENT_MATCH_STATUS = {
 const CLIENT_PREDICTION_SCORING_STATUS = {
   SCORED: "SCORED",
 } as const;
-
-const FIFA_FLAG_EMOJI: Record<string, string> = {
-  ARG: "🇦🇷",
-  BRA: "🇧🇷",
-  ENG: "🏴",
-  ESP: "🇪🇸",
-  FRA: "🇫🇷",
-  GER: "🇩🇪",
-  POR: "🇵🇹",
-  URU: "🇺🇾",
-};
 
 const SCORING_EXPLANATION_KIND = {
   CORRECT_OUTCOME: "correct-outcome",
@@ -108,24 +100,6 @@ function formatScoredAt(value: string | null): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
-}
-
-function getFlagEmoji(flagCode: string | null): string | null {
-  if (!flagCode) {
-    return null;
-  }
-
-  const normalizedCode = flagCode.trim().toUpperCase();
-
-  if (FIFA_FLAG_EMOJI[normalizedCode]) {
-    return FIFA_FLAG_EMOJI[normalizedCode];
-  }
-
-  if (!/^[A-Z]{2}$/.test(normalizedCode)) {
-    return null;
-  }
-
-  return String.fromCodePoint(...Array.from(normalizedCode).map((char) => 127397 + char.charCodeAt(0)));
 }
 
 function resolveOutcome(score: ScoreLine): MatchOutcome {
@@ -263,13 +237,76 @@ function getInitialExpandedMatchId(matches: MatchPredictionCard[]): string | nul
   return matches.find((match) => match.prediction === null)?.id ?? null;
 }
 
+interface MatchGroup {
+  date: Date;
+  dateLabel: string;
+  matches: MatchPredictionCard[];
+}
+
+function getLocalDateKey(date: Date): string {
+  // Use local date parts to create a consistent key that matches displayed dates
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function groupMatchesByDate(matches: MatchPredictionCard[]): MatchGroup[] {
+  const groups: Map<string, MatchGroup> = new Map();
+
+  for (const match of matches) {
+    const matchDate = new Date(match.kickoffAt);
+    const dateKey = getLocalDateKey(matchDate);
+
+    let group = groups.get(dateKey);
+
+    if (!group) {
+      const dateLabel = new Intl.DateTimeFormat("en", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      }).format(matchDate);
+
+      group = { date: matchDate, dateLabel, matches: [] };
+      groups.set(dateKey, group);
+    }
+
+    group.matches.push(match);
+  }
+
+  // Sort groups by date (earliest first)
+  return Array.from(groups.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
+}
+
 export function MatchPredictionAccordion({
   matches,
   profileComplete,
   submitPredictionAction,
 }: MatchPredictionAccordionProps) {
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(() => getInitialExpandedMatchId(matches));
+  const [hasHydrated, setHasHydrated] = useState(false);
+  const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
+  const [animationDirection, setAnimationDirection] = useState(0); // -1 = back, 1 = forward, 0 = initial
+  const shouldReduceMotion = useReducedMotion();
 
+  const matchGroups = hasHydrated ? groupMatchesByDate(matches) : [];
+
+  useEffect(() => {
+    setHasHydrated(true);
+  }, []);
+
+  // Clamp currentGroupIndex to valid range if match groups change between renders
+  useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
+    if (currentGroupIndex >= matchGroups.length) {
+      setCurrentGroupIndex(Math.max(0, matchGroups.length - 1));
+    }
+  }, [hasHydrated, matchGroups.length, currentGroupIndex]);
+
+  // All hooks and hook-dependent calculations above this line
   if (matches.length === 0) {
     return (
       <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 text-sm leading-6 text-slate-300">
@@ -278,14 +315,139 @@ export function MatchPredictionAccordion({
     );
   }
 
+  if (!hasHydrated) {
+    return (
+      <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 text-sm leading-6 text-slate-300">
+        Loading local match dates...
+      </div>
+    );
+  }
+
+  const safeCurrentGroupIndex = Math.min(currentGroupIndex, matchGroups.length - 1);
+  const currentGroup = matchGroups[safeCurrentGroupIndex];
+  const hasMultipleGroups = matchGroups.length > 1;
+  const canGoPrevious = safeCurrentGroupIndex > 0;
+  const canGoNext = safeCurrentGroupIndex < matchGroups.length - 1;
+
+  const handlePrevious = () => {
+    if (canGoPrevious) {
+      setAnimationDirection(-1);
+      setCurrentGroupIndex((prev) => prev - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (canGoNext) {
+      setAnimationDirection(1);
+      setCurrentGroupIndex((prev) => prev + 1);
+    }
+  };
+
+  // Animation variants for horizontal slide
+  const slideVariants = shouldReduceMotion
+    ? {
+        enter: { opacity: 1, x: 0 },
+        center: { opacity: 1, x: 0 },
+        exit: { opacity: 1, x: 0 },
+      }
+    : {
+        enter: (dir: number) => ({
+          opacity: 0,
+          x: dir === 0 ? 0 : dir > 0 ? 50 : -50,
+        }),
+        center: {
+          opacity: 1,
+          x: 0,
+        },
+        exit: (dir: number) => ({
+          opacity: 0,
+          x: dir === 0 ? 0 : dir < 0 ? 50 : -50,
+        }),
+      };
+
   return (
-    <div className="space-y-3">
-      {matches.map((match) => {
+    <div className="space-y-6">
+      {/* Pager UI */}
+      {hasMultipleGroups && (
+        <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900/50 px-4 py-3">
+          <button
+            type="button"
+            onClick={handlePrevious}
+            disabled={!canGoPrevious}
+            aria-label="Previous date"
+            className={`flex h-10 w-10 items-center justify-center rounded-full border transition ${
+              canGoPrevious
+                ? "border-slate-700 bg-slate-800 text-slate-300 hover:border-cyan-400/50 hover:bg-slate-700 hover:text-cyan-300"
+                : "cursor-not-allowed border-slate-800 bg-slate-900/50 text-slate-600"
+            }`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2.5}
+              stroke="currentColor"
+              className="size-5"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+            </svg>
+          </button>
+
+          <div className="flex flex-col items-center">
+            <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
+              {safeCurrentGroupIndex + 1} of {matchGroups.length}
+            </span>
+            <span className="mt-1 text-base font-semibold text-white">{currentGroup.dateLabel}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={!canGoNext}
+            aria-label="Next date"
+            className={`flex h-10 w-10 items-center justify-center rounded-full border transition ${
+              canGoNext
+                ? "border-slate-700 bg-slate-800 text-slate-300 hover:border-cyan-400/50 hover:bg-slate-700 hover:text-cyan-300"
+                : "cursor-not-allowed border-slate-800 bg-slate-900/50 text-slate-600"
+            }`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2.5}
+              stroke="currentColor"
+              className="size-5"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Single-day view with animation */}
+      <AnimatePresence mode="wait" custom={animationDirection}>
+        <motion.div
+          key={safeCurrentGroupIndex}
+          custom={animationDirection}
+          variants={slideVariants}
+          initial={shouldReduceMotion ? "center" : "enter"}
+          animate="center"
+          exit={shouldReduceMotion ? "center" : "exit"}
+          transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.3, ease: "easeOut" }}
+        >
+          <section className="space-y-3">
+            {!hasMultipleGroups && (
+              <h2 className="px-1 text-sm font-semibold uppercase tracking-wider text-slate-400">
+                {currentGroup.dateLabel}
+              </h2>
+            )}
+            {currentGroup.matches.map((match) => {
         const matchFinished = isMatchFinished(match);
         const scoringExplanation = getScoringExplanation(match);
         const expanded = expandedMatchId === match.id;
-        const homeFlag = getFlagEmoji(match.homeTeam.flagCode) ?? getFlagEmoji(match.homeTeam.countryCode);
-        const awayFlag = getFlagEmoji(match.awayTeam.flagCode) ?? getFlagEmoji(match.awayTeam.countryCode);
+        const homeFlag = getTeamFlagEmoji(match.homeTeam.flagCode, match.homeTeam.countryCode);
+        const awayFlag = getTeamFlagEmoji(match.awayTeam.flagCode, match.awayTeam.countryCode);
         const predictionLabel = formatPredictionLabel(match.prediction);
 
         return (
@@ -449,6 +611,9 @@ export function MatchPredictionAccordion({
           </article>
         );
       })}
+          </section>
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
