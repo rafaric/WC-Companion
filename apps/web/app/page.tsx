@@ -15,6 +15,7 @@ import {
 import { buildPageMetadata, metadataBase, SITE_DESCRIPTION, SITE_NAME } from "@/lib/metadata";
 import { formatCountryLabel, getTeamLabel, isProfileComplete } from "@/lib/profile";
 import { getFriendlyDisplayName, getFriendlyEmailLabel } from "@/lib/user-display";
+import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
 import Image from "next/image";
 
 export const metadata = buildPageMetadata({
@@ -209,10 +210,13 @@ function getTeamById(matches: MatchView[], teamId: string | null): MatchView["ho
 }
 
 export default async function HomePage() {
+  // Resolve selected tournament from cookie (null means user didn't set one → API uses ACTIVE fallback)
+  const tournamentSlug = await resolveTournamentSlug();
+
   const sessionPromise = auth0.getSession();
-  const tournamentPromise = getActiveTournament().catch(() => null);
-  const matchesPromise = getActiveTournamentMatches().catch(() => []);
-  const rankingPromise = getGlobalRanking().catch(() => []);
+  const tournamentPromise = getActiveTournament(tournamentSlug).catch(() => null);
+  const matchesPromise = getActiveTournamentMatches(tournamentSlug).catch(() => []);
+  const rankingPromise = getGlobalRanking(tournamentSlug).catch(() => []);
 
   const [session, activeTournament, matches, ranking] = await Promise.all([
     sessionPromise,

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 
 import { auth0 } from "@/lib/auth0";
 import {
@@ -15,6 +16,7 @@ import {
   PROFILE_LANGUAGE_OPTIONS,
 } from "@/lib/profile";
 import { getFriendlyDisplayName } from "@/lib/user-display";
+import { getTournamentSlugFromCookies, parseTournamentSlug } from "@/lib/tournament-context";
 
 export const metadata = buildPageMetadata({
   title: "Complete profile",
@@ -43,8 +45,15 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
     redirect("/auth/login?returnTo=/onboarding");
   }
 
+  // Read tournament selection from cookie
+  const cookieStore = await cookies();
+  const selectedSlug = parseTournamentSlug(
+    getTournamentSlugFromCookies({ get: (name) => cookieStore.get(name) })
+  );
+  const tournamentSlug = selectedSlug ?? null;
+
   const resolvedSearchParams = await searchParams;
-  const matches = await getActiveTournamentMatches().catch(() => []);
+  const matches = await getActiveTournamentMatches(tournamentSlug).catch(() => []);
   const teams = extractUniqueTeamsFromMatches(matches);
   const teamIds = teams.map((team) => team.id);
   const { token } = await auth0.getAccessToken();

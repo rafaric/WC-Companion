@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { buildPageMetadata } from "@/lib/metadata";
 import { getFriendlyDisplayName } from "@/lib/user-display";
 import { CopyInviteCodeButton } from "../copy-invite-code-button";
+import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
 
 export const metadata = buildPageMetadata({
   title: "Group ranking",
@@ -240,9 +241,11 @@ export default async function GroupDetailPage({ params }: GroupDetailPageProps) 
     redirect("/auth/login?returnTo=/groups");
   }
 
+  const tournamentSlug = await resolveTournamentSlug();
+
   const [currentUserProfile, myGroups, rankingResult] = await Promise.all([
     getCurrentUserProfile(accessToken).catch(() => null),
-    getMyGroups(accessToken).catch(() => [] as MyGroupView[]),
+    getMyGroups(accessToken, tournamentSlug).catch(() => [] as MyGroupView[]),
     getGroupRanking(accessToken, groupId)
       .then((ranking) => ({ ranking, error: null as string | null }))
       .catch((error: unknown) => ({ ranking: [] as RankingEntry[], error: getRankingErrorMessage(error) })),

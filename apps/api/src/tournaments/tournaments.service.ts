@@ -1,7 +1,27 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { MatchStatus, TournamentStatus } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+
+/**
+ * Input for tournament context resolution.
+ * Resolution order: explicitTournamentId -> selectedSlug -> ACTIVE fallback
+ */
+export interface TournamentContextInput {
+  /** Explicit tournament ID (from admin writes or path params) */
+  explicitTournamentId?: string | null;
+  /** Selected tournament slug (from cookie/header) */
+  selectedSlug?: string | null;
+}
+
+/**
+ * Resolved tournament context with source metadata.
+ */
+export interface ResolvedTournamentContext {
+  tournament: TournamentView;
+  /** How the tournament was resolved: 'explicit' | 'cookie' | 'active' */
+  source: 'explicit' | 'cookie' | 'active';
+}
 
 export interface TournamentView {
   id: string;
@@ -110,10 +130,16 @@ export class TournamentsService {
 
   async getActiveTournamentMatches(): Promise<TournamentMatchView[]> {
     const tournament = await this.getActiveTournament();
+    return this.getTournamentMatches(tournament.id);
+  }
 
+  /**
+   * Get matches for a specific tournament by ID.
+   */
+  async getTournamentMatches(tournamentId: string): Promise<TournamentMatchView[]> {
     const matches = await this.prisma.match.findMany({
       where: {
-        tournamentId: tournament.id,
+        tournamentId,
       },
       orderBy: {
         kickoffAt: 'asc',
@@ -154,6 +180,101 @@ export class TournamentsService {
     });
 
     return matches.map((match) => this.toTournamentMatchView(match));
+  }
+
+  /**
+   * Lists all tournaments for selector UI.
+   */
+  async listTournaments(): Promise<TournamentView[]> {
+    const tournaments = await this.prisma.tournament.findMany({
+      orderBy: [
+        { status: 'desc' }, // ACTIVE first
+        { year: 'desc' },
+        { name: 'asc' },
+      ],
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        year: true,
+        status: true,
+        startsAt: true,
+        endsAt: true,
+      },
+    });
+
+    return tournaments.map((tournament) => this.toTournamentView(tournament));
+  }
+
+  /**
+   * Resolves tournament context from input.
+   * Resolution order: explicitTournamentId -> selectedSlug -> ACTIVE fallback
+   */
+  async resolveTournamentContext(input: TournamentContextInput): Promise<ResolvedTournamentContext> {
+    // Step 1: Try explicit tournament ID
+    if (input.explicitTournamentId !== undefined && input.explicitTournamentId !== null && input.explicitTournamentId !== '') {
+      const tournament = await this.prisma.tournament.findUnique({
+        where: { id: input.explicitTournamentId },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          year: true,
+          status: true,
+          startsAt: true,
+          endsAt: true,
+        },
+      });
+
+      if (tournament === null) {
+        throw new NotFoundException(`Tournament ${input.explicitTournamentId} was not found`);
+      }
+
+      return {
+        tournament: this.toTournamentView(tournament),
+        source: 'explicit',
+      };
+    }
+
+    // Step 2: Try selected slug from cookie
+    if (input.selectedSlug !== undefined && input.selectedSlug !== null && input.selectedSlug !== '') {
+      const tournament = await this.prisma.tournament.findFirst({
+        where: { slug: input.selectedSlug },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          year: true,
+          status: true,
+          startsAt: true,
+          endsAt: true,
+        },
+      });
+
+      if (tournament !== null) {
+        return {
+          tournament: this.toTournamentView(tournament),
+          source: 'cookie',
+        };
+      }
+
+      // Invalid slug - log warning and fall through to ACTIVE
+    }
+
+    // Step 3: Fall back to ACTIVE tournament
+    const activeTournament = await this.getActiveTournament();
+    return {
+      tournament: activeTournament,
+      source: 'active',
+    };
+  }
+
+  /**
+   * Gets the active tournament (strict - no fallback).
+   * Use resolveTournamentContext() for context-aware resolution.
+   */
+  async getStrictActiveTournament(): Promise<TournamentView> {
+    return this.getActiveTournament();
   }
 
   private toTournamentView(tournament: ActiveTournamentRecord): TournamentView {

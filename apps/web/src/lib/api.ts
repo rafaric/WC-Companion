@@ -1,8 +1,44 @@
 import "server-only";
 
+import { cookies } from "next/headers";
+import { getTournamentSlugFromCookies, parseTournamentSlug, TOURNAMENT_COOKIE_NAME } from "./tournament-context";
+
 const DEFAULT_API_BASE_URL = "http://localhost:3001";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
+
+/**
+ * Get the currently selected tournament slug from cookies.
+ * Used by server components to forward tournament context to API calls.
+ *
+ * @returns The selected tournament slug or null if not set
+ */
+export async function getSelectedTournamentSlug(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const slug = getTournamentSlugFromCookies({ get: (name) => cookieStore.get(name) });
+  return parseTournamentSlug(slug);
+}
+
+/**
+ * Get the tournament slug from a cookie store directly.
+ * Useful when you already have a cookie store instance.
+ *
+ * @param cookieStore - Cookie store with get method
+ * @returns The selected tournament slug or null if not set
+ */
+export function getTournamentSlugFromCookieStore(
+  cookieStore: { get: (name: string) => { value: string } | undefined }
+): string | null {
+  const slug = getTournamentSlugFromCookies(cookieStore);
+  return parseTournamentSlug(slug);
+}
+
+/**
+ * Cookie store interface compatible with Next.js cookies() API.
+ */
+export interface CookieStore {
+  get(name: string): { value: string } | undefined;
+}
 
 export const TOURNAMENT_STATUS = {
   ACTIVE: "ACTIVE",
@@ -335,16 +371,45 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   }
 }
 
-export async function getActiveTournament(): Promise<Tournament> {
-  return fetchJson<Tournament>("/tournaments/active");
+/**
+ * Fetch tournaments list for selector UI.
+ * Returns all tournaments ordered by status and year.
+ */
+export async function listTournaments(): Promise<Tournament[]> {
+  return fetchJson<Tournament[]>("/tournaments");
 }
 
-export async function getActiveTournamentMatches(): Promise<MatchView[]> {
-  return fetchJson<MatchView[]>("/tournaments/active/matches");
+export async function getActiveTournament(tournamentSlug?: string | null): Promise<Tournament> {
+  const url = tournamentSlug
+    ? `/tournaments/active?tournamentSlug=${encodeURIComponent(tournamentSlug)}`
+    : "/tournaments/active";
+  return fetchJson<Tournament>(url);
 }
 
-export async function getGlobalRanking(): Promise<RankingEntry[]> {
-  return fetchJson<RankingEntry[]>("/rankings/global");
+export async function getActiveTournamentMatches(tournamentSlug?: string | null): Promise<MatchView[]> {
+  const url = tournamentSlug
+    ? `/tournaments/active/matches?tournamentSlug=${encodeURIComponent(tournamentSlug)}`
+    : "/tournaments/active/matches";
+  return fetchJson<MatchView[]>(url);
+}
+
+export async function getGlobalRanking(tournamentSlug?: string | null): Promise<RankingEntry[]> {
+  // Backend route is /rankings/global - always hit the global endpoint and forward selector context via query param
+  const url = tournamentSlug
+    ? `/rankings/global?tournamentSlug=${encodeURIComponent(tournamentSlug)}`
+    : "/rankings/global";
+  return fetchJson<RankingEntry[]>(url);
+}
+
+/**
+ * Get ranking entries for a specific tournament.
+ * Now forwards tournamentSlug to getGlobalRanking which supports selector-aware context.
+ *
+ * @param tournamentSlug - The tournament slug to filter rankings by
+ * @returns Ranking entries for the tournament
+ */
+export async function getTournamentRanking(tournamentSlug: string): Promise<RankingEntry[]> {
+  return getGlobalRanking(tournamentSlug);
 }
 
 export async function getCurrentUserProfile(accessToken: string): Promise<CurrentUserProfile> {
@@ -392,16 +457,22 @@ export async function updateCurrentUserProfile(
   });
 }
 
-export async function getMyGroups(accessToken: string): Promise<MyGroupView[]> {
-  return fetchJson<MyGroupView[]>("/groups/me", {
+export async function getMyGroups(accessToken: string, tournamentSlug?: string | null): Promise<MyGroupView[]> {
+  const url = tournamentSlug
+    ? `/groups/me?tournamentSlug=${encodeURIComponent(tournamentSlug)}`
+    : "/groups/me";
+  return fetchJson<MyGroupView[]>(url, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   });
 }
 
-export async function createGroup(accessToken: string, input: CreateGroupInput): Promise<GroupView> {
-  return fetchJson<GroupView>("/groups", {
+export async function createGroup(accessToken: string, input: CreateGroupInput, tournamentSlug?: string | null): Promise<GroupView> {
+  const url = tournamentSlug
+    ? `/groups?tournamentSlug=${encodeURIComponent(tournamentSlug)}`
+    : "/groups";
+  return fetchJson<GroupView>(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -430,8 +501,14 @@ export async function getGroupRanking(accessToken: string, groupId: string): Pro
   });
 }
 
-export async function createMyPerformanceSummaryShareCard(accessToken: string): Promise<ShareCardView> {
-  return fetchJson<ShareCardView>("/share-cards/me/global-ranking", {
+export async function createMyPerformanceSummaryShareCard(
+  accessToken: string,
+  tournamentSlug?: string | null
+): Promise<ShareCardView> {
+  const url = tournamentSlug
+    ? `/share-cards/me/global-ranking?tournamentSlug=${encodeURIComponent(tournamentSlug)}`
+    : "/share-cards/me/global-ranking";
+  return fetchJson<ShareCardView>(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -439,8 +516,15 @@ export async function createMyPerformanceSummaryShareCard(accessToken: string): 
   });
 }
 
-export async function createGroupRankingShareCard(accessToken: string, groupId: string): Promise<ShareCardView> {
-  return fetchJson<ShareCardView>(`/share-cards/groups/${groupId}/ranking`, {
+export async function createGroupRankingShareCard(
+  accessToken: string,
+  groupId: string,
+  tournamentSlug?: string | null
+): Promise<ShareCardView> {
+  const url = tournamentSlug
+    ? `/share-cards/groups/${groupId}/ranking?tournamentSlug=${encodeURIComponent(tournamentSlug)}`
+    : `/share-cards/groups/${groupId}/ranking`;
+  return fetchJson<ShareCardView>(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -448,8 +532,15 @@ export async function createGroupRankingShareCard(accessToken: string, groupId: 
   });
 }
 
-export async function createPredictionShareCard(accessToken: string, matchId: string): Promise<ShareCardView> {
-  return fetchJson<ShareCardView>(`/share-cards/predictions/matches/${matchId}`, {
+export async function createPredictionShareCard(
+  accessToken: string,
+  matchId: string,
+  tournamentSlug?: string | null
+): Promise<ShareCardView> {
+  const url = tournamentSlug
+    ? `/share-cards/predictions/matches/${matchId}?tournamentSlug=${encodeURIComponent(tournamentSlug)}`
+    : `/share-cards/predictions/matches/${matchId}`;
+  return fetchJson<ShareCardView>(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -460,8 +551,12 @@ export async function createPredictionShareCard(accessToken: string, matchId: st
 export async function getExternalMatchResults(
   accessToken: string,
   state: ExternalMatchResultState = EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION,
+  tournamentSlug?: string | null,
 ): Promise<ExternalMatchResultView[]> {
-  return fetchJson<ExternalMatchResultView[]>(`/admin/sports-data/external-results?state=${state}`, {
+  const url = tournamentSlug
+    ? `/admin/sports-data/external-results?state=${state}&tournamentSlug=${encodeURIComponent(tournamentSlug)}`
+    : `/admin/sports-data/external-results?state=${state}`;
+  return fetchJson<ExternalMatchResultView[]>(url, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -474,16 +569,26 @@ export async function getPendingExternalMatchResults(accessToken: string): Promi
 
 export async function getExternalMatchMappingDiagnostics(
   accessToken: string,
+  tournamentSlug?: string | null,
 ): Promise<ExternalMatchMappingDiagnosticView[]> {
-  return fetchJson<ExternalMatchMappingDiagnosticView[]>("/admin/sports-data/external-results/diagnostics/matches", {
+  const url = tournamentSlug
+    ? `/admin/sports-data/external-results/diagnostics/matches?tournamentSlug=${encodeURIComponent(tournamentSlug)}`
+    : "/admin/sports-data/external-results/diagnostics/matches";
+  return fetchJson<ExternalMatchMappingDiagnosticView[]>(url, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   });
 }
 
-export async function getExternalSyncRuns(accessToken: string): Promise<ExternalSyncRunView[]> {
-  return fetchJson<ExternalSyncRunView[]>("/admin/sports-data/external-results/sync-runs", {
+export async function getExternalSyncRuns(
+  accessToken: string,
+  tournamentSlug?: string | null,
+): Promise<ExternalSyncRunView[]> {
+  const url = tournamentSlug
+    ? `/admin/sports-data/external-results/sync-runs?tournamentSlug=${encodeURIComponent(tournamentSlug)}`
+    : "/admin/sports-data/external-results/sync-runs";
+  return fetchJson<ExternalSyncRunView[]>(url, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },

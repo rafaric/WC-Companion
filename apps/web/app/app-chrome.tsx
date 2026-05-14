@@ -14,6 +14,8 @@ interface AppChromeProps {
   currentUserProfile: CurrentUserProfile | null;
   favoriteTeam: TeamView | null;
   sessionUser: SessionDisplayUser | null;
+  /** Tournament selector component for the header */
+  tournamentSelector?: ReactNode;
 }
 
 interface NavItem {
@@ -80,7 +82,7 @@ function getFlagEmoji(code: string | null): string | null {
   return String.fromCodePoint(...Array.from(normalizedCode).map((char) => 127397 + char.charCodeAt(0)));
 }
 
-export function AppChrome({ canAccessExternalResults, children, currentUserProfile, favoriteTeam, sessionUser }: AppChromeProps) {
+export function AppChrome({ canAccessExternalResults, children, currentUserProfile, favoriteTeam, sessionUser, tournamentSelector }: AppChromeProps) {
   const pathname = usePathname();
   const menuId = useId();
   const firstMenuLinkRef = useRef<HTMLAnchorElement | null>(null);
@@ -145,6 +147,9 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
             </Link>
 
             <nav aria-label="Primary" className="hidden items-center gap-2 md:flex">
+              {tournamentSelector && (
+                <div className="mr-2">{tournamentSelector}</div>
+              )}
               {navItems.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
@@ -223,6 +228,14 @@ export function AppChrome({ canAccessExternalResults, children, currentUserProfi
                       </span>
                     </div>
                   </div>
+
+                  {/* Tournament selector for mobile */}
+                  {tournamentSelector && (
+                    <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Tournament</p>
+                      <div className="flex justify-center">{tournamentSelector}</div>
+                    </div>
+                  )}
 
                   <nav aria-label="Primary" className="mt-3 grid gap-2">
                     {navItems.map((item, index) => {

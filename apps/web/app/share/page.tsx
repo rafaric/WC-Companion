@@ -23,6 +23,7 @@ import { buildPageMetadata } from "@/lib/metadata";
 import { formatCountryLabel, getTeamLabel } from "@/lib/profile";
 import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
 import { getFriendlyDisplayName } from "@/lib/user-display";
+import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
 
 import { ShareActions } from "./share-actions";
 
@@ -546,6 +547,9 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     redirect("/auth/login?returnTo=/share");
   }
 
+  // Resolve selected tournament from cookie (null → API uses ACTIVE fallback)
+  const tournamentSlug = await resolveTournamentSlug();
+
   const resolvedSearchParams = await searchParams;
 
   let accessToken: string;
@@ -558,10 +562,10 @@ export default async function SharePage({ searchParams }: SharePageProps) {
 
   const [currentUserProfile, matches, predictions, myGroups, globalRanking] = await Promise.all([
     getCurrentUserProfile(accessToken).catch(() => null),
-    getActiveTournamentMatches().catch(() => [] as MatchView[]),
+    getActiveTournamentMatches(tournamentSlug).catch(() => [] as MatchView[]),
     getMyPredictions(accessToken).catch(() => [] as PredictionView[]),
-    getMyGroups(accessToken).catch(() => [] as MyGroupView[]),
-    getGlobalRanking().catch(() => [] as RankingEntry[]),
+    getMyGroups(accessToken, tournamentSlug).catch(() => [] as MyGroupView[]),
+    getGlobalRanking(tournamentSlug).catch(() => [] as RankingEntry[]),
   ]);
 
   const displayName = getFriendlyDisplayName(session.user, currentUserProfile);
@@ -613,8 +617,10 @@ export default async function SharePage({ searchParams }: SharePageProps) {
       redirect("/auth/login?returnTo=/share");
     }
 
+    const tournamentSlug = await resolveTournamentSlug();
+
     try {
-      await createPredictionShareCard(actionToken, matchId);
+      await createPredictionShareCard(actionToken, matchId, tournamentSlug);
     } catch (error) {
       redirect(`/share?error=${getShareErrorCode(error, "prediction")}${PREVIEW_HASH.prediction}`);
     }
@@ -635,8 +641,10 @@ export default async function SharePage({ searchParams }: SharePageProps) {
       redirect("/auth/login?returnTo=/share");
     }
 
+    const tournamentSlug = await resolveTournamentSlug();
+
     try {
-      await createMyPerformanceSummaryShareCard(actionToken);
+      await createMyPerformanceSummaryShareCard(actionToken, tournamentSlug);
     } catch (error) {
       redirect(`/share?error=${getShareErrorCode(error, "performance")}${PREVIEW_HASH.performance}`);
     }
@@ -661,8 +669,10 @@ export default async function SharePage({ searchParams }: SharePageProps) {
       redirect("/auth/login?returnTo=/share");
     }
 
+    const tournamentSlug = await resolveTournamentSlug();
+
     try {
-      await createGroupRankingShareCard(actionToken, groupId);
+      await createGroupRankingShareCard(actionToken, groupId, tournamentSlug);
     } catch (error) {
       redirect(`/share?error=${getShareErrorCode(error, "group")}&groupId=${groupId}${PREVIEW_HASH.group}`);
     }

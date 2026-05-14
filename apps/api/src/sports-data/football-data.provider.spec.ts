@@ -92,7 +92,7 @@ describe('FootballDataProvider', () => {
     expect(client.listTeams).toHaveBeenCalledWith(tournamentConfigs['world-cup-2026-demo']);
   });
 
-  it('maps fixtures and normalizes stage and group names', async () => {
+  it('maps fixtures and normalizes stage and group names while skipping unresolved knockout placeholders', async () => {
     const client = createClientMock();
     const response: FootballDataMatchCollectionResponse = {
       count: 2,
@@ -132,6 +132,24 @@ describe('FootballDataProvider', () => {
           venue: null,
           homeTeam: { id: 12, name: 'Brazil', tla: 'BRA' },
           awayTeam: { id: 13, name: 'Germany', tla: 'GER' },
+          score: {
+            winner: null,
+            duration: null,
+            fullTime: null,
+            halfTime: null,
+            extraTime: null,
+            penalties: null,
+          },
+        },
+        {
+          id: 537417,
+          utcDate: '2026-06-28T19:00:00.000Z',
+          status: 'TIMED',
+          stage: 'LAST_32',
+          group: null,
+          venue: null,
+          homeTeam: { id: null, name: 'TBD', tla: null },
+          awayTeam: { id: null, name: 'TBD', tla: null },
           score: {
             winner: null,
             duration: null,

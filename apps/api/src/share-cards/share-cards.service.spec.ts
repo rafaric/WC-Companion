@@ -134,6 +134,7 @@ interface UsersServiceMock {
 
 interface TournamentsServiceMock {
   getActiveTournament: jest.Mock<Promise<TournamentRecord>, []>;
+  resolveTournamentContext: jest.Mock<Promise<{ tournament: TournamentRecord; source: 'explicit' | 'cookie' | 'active' }>, any[]>;
 }
 
 function createIdentity(overrides: Partial<AuthenticatedIdentity> = {}): AuthenticatedIdentity {
@@ -253,6 +254,10 @@ function createUsersServiceMock(userId = 'user-1'): UsersServiceMock {
 function createTournamentsServiceMock(activeTournament: TournamentRecord = createTournament()): TournamentsServiceMock {
   return {
     getActiveTournament: jest.fn(async () => activeTournament),
+    resolveTournamentContext: jest.fn(async () => ({
+      tournament: { ...activeTournament },
+      source: 'active' as const,
+    })),
   };
 }
 
@@ -272,7 +277,7 @@ describe('ShareCardsService', () => {
     const result = await service.createMyGlobalRankingShareCard(createIdentity());
 
     expect(usersService.syncAuthenticatedUser).toHaveBeenCalledTimes(1);
-    expect(tournamentsService.getActiveTournament).toHaveBeenCalledTimes(1);
+    expect(tournamentsService.resolveTournamentContext).toHaveBeenCalledTimes(1);
     expect(prisma.rankingEntry.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {

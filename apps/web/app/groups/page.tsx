@@ -6,6 +6,7 @@ import { auth0 } from "@/lib/auth0";
 import {
   ApiError,
   createGroup,
+  getActiveTournament,
   getCurrentUserProfile,
   getMyGroups,
   joinGroup,
@@ -16,6 +17,7 @@ import { buildPageMetadata } from "@/lib/metadata";
 import { isProfileComplete } from "@/lib/profile";
 import { CopyInviteCodeButton } from "./copy-invite-code-button";
 import { GroupActionTabs } from "./group-action-tabs";
+import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
 
 export const metadata = buildPageMetadata({
   title: "Groups",
@@ -132,10 +134,28 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
     redirect("/auth/login?returnTo=/groups");
   }
 
+  const tournamentSlug = await resolveTournamentSlug();
+
+  // Get tournament ID from slug for proper comparison (group.tournamentId is UUID, not slug)
+  let tournamentId: string | null = null;
+  if (tournamentSlug) {
+    try {
+      const tournament = await getActiveTournament(tournamentSlug);
+      tournamentId = tournament.id;
+    } catch {
+      // Tournament not found, show all groups
+    }
+  }
+
   const [currentUserProfile, myGroups] = await Promise.all([
     getCurrentUserProfile(accessToken).catch(() => null),
-    getMyGroups(accessToken).catch(() => []),
+    getMyGroups(accessToken, tournamentSlug).catch(() => []),
   ]);
+
+  // Filter groups by selected tournament when one is chosen
+  const filteredGroups = tournamentId
+    ? myGroups.filter((group) => group.tournamentId === tournamentId)
+    : myGroups;
 
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;
 
@@ -156,10 +176,13 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
       redirect("/auth/login?returnTo=/groups");
     }
 
+    // Get selected tournament context for the new group
+    const tournamentSlug = await resolveTournamentSlug();
+
     let createdGroup: GroupView;
 
     try {
-      createdGroup = await createGroup(actionToken, { name });
+      createdGroup = await createGroup(actionToken, { name }, tournamentSlug);
     } catch (error) {
       redirect(`/groups?error=${getGroupActionErrorCode(error, "create")}`);
     }
@@ -251,12 +274,15 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">My groups</p>
                 <h2 className="mt-1 text-lg font-semibold text-white">Your competitions</h2>
               </div>
-              <p className="text-sm text-slate-400">{myGroups.length} total</p>
+              <p className="text-sm text-slate-400">
+                {filteredGroups.length}
+                {tournamentSlug ? ` of ${myGroups.length}` : ` of ${myGroups.length}`}
+              </p>
             </div>
 
-            {myGroups.length > 0 ? (
+            {filteredGroups.length > 0 ? (
               <div className="grid gap-4">
-                {myGroups.map((group) => (
+                {filteredGroups.map((group) => (
                   <GroupCard key={group.id} group={group} />
                 ))}
               </div>

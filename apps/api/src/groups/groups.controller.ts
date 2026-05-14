@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 
 import { Auth0JwtGuard } from '../auth/auth.guard';
 import { CurrentAuthUser } from '../auth/current-auth-user.decorator';
@@ -7,6 +7,11 @@ import { RankingsService, type RankingEntryView } from '../rankings/rankings.ser
 import { CreateGroupDto } from './dto/create-group.dto';
 import { JoinGroupDto } from './dto/join-group.dto';
 import { GroupsService } from './groups.service';
+
+interface TournamentContextQuery {
+  tournamentId?: string | null;
+  tournamentSlug?: string | null;
+}
 
 @UseGuards(Auth0JwtGuard)
 @Controller('groups')
@@ -17,10 +22,18 @@ export class GroupsController {
   ) {}
 
   @Post()
-  async createGroup(@CurrentAuthUser() identity: AuthenticatedIdentity, @Body() body: CreateGroupDto) {
+  async createGroup(
+    @CurrentAuthUser() identity: AuthenticatedIdentity,
+    @Body() body: CreateGroupDto,
+    @Query() query: TournamentContextQuery,
+  ) {
     return this.groupsService.createGroup({
       identity,
       name: body.name,
+      tournamentContext: {
+        explicitTournamentId: query.tournamentId,
+        selectedSlug: query.tournamentSlug,
+      },
     });
   }
 
@@ -33,8 +46,17 @@ export class GroupsController {
   }
 
   @Get('me')
-  async getMyGroups(@CurrentAuthUser() identity: AuthenticatedIdentity) {
-    return this.groupsService.getMyGroups({ identity });
+  async getMyGroups(
+    @CurrentAuthUser() identity: AuthenticatedIdentity,
+    @Query() query: TournamentContextQuery,
+  ) {
+    return this.groupsService.getMyGroups({
+      identity,
+      tournamentContext: {
+        explicitTournamentId: query.tournamentId,
+        selectedSlug: query.tournamentSlug,
+      },
+    });
   }
 
   @Get(':groupId/ranking')

@@ -3,7 +3,7 @@ import { PredictionScoringStatus, RankingScope, type GroupMembership, type Predi
 
 import type { AuthenticatedIdentity } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
-import { TournamentsService } from '../tournaments/tournaments.service';
+import { TournamentsService, type TournamentContextInput } from '../tournaments/tournaments.service';
 import { UsersService } from '../users/users.service';
 
 const GLOBAL_SCOPE_ID = 'global' as const;
@@ -95,17 +95,28 @@ export class RankingsService {
     private readonly tournamentsService: TournamentsService,
   ) {}
 
-  async getActiveGlobalRanking(): Promise<RankingEntryView[]> {
-    const activeTournament = await this.tournamentsService.getActiveTournament();
-
-    return this.getGlobalRanking(activeTournament.id);
-  }
-
-  async getGlobalRanking(tournamentId?: string): Promise<RankingEntryView[]> {
-    const resolvedTournamentId = tournamentId ?? (await this.tournamentsService.getActiveTournament()).id;
+  async getActiveGlobalRanking(input?: { tournamentContext?: TournamentContextInput }): Promise<RankingEntryView[]> {
+    const resolved = await this.tournamentsService.resolveTournamentContext(input?.tournamentContext ?? {});
 
     return this.loadRankingEntries({
-      tournamentId: resolvedTournamentId,
+      tournamentId: resolved.tournament.id,
+      scope: RankingScope.GLOBAL,
+      scopeId: GLOBAL_SCOPE_ID,
+    });
+  }
+
+  async getGlobalRanking(input?: { tournamentId?: string; tournamentContext?: TournamentContextInput }): Promise<RankingEntryView[]> {
+    let tournamentId: string;
+
+    if (input?.tournamentId !== undefined) {
+      tournamentId = input.tournamentId;
+    } else {
+      const resolved = await this.tournamentsService.resolveTournamentContext(input?.tournamentContext ?? {});
+      tournamentId = resolved.tournament.id;
+    }
+
+    return this.loadRankingEntries({
+      tournamentId,
       scope: RankingScope.GLOBAL,
       scopeId: GLOBAL_SCOPE_ID,
     });

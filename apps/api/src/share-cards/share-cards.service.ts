@@ -3,7 +3,7 @@ import { RankingScope, ShareCardType, type Prisma } from '@prisma/client';
 
 import type { AuthenticatedIdentity } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
-import { TournamentsService } from '../tournaments/tournaments.service';
+import { TournamentsService, type TournamentContextInput } from '../tournaments/tournaments.service';
 import { UsersService } from '../users/users.service';
 
 const GLOBAL_SCOPE_ID = 'global' as const;
@@ -215,12 +215,12 @@ export class ShareCardsService {
     private readonly tournamentsService: TournamentsService,
   ) {}
 
-  async createMyGlobalRankingShareCard(identity: AuthenticatedIdentity): Promise<ShareCardView> {
+  async createMyGlobalRankingShareCard(identity: AuthenticatedIdentity, tournamentContext?: TournamentContextInput): Promise<ShareCardView> {
     const user = await this.usersService.syncAuthenticatedUser(identity);
-    const tournament = await this.tournamentsService.getActiveTournament();
+    const resolved = await this.tournamentsService.resolveTournamentContext(tournamentContext ?? {});
     const rankingEntry = await this.prisma.rankingEntry.findFirst({
       where: {
-        tournamentId: tournament.id,
+        tournamentId: resolved.tournament.id,
         scope: RankingScope.GLOBAL,
         scopeId: GLOBAL_SCOPE_ID,
         userId: user.id,
@@ -234,9 +234,20 @@ export class ShareCardsService {
 
     return this.createShareCard({
       type: SHARE_CARD_TYPES.PERFORMANCE_SUMMARY,
-      tournament,
+      tournament: {
+        id: resolved.tournament.id,
+        name: resolved.tournament.name,
+        year: resolved.tournament.year,
+      },
       userId: user.id,
-      payload: this.buildPerformanceSummaryPayload(tournament, rankingEntry),
+      payload: this.buildPerformanceSummaryPayload(
+        {
+          id: resolved.tournament.id,
+          name: resolved.tournament.name,
+          year: resolved.tournament.year,
+        },
+        rankingEntry,
+      ),
     });
   }
 

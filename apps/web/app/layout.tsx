@@ -6,6 +6,7 @@ import { getActiveTournamentMatches, getCurrentUserProfile, type MatchView } fro
 import { metadataBase, SITE_DESCRIPTION, SITE_KEYWORDS, SITE_NAME } from "@/lib/metadata";
 import { Providers } from "@/app/providers";
 import { AppChrome } from "./app-chrome";
+import { TournamentSelectorServer } from "@/components/tournaments/tournament-selector-server";
 
 import "./globals.css";
 
@@ -129,6 +130,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             currentUserProfile={currentUserProfile}
             favoriteTeam={favoriteTeam}
             sessionUser={session?.user ?? null}
+            tournamentSelector={session ? <TournamentSelectorServer /> : undefined}
           >
             {children}
           </AppChrome>

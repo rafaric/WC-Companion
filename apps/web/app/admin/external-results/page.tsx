@@ -8,6 +8,7 @@ import {
   confirmExternalMatchResult,
   discardExternalMatchResult,
   EXTERNAL_MATCH_RESULT_STATES,
+  getActiveTournament,
   getExternalMatchMappingDiagnostics,
   getExternalMatchResults,
   getExternalSyncRuns,
@@ -19,6 +20,7 @@ import {
   type ExternalSyncRunView,
 } from "@/lib/api";
 import { buildPageMetadata } from "@/lib/metadata";
+import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
 
 export const metadata = buildPageMetadata({
   title: "External results admin",
@@ -311,6 +313,8 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
     redirect("/auth/login?returnTo=/admin/external-results");
   }
 
+  const tournamentSlug = await resolveTournamentSlug();
+
   let stagedResults: ExternalMatchResultView[] = [];
   let matchDiagnostics: ExternalMatchMappingDiagnosticView[] = [];
   let syncRuns: ExternalSyncRunView[] = [];
@@ -319,19 +323,19 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
   let syncRunsLoadErrorMessage: string | null = null;
 
   try {
-    stagedResults = await getExternalMatchResults(accessToken, currentState);
+    stagedResults = await getExternalMatchResults(accessToken, currentState, tournamentSlug);
   } catch (error) {
     loadErrorMessage = getListLoadErrorMessage(error);
   }
 
   try {
-    matchDiagnostics = await getExternalMatchMappingDiagnostics(accessToken);
+    matchDiagnostics = await getExternalMatchMappingDiagnostics(accessToken, tournamentSlug);
   } catch (error) {
     diagnosticsLoadErrorMessage = getListLoadErrorMessage(error);
   }
 
   try {
-    syncRuns = await getExternalSyncRuns(accessToken);
+    syncRuns = await getExternalSyncRuns(accessToken, tournamentSlug);
   } catch (error) {
     syncRunsLoadErrorMessage = getListLoadErrorMessage(error);
   }
@@ -403,8 +407,21 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
       redirect("/auth/login?returnTo=/admin/external-results");
     }
 
+    // Get tournament ID from slug for admin write operations (backend requires tournamentId, not slug)
+    const tournamentSlug = await resolveTournamentSlug();
+    let tournamentId: string | undefined = undefined;
+
+    if (tournamentSlug) {
+      try {
+        const tournament = await getActiveTournament(tournamentSlug);
+        tournamentId = tournament.id;
+      } catch {
+        // Tournament not found, proceed without ID
+      }
+    }
+
     try {
-      await importTournament(actionToken);
+      await importTournament(actionToken, tournamentId);
     } catch (error) {
       console.error("Import tournament failed:", error);
       redirect(buildExternalResultsPath(EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { error: "bad_request" }));
@@ -425,8 +442,21 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
       redirect("/auth/login?returnTo=/admin/external-results");
     }
 
+    // Get tournament ID from slug for admin write operations (backend requires tournamentId, not slug)
+    const tournamentSlug = await resolveTournamentSlug();
+    let tournamentId: string | undefined = undefined;
+
+    if (tournamentSlug) {
+      try {
+        const tournament = await getActiveTournament(tournamentSlug);
+        tournamentId = tournament.id;
+      } catch {
+        // Tournament not found, proceed without ID
+      }
+    }
+
     try {
-      await syncResults(actionToken);
+      await syncResults(actionToken, tournamentId);
     } catch (error) {
       console.error("Sync results failed:", error);
       redirect(buildExternalResultsPath(EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { error: "bad_request" }));

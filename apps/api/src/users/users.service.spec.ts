@@ -79,6 +79,7 @@ interface PrismaMock {
 
 interface TournamentsServiceMock {
   getActiveTournament: jest.Mock<Promise<{ id: string }>, []>;
+  resolveTournamentContext: jest.Mock<Promise<{ tournament: { id: string; name: string; slug: string; year: number; status: string; startsAt: Date | null; endsAt: Date | null }; source: 'explicit' | 'cookie' | 'active' }>, any[]>;
 }
 
 function createIdentity(overrides: Partial<AuthenticatedIdentity> = {}): AuthenticatedIdentity {
@@ -166,6 +167,10 @@ function createPrismaMock(state: {
 function createTournamentsServiceMock(activeTournament: { id: string } = createActiveTournament()): TournamentsServiceMock {
   return {
     getActiveTournament: jest.fn(async () => activeTournament),
+    resolveTournamentContext: jest.fn(async () => ({
+      tournament: { id: activeTournament.id, name: 'the active tournament', slug: 'test-tournament', year: 2026, status: 'ACTIVE' as const, startsAt: null, endsAt: null },
+      source: 'active' as const,
+    })),
   };
 }
 
@@ -408,6 +413,6 @@ describe('UsersService', () => {
         favoriteTeamId: 'missing-team',
         preferredLanguage: 'es',
       }),
-    ).rejects.toThrow('Favorite team missing-team was not found in the active tournament');
+    ).rejects.toThrow('Favorite team missing-team was not found in tournament the active tournament');
   });
 });

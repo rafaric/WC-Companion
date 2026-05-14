@@ -100,6 +100,7 @@ interface UsersServiceMock {
 
 interface TournamentsServiceMock {
   getActiveTournament: jest.Mock<Promise<{ id: string }>, []>;
+  resolveTournamentContext: jest.Mock<Promise<{ tournament: { id: string; name: string; slug: string; year: number; status: string; startsAt: Date | null; endsAt: Date | null }; source: 'explicit' | 'cookie' | 'active' }>, any[]>;
 }
 
 function createIdentity(overrides: Partial<AuthenticatedIdentity> = {}): AuthenticatedIdentity {
@@ -219,6 +220,10 @@ function createUsersServiceMock(userId = 'user-1'): UsersServiceMock {
 function createTournamentsServiceMock(tournamentId = 'tournament-1'): TournamentsServiceMock {
   return {
     getActiveTournament: jest.fn(async () => ({ id: tournamentId })),
+    resolveTournamentContext: jest.fn(async () => ({
+      tournament: { id: tournamentId, name: 'Test Tournament', slug: 'test-tournament', year: 2026, status: 'ACTIVE' as const, startsAt: null, endsAt: null },
+      source: 'active' as const,
+    })),
   };
 }
 
@@ -243,7 +248,7 @@ describe('GroupsService', () => {
     });
 
     expect(usersService.syncAuthenticatedUser).toHaveBeenCalledTimes(1);
-    expect(tournamentsService.getActiveTournament).toHaveBeenCalledTimes(1);
+    expect(tournamentsService.resolveTournamentContext).toHaveBeenCalledTimes(1);
     expect(prisma.group.create).toHaveBeenCalledTimes(1);
     expect(prisma.groupMembership.create).toHaveBeenCalledWith(
       expect.objectContaining({

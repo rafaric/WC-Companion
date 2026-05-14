@@ -4,7 +4,7 @@ import { type Prisma, type User } from '@prisma/client';
 import { AUTH_PROVIDERS } from '../auth/auth.constants';
 import type { AuthenticatedIdentity } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
-import { TournamentsService } from '../tournaments/tournaments.service';
+import { TournamentsService, type TournamentContextInput } from '../tournaments/tournaments.service';
 import type { PreferredLanguage } from './dto/update-current-user-profile.dto';
 
 const COUNTRY_CODE_REGEX = /^[A-Z]{2}$/u;
@@ -47,6 +47,7 @@ export interface UpdateCurrentUserProfileInput {
   country: unknown;
   favoriteTeamId: unknown;
   preferredLanguage: unknown;
+  tournamentContext?: TournamentContextInput;
 }
 
 interface NormalizedCurrentUserProfileInput {
@@ -88,12 +89,14 @@ export class UsersService {
   ): Promise<CurrentUserProfileView> {
     const user = await this.syncAuthenticatedUser(identity);
     const normalizedInput = this.normalizeCurrentUserProfileInput(input);
-    const activeTournament = await this.tournamentsService.getActiveTournament();
+
+    // Resolve tournament context: explicit -> cookie -> ACTIVE fallback
+    const resolved = await this.tournamentsService.resolveTournamentContext(input.tournamentContext ?? {});
 
     const favoriteTeam = await this.prisma.team.findFirst({
       where: {
         id: normalizedInput.favoriteTeamId,
-        tournamentId: activeTournament.id,
+        tournamentId: resolved.tournament.id,
       },
       select: {
         id: true,
@@ -101,7 +104,7 @@ export class UsersService {
     });
 
     if (favoriteTeam === null) {
-      throw new NotFoundException(`Favorite team ${normalizedInput.favoriteTeamId} was not found in the active tournament`);
+      throw new NotFoundException(`Favorite team ${normalizedInput.favoriteTeamId} was not found in tournament ${resolved.tournament.name}`);
     }
 
     const updatedUser = await this.prisma.user.update({

@@ -1,3 +1,5 @@
+import { BadRequestException } from '@nestjs/common';
+
 import { AUTH_PERMISSION_METADATA_KEYS, AUTH_PERMISSIONS } from '../auth/auth.constants';
 import { SportsDataController } from './sports-data.controller';
 import type {
@@ -31,8 +33,13 @@ describe('SportsDataController', () => {
     } as unknown as SportsDataSyncService;
     const controller = new SportsDataController(sportsDataSyncService);
 
-    await expect(controller.listExternalMatchMappingDiagnostics()).resolves.toEqual(diagnostics);
-    expect(sportsDataSyncService.listExternalMatchMappingDiagnostics).toHaveBeenCalledWith();
+    await expect(controller.listExternalMatchMappingDiagnostics({})).resolves.toEqual(diagnostics);
+    expect(sportsDataSyncService.listExternalMatchMappingDiagnostics).toHaveBeenCalledWith({
+      tournamentContext: {
+        explicitTournamentId: undefined,
+        selectedSlug: undefined,
+      },
+    });
   });
 
   it('lists pending staged results for admin review', async () => {
@@ -67,7 +74,57 @@ describe('SportsDataController', () => {
     const controller = new SportsDataController(sportsDataSyncService);
 
     await expect(controller.listExternalMatchResults({})).resolves.toEqual(results);
-    expect(sportsDataSyncService.listExternalMatchResults).toHaveBeenCalledWith('PENDING_CONFIRMATION');
+    expect(sportsDataSyncService.listExternalMatchResults).toHaveBeenCalledWith({
+      state: 'PENDING_CONFIRMATION',
+      tournamentContext: {
+        explicitTournamentId: undefined,
+        selectedSlug: undefined,
+      },
+    });
+  });
+
+  it('passes tournament context when listing external match results', async () => {
+    const results: ExternalMatchResultSummary[] = [];
+
+    const sportsDataSyncService = {
+      listExternalMatchResults: jest.fn(async () => results),
+    } as unknown as SportsDataSyncService;
+    const controller = new SportsDataController(sportsDataSyncService);
+
+    await controller.listExternalMatchResults({
+      tournamentId: 'tournament-123',
+      tournamentSlug: 'world-cup-2026',
+    });
+
+    expect(sportsDataSyncService.listExternalMatchResults).toHaveBeenCalledWith({
+      state: 'PENDING_CONFIRMATION',
+      tournamentContext: {
+        explicitTournamentId: 'tournament-123',
+        selectedSlug: 'world-cup-2026',
+      },
+    });
+  });
+
+  it('passes custom state through to service when listing external match results', async () => {
+    const results: ExternalMatchResultSummary[] = [];
+
+    const sportsDataSyncService = {
+      listExternalMatchResults: jest.fn(async () => results),
+    } as unknown as SportsDataSyncService;
+    const controller = new SportsDataController(sportsDataSyncService);
+
+    await controller.listExternalMatchResults({
+      state: 'CONFIRMED',
+      tournamentId: 'tournament-123',
+    });
+
+    expect(sportsDataSyncService.listExternalMatchResults).toHaveBeenCalledWith({
+      state: 'CONFIRMED',
+      tournamentContext: {
+        explicitTournamentId: 'tournament-123',
+        selectedSlug: undefined,
+      },
+    });
   });
 
   it('lists recent sync runs for admin operations', async () => {
@@ -93,8 +150,13 @@ describe('SportsDataController', () => {
     } as unknown as SportsDataSyncService;
     const controller = new SportsDataController(sportsDataSyncService);
 
-    await expect(controller.listRecentSyncRuns()).resolves.toEqual(syncRuns);
-    expect(sportsDataSyncService.listRecentSyncRuns).toHaveBeenCalledWith();
+    await expect(controller.listRecentSyncRuns({})).resolves.toEqual(syncRuns);
+    expect(sportsDataSyncService.listRecentSyncRuns).toHaveBeenCalledWith({
+      tournamentContext: {
+        explicitTournamentId: undefined,
+        selectedSlug: undefined,
+      },
+    });
   });
 
   it('delegates manual confirmation to the service', async () => {
@@ -202,5 +264,115 @@ describe('SportsDataController', () => {
     ) as string[] | undefined;
 
     expect(requiredPermissions).toEqual([AUTH_PERMISSIONS.MATCHES_FINALIZE]);
+  });
+
+  describe('importTournament', () => {
+    it('rejects import when tournamentId is undefined', async () => {
+      const sportsDataSyncService = {
+        importTournament: jest.fn(),
+      } as unknown as SportsDataSyncService;
+      const controller = new SportsDataController(sportsDataSyncService);
+
+      await expect(controller.importTournament(undefined)).rejects.toThrow(BadRequestException);
+      await expect(controller.importTournament(undefined)).rejects.toThrow(
+        'tournamentId is required for sync/import operations. Explicit tournamentId must be provided.',
+      );
+    });
+
+    it('rejects import when tournamentId is missing (undefined)', async () => {
+      const sportsDataSyncService = {
+        importTournament: jest.fn(),
+      } as unknown as SportsDataSyncService;
+      const controller = new SportsDataController(sportsDataSyncService);
+
+      await expect(controller.importTournament(undefined)).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects import when tournamentId is empty string', async () => {
+      const sportsDataSyncService = {
+        importTournament: jest.fn(),
+      } as unknown as SportsDataSyncService;
+      const controller = new SportsDataController(sportsDataSyncService);
+
+      await expect(controller.importTournament('')).rejects.toThrow(BadRequestException);
+      await expect(controller.importTournament('   ')).rejects.toThrow(BadRequestException);
+    });
+
+    it('accepts import when tournamentId is provided', async () => {
+      const summary = {
+        syncRunId: 'sync-1',
+        providerKey: 'mock',
+        tournamentId: 'tournament-1',
+        syncType: 'IMPORT',
+        status: 'SUCCESS',
+        importedCount: 10,
+        updatedCount: 5,
+        stagedCount: 0,
+        skippedCount: 0,
+      };
+
+      const sportsDataSyncService = {
+        importTournament: jest.fn(async () => summary),
+      } as unknown as SportsDataSyncService;
+      const controller = new SportsDataController(sportsDataSyncService);
+
+      await expect(controller.importTournament('tournament-1')).resolves.toEqual(summary);
+      expect(sportsDataSyncService.importTournament).toHaveBeenCalledWith('tournament-1');
+    });
+  });
+
+  describe('syncResults', () => {
+    it('rejects sync when tournamentId is undefined', async () => {
+      const sportsDataSyncService = {
+        syncResults: jest.fn(),
+      } as unknown as SportsDataSyncService;
+      const controller = new SportsDataController(sportsDataSyncService);
+
+      await expect(controller.syncResults(undefined)).rejects.toThrow(BadRequestException);
+      await expect(controller.syncResults(undefined)).rejects.toThrow(
+        'tournamentId is required for sync/results operations. Explicit tournamentId must be provided.',
+      );
+    });
+
+    it('rejects sync when tournamentId is missing (undefined)', async () => {
+      const sportsDataSyncService = {
+        syncResults: jest.fn(),
+      } as unknown as SportsDataSyncService;
+      const controller = new SportsDataController(sportsDataSyncService);
+
+      await expect(controller.syncResults(undefined)).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects sync when tournamentId is empty string', async () => {
+      const sportsDataSyncService = {
+        syncResults: jest.fn(),
+      } as unknown as SportsDataSyncService;
+      const controller = new SportsDataController(sportsDataSyncService);
+
+      await expect(controller.syncResults('')).rejects.toThrow(BadRequestException);
+      await expect(controller.syncResults('   ')).rejects.toThrow(BadRequestException);
+    });
+
+    it('accepts sync when tournamentId is provided', async () => {
+      const summary = {
+        syncRunId: 'sync-2',
+        providerKey: 'mock',
+        tournamentId: 'tournament-1',
+        syncType: 'RESULTS',
+        status: 'SUCCESS',
+        importedCount: 0,
+        updatedCount: 0,
+        stagedCount: 3,
+        skippedCount: 0,
+      };
+
+      const sportsDataSyncService = {
+        syncResults: jest.fn(async () => summary),
+      } as unknown as SportsDataSyncService;
+      const controller = new SportsDataController(sportsDataSyncService);
+
+      await expect(controller.syncResults('tournament-1')).resolves.toEqual(summary);
+      expect(sportsDataSyncService.syncResults).toHaveBeenCalledWith('tournament-1');
+    });
   });
 });

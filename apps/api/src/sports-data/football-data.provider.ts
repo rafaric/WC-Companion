@@ -112,16 +112,25 @@ function mapTeam(team: FootballDataTeamApi): SportsDataTeamDTO {
   };
 }
 
-function mapFixture(match: FootballDataMatchApi): SportsDataFixtureDTO {
+function mapFixture(match: FootballDataMatchWithResolvedTeams): SportsDataFixtureDTO {
   return {
     externalId: toExternalId(match.id),
-    homeTeamExternalId: toExternalId(match.homeTeam.id ?? match.id),
-    awayTeamExternalId: toExternalId(match.awayTeam.id ?? match.id),
+    homeTeamExternalId: toExternalId(match.homeTeam.id),
+    awayTeamExternalId: toExternalId(match.awayTeam.id),
     venueExternalId: null,
     kickoffAt: parseFootballDataDate(match.utcDate),
     stage: normalizeFootballDataStageName(match.stage),
     groupName: normalizeFootballDataGroupName(match.group),
   };
+}
+
+type FootballDataMatchWithResolvedTeams = FootballDataMatchApi & {
+  homeTeam: FootballDataMatchApi['homeTeam'] & { id: number };
+  awayTeam: FootballDataMatchApi['awayTeam'] & { id: number };
+};
+
+function hasResolvedFixtureTeams(match: FootballDataMatchApi): match is FootballDataMatchWithResolvedTeams {
+  return typeof match.homeTeam.id === 'number' && typeof match.awayTeam.id === 'number';
 }
 
 function requireFinalScore(match: FootballDataMatchApi): { homeScore: number; awayScore: number } {
@@ -171,7 +180,7 @@ export class FootballDataProvider implements SportsDataProvider {
     const resolvedTournament = requireTournamentConfig(this.tournamentConfigs, tournamentSlug);
     const response = await this.client.listMatches(resolvedTournament.config);
 
-    return response.matches.map(mapFixture);
+    return response.matches.filter(hasResolvedFixtureTeams).map(mapFixture);
   }
 
   async listFinalResults(tournamentSlug: string): Promise<readonly SportsDataFinalResultDTO[]> {

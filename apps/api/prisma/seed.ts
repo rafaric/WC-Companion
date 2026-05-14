@@ -21,11 +21,46 @@ interface MatchSeed {
 const prisma = new PrismaClient();
 type SeedClient = PrismaClient | Prisma.TransactionClient;
 
-const TOURNAMENT = {
+/**
+ * Seed Data Separation Strategy (PR3)
+ *
+ * This seed creates two distinct tournament contexts:
+ *
+ * 1. DEMO TOURNAMENT (world-cup-2026-demo)
+ *    - Status: FINISHED (non-ACTIVE)
+ *    - Purpose: Manual/demo data for selector testing
+ *    - Fixtures: Preserved under demo slug for preview
+ *
+ * 2. PROVIDER-BACKED TOURNAMENT (world-cup-2026)
+ *    - Status: ACTIVE (the fallback for all reads)
+ *    - Purpose: Real tournament data (future: provider sync target)
+ *    - Fixtures: Empty initially (ready for provider import)
+ *
+ * The selector exposes both tournaments, but only the ACTIVE tournament
+ * serves as the deterministic fallback. This ensures:
+ * - Demo data remains available for preview without being the sync target
+ * - Provider sync operations target the ACTIVE tournament
+ * - No ambiguity in fallback behavior
+ */
+
+// Demo tournament: manual/demo data for selector testing
+const DEMO_TOURNAMENT = {
   name: 'World Cup 2026 Demo',
   slug: 'world-cup-2026-demo',
   year: 2026,
+  status: TournamentStatus.FINISHED,
+  startsAt: new Date(Date.UTC(2026, 5, 11)),
+  endsAt: new Date(Date.UTC(2026, 5, 25)),
+} as const;
+
+// Provider-backed tournament: the ACTIVE fallback for real operations
+const PROVIDER_TOURNAMENT = {
+  name: 'World Cup 2026',
+  slug: 'world-cup-2026',
+  year: 2026,
   status: TournamentStatus.ACTIVE,
+  startsAt: new Date(Date.UTC(2026, 5, 11)),
+  endsAt: new Date(Date.UTC(2026, 5, 25)),
 } as const;
 
 const TEAM_SEEDS = [
@@ -133,16 +168,49 @@ const DEFAULT_SCORING_RULE = {
   wrongResult: 0,
 } as const;
 
-async function upsertTournament(client: SeedClient) {
+/**
+ * Upsert a tournament by slug, updating key fields while preserving the record.
+ */
+async function upsertTournament(
+  client: SeedClient,
+  tournament: typeof DEMO_TOURNAMENT | typeof PROVIDER_TOURNAMENT,
+) {
   return client.tournament.upsert({
-    where: { slug: TOURNAMENT.slug },
-    create: TOURNAMENT,
+    where: { slug: tournament.slug },
+    create: tournament,
     update: {
-      name: TOURNAMENT.name,
-      year: TOURNAMENT.year,
-      status: TOURNAMENT.status,
+      name: tournament.name,
+      year: tournament.year,
+      status: tournament.status,
+      startsAt: tournament.startsAt,
+      endsAt: tournament.endsAt,
     },
   });
+}
+
+/**
+ * Validates that exactly one ACTIVE tournament exists after seeding.
+ * This ensures deterministic fallback behavior per the design spec.
+ */
+async function validateSingleActiveTournament(client: SeedClient) {
+  const activeTournaments = await client.tournament.findMany({
+    where: { status: TournamentStatus.ACTIVE },
+    select: { id: true, name: true, slug: true },
+  });
+
+  if (activeTournaments.length === 0) {
+    throw new Error('Seed validation failed: no ACTIVE tournament exists. One tournament must be ACTIVE.');
+  }
+
+  if (activeTournaments.length > 1) {
+    const names = activeTournaments.map((t) => t.name).join(', ');
+    throw new Error(
+      `Seed validation failed: multiple ACTIVE tournaments found (${names}). ` +
+        'Only one tournament can be ACTIVE for deterministic fallback.',
+    );
+  }
+
+  console.log(`✓ Validation passed: exactly one ACTIVE tournament (${activeTournaments[0].name})`);
 }
 
 async function upsertTeam(client: SeedClient, tournamentId: string, team: TeamSeed) {
@@ -261,27 +329,43 @@ async function upsertMatch(
 }
 
 async function main() {
-  const tournament = await prisma.$transaction(async (transaction) => {
-    const createdTournament = await upsertTournament(transaction);
+  await prisma.$transaction(async (transaction) => {
+    // Step 1: Seed the provider-backed tournament (ACTIVE - the fallback)
+    const providerTournament = await upsertTournament(transaction, PROVIDER_TOURNAMENT);
+    console.log(`✓ Seeded provider-backed tournament: ${providerTournament.name} (${providerTournament.status})`);
 
+    // Step 2: Seed the demo tournament (FINISHED - for selector testing)
+    const demoTournament = await upsertTournament(transaction, DEMO_TOURNAMENT);
+    console.log(`✓ Seeded demo tournament: ${demoTournament.name} (${demoTournament.status})`);
+
+    // Step 3: Seed demo fixtures under demo tournament slug
+    // (Provider tournament starts empty, ready for future provider import)
     const teams = [] as Awaited<ReturnType<typeof upsertTeam>>[];
 
     for (const team of TEAM_SEEDS) {
-      teams.push(await upsertTeam(transaction, createdTournament.id, team));
+      teams.push(await upsertTeam(transaction, demoTournament.id, team));
     }
 
     const teamIdsByName = new Map(teams.map((team) => [team.name, team.id] as const));
 
-    await upsertScoringRule(transaction, createdTournament.id);
+    await upsertScoringRule(transaction, demoTournament.id);
 
     for (const match of MATCH_SEEDS) {
-      await upsertMatch(transaction, createdTournament.id, teamIdsByName, match);
+      await upsertMatch(transaction, demoTournament.id, teamIdsByName, match);
     }
 
-    return createdTournament;
-  });
+    console.log(`✓ Seeded ${teams.length} teams and ${MATCH_SEEDS.length} matches for demo tournament`);
 
-  console.log(`Seeded tournament: ${tournament.name}`);
+    // Step 4: Validate exactly one ACTIVE tournament exists
+    await validateSingleActiveTournament(transaction);
+
+    console.log('\n=== Seed Summary ===');
+    console.log(`Demo tournament: ${demoTournament.name} (${demoTournament.slug}) - ${demoTournament.status}`);
+    console.log(`Provider tournament: ${providerTournament.name} (${providerTournament.slug}) - ${providerTournament.status}`);
+    console.log('\nThe selector will show both tournaments.');
+    console.log('The ACTIVE tournament serves as the deterministic fallback.');
+    console.log('Demo fixtures are preserved under the demo slug for preview.');
+  });
 }
 
 main()

@@ -1,8 +1,9 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { MatchStatus, TournamentStatus } from '@prisma/client';
 
 import { MatchesService, type FinalizeMatchSummary } from '../matches/matches.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { TournamentsService, type TournamentContextInput, type ResolvedTournamentContext } from '../tournaments/tournaments.service';
 import {
   EXTERNAL_MATCH_RESULT_STATES,
   type ExternalMatchResultState,
@@ -112,10 +113,11 @@ export interface ExternalSyncRunSummary {
   completedAt: Date | null;
 }
 
-interface ResolvedTournamentContext {
-  id: string;
-  slug: string;
-}
+/**
+ * Tournaments that are supported for provider sync operations.
+ * Demo tournaments should not be synced with external providers.
+ */
+const SUPPORTED_PROVIDER_TOURNAMENT_SLUGS = ['world-cup-2026'] as const;
 
 @Injectable()
 export class SportsDataSyncService {
@@ -123,6 +125,7 @@ export class SportsDataSyncService {
     private readonly prisma: PrismaService,
     @Inject(SPORTS_DATA_PROVIDER) private readonly provider: SportsDataProvider,
     private readonly matchesService: MatchesService,
+    private readonly tournamentsService: TournamentsService,
   ) {}
 
   async confirmExternalMatchResult(
@@ -260,10 +263,19 @@ export class SportsDataSyncService {
     };
   }
 
-  async listExternalMatchResults(state: ExternalMatchResultState = EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION): Promise<ExternalMatchResultSummary[]> {
+  async listExternalMatchResults(input: {
+    state?: ExternalMatchResultState;
+    tournamentContext?: TournamentContextInput;
+  } = {}): Promise<ExternalMatchResultSummary[]> {
+    const state = input.state ?? EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION;
+
+    const resolved = await this.tournamentsService.resolveTournamentContext(input.tournamentContext ?? {});
+    const tournamentId = resolved.tournament.id;
+
     const externalMatchResults = await this.prisma.externalMatchResult.findMany({
       where: {
         state,
+        tournamentId,
       },
       orderBy: {
         stagedAt: 'desc',
@@ -328,8 +340,10 @@ export class SportsDataSyncService {
     }));
   }
 
-  async listExternalMatchMappingDiagnostics(): Promise<ExternalMatchMappingDiagnosticSummary[]> {
-    const tournamentId = (await this.resolveTournamentContext()).id;
+  async listExternalMatchMappingDiagnostics(input?: { tournamentContext?: TournamentContextInput }): Promise<ExternalMatchMappingDiagnosticSummary[]> {
+    const resolved = await this.tournamentsService.resolveTournamentContext(input?.tournamentContext ?? {});
+    const tournamentId = resolved.tournament.id;
+
     const matches = await this.prisma.match.findMany({
       where: {
         tournamentId,
@@ -402,8 +416,10 @@ export class SportsDataSyncService {
     });
   }
 
-  async listRecentSyncRuns(limit = 6): Promise<ExternalSyncRunSummary[]> {
-    const tournamentId = (await this.resolveTournamentContext()).id;
+  async listRecentSyncRuns(input?: { tournamentContext?: TournamentContextInput; limit?: number }): Promise<ExternalSyncRunSummary[]> {
+    const resolved = await this.tournamentsService.resolveTournamentContext(input?.tournamentContext ?? {});
+    const tournamentId = resolved.tournament.id;
+
     const syncRuns = await this.prisma.externalSyncRun.findMany({
       where: {
         tournamentId,
@@ -412,7 +428,7 @@ export class SportsDataSyncService {
       orderBy: {
         startedAt: 'desc',
       },
-      take: limit,
+      take: input?.limit ?? 6,
       select: {
         id: true,
         providerKey: true,
@@ -446,7 +462,17 @@ export class SportsDataSyncService {
   }
 
   async importTournament(tournamentId?: string): Promise<SportsDataSyncSummary> {
-    const resolvedTournament = await this.resolveTournamentContext(tournamentId);
+    // Use provided tournamentId or fall back to resolved context (for backward compatibility)
+    const resolved = await this.tournamentsService.resolveTournamentContext({
+      explicitTournamentId: tournamentId,
+    });
+    const resolvedTournament = resolved.tournament;
+
+    // If explicitly provided, validate it's not a demo tournament
+    if (tournamentId !== undefined && tournamentId !== null && tournamentId !== '') {
+      this.assertTournamentSupportsProvider(resolved);
+    }
+
     const providerTournamentKey = this.resolveProviderTournamentKey(resolvedTournament);
     const syncRun = await this.startSyncRun(resolvedTournament.id, SPORTS_DATA_SYNC_TYPES.IMPORT);
 
@@ -497,7 +523,17 @@ export class SportsDataSyncService {
   }
 
   async syncResults(tournamentId?: string): Promise<SportsDataSyncSummary> {
-    const resolvedTournament = await this.resolveTournamentContext(tournamentId);
+    // Use provided tournamentId or fall back to resolved context (for backward compatibility)
+    const resolved = await this.tournamentsService.resolveTournamentContext({
+      explicitTournamentId: tournamentId,
+    });
+    const resolvedTournament = resolved.tournament;
+
+    // If explicitly provided, validate it's not a demo tournament
+    if (tournamentId !== undefined && tournamentId !== null && tournamentId !== '') {
+      this.assertTournamentSupportsProvider(resolved);
+    }
+
     const providerTournamentKey = this.resolveProviderTournamentKey(resolvedTournament);
     const syncRun = await this.startSyncRun(resolvedTournament.id, SPORTS_DATA_SYNC_TYPES.RESULTS);
 
@@ -518,7 +554,7 @@ export class SportsDataSyncService {
         stagedCount,
         skippedCount: 0,
       });
-    } catch (error: unknown) {
+} catch (error: unknown) {
       await this.finishSyncRun(syncRun.id, {
         status: SPORTS_DATA_SYNC_STATUSES.FAILED,
         importedCount: 0,
@@ -532,33 +568,28 @@ export class SportsDataSyncService {
     }
   }
 
-  private async resolveTournamentContext(tournamentId?: string): Promise<ResolvedTournamentContext> {
-    if (tournamentId !== undefined) {
-      const tournament = await this.prisma.tournament.findUnique({
-        where: { id: tournamentId },
-        select: { id: true, slug: true },
-      });
-
-      if (tournament === null) {
-        throw new NotFoundException(`Tournament ${tournamentId} was not found`);
-      }
-
-      return tournament;
+  /**
+     * Asserts that a tournament supports provider sync operations.
+   * Throws ForbiddenException for demo/manual tournaments when explicitly selected.
+   */
+  private assertTournamentSupportsProvider(tournament: ResolvedTournamentContext): void {
+    // Only validate when explicitly selected (not fallback)
+    if (tournament.source === 'active') {
+      return; // Allow fallback to ACTIVE for backward compatibility
     }
 
-    const activeTournament = await this.prisma.tournament.findFirst({
-      where: { status: TournamentStatus.ACTIVE },
-      select: { id: true, slug: true },
-    });
+    const isSupported = SUPPORTED_PROVIDER_TOURNAMENT_SLUGS.some(
+      (supportedSlug) => tournament.tournament.slug === supportedSlug,
+    );
 
-    if (activeTournament === null) {
-      throw new NotFoundException('Active tournament not found');
+    if (!isSupported) {
+      throw new ForbiddenException(
+        `Tournament "${tournament.tournament.name}" does not support provider sync operations. Only provider-backed tournaments can be synced.`,
+      );
     }
-
-    return activeTournament;
   }
 
-  private resolveProviderTournamentKey(tournament: ResolvedTournamentContext): string {
+  private resolveProviderTournamentKey(tournament: { id: string; slug: string }): string {
     return this.provider.providerKey === SPORTS_DATA_PROVIDER_KEYS.FOOTBALL_DATA ? tournament.slug : tournament.id;
   }
 

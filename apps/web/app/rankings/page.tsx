@@ -7,6 +7,7 @@ import {
 } from "@/lib/api";
 import { buildPageMetadata } from "@/lib/metadata";
 import { getFriendlyDisplayName } from "@/lib/user-display";
+import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
 import { RankingList } from "./ranking-list";
 
 export const metadata = buildPageMetadata({
@@ -20,7 +21,8 @@ const VISIBLE_RANKING_LIMIT = 10;
 
 export default async function RankingsPage() {
   const session = await auth0.getSession();
-  const rankingPromise = getGlobalRanking().catch(() => [] as RankingEntry[]);
+  const tournamentSlug = await resolveTournamentSlug();
+  const rankingPromise = getGlobalRanking(tournamentSlug).catch(() => [] as RankingEntry[]);
 
   let currentUserProfile: CurrentUserProfile | null = null;
 

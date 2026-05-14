@@ -5,8 +5,35 @@ import { TournamentsService, type TournamentMatchView, type TournamentView } fro
 
 interface TournamentFindFirstArgs {
   where: {
-    status: TournamentStatus;
+    status?: TournamentStatus;
+    slug?: string;
   };
+  select: {
+    id: boolean;
+    name: boolean;
+    slug: boolean;
+    year: boolean;
+    status: boolean;
+    startsAt: boolean;
+    endsAt: boolean;
+  };
+}
+
+interface TournamentFindUniqueArgs {
+  where: { id: string };
+  select: {
+    id: boolean;
+    name: boolean;
+    slug: boolean;
+    year: boolean;
+    status: boolean;
+    startsAt: boolean;
+    endsAt: boolean;
+  };
+}
+
+interface TournamentFindManyArgs {
+  orderBy: { status?: string; year?: string; name?: string }[];
   select: {
     id: boolean;
     name: boolean;
@@ -100,6 +127,8 @@ interface PrismaMockState {
 interface PrismaMock {
   tournament: {
     findFirst: jest.Mock<Promise<TournamentRecord | null>, [TournamentFindFirstArgs]>;
+    findUnique: jest.Mock<Promise<TournamentRecord | null>, [TournamentFindUniqueArgs]>;
+    findMany: jest.Mock<Promise<TournamentRecord[]>, unknown[]>;
   };
   match: {
     findMany: jest.Mock<Promise<MatchRecord[]>, [MatchFindManyArgs]>;
@@ -191,7 +220,17 @@ function toMatchView(match: MatchRecord): TournamentMatchView {
 function createPrismaMock(state: PrismaMockState): PrismaMock {
   return {
     tournament: {
-      findFirst: jest.fn(async ({ where }) => state.tournaments.find((tournament) => tournament.status === where.status) ?? null),
+      findFirst: jest.fn(async ({ where }) => {
+        if (where.status !== undefined) {
+          return state.tournaments.find((tournament) => tournament.status === where.status) ?? null;
+        }
+        if (where.slug !== undefined) {
+          return state.tournaments.find((tournament) => tournament.slug === where.slug) ?? null;
+        }
+        return null;
+      }),
+      findUnique: jest.fn(async ({ where }) => state.tournaments.find((tournament) => tournament.id === where.id) ?? null),
+      findMany: jest.fn(async () => state.tournaments),
     },
     match: {
       findMany: jest.fn(async ({ where }) =>
@@ -274,5 +313,139 @@ describe('TournamentsService', () => {
         orderBy: { kickoffAt: 'asc' },
       }),
     );
+  });
+
+  describe('listTournaments', () => {
+    it('returns all tournaments ordered by status, year, name', async () => {
+      const secondTournament = createTournament({
+        id: 'tournament-2',
+        name: 'World Cup 2030',
+        slug: 'world-cup-2030',
+        year: 2030,
+        status: TournamentStatus.DRAFT,
+      });
+      const prisma = createPrismaMock({
+        tournaments: [createTournament(), secondTournament],
+        matches: [],
+      });
+      const service = new TournamentsService(prisma as unknown as PrismaService);
+
+      const tournaments = await service.listTournaments();
+
+      expect(tournaments).toHaveLength(2);
+      expect(tournaments[0]?.id).toBe('tournament-1'); // ACTIVE first
+      expect(tournaments[1]?.id).toBe('tournament-2'); // DRAFT second
+    });
+  });
+
+  describe('resolveTournamentContext', () => {
+    it('resolves explicit tournament ID when provided', async () => {
+      const prisma = createPrismaMock({
+        tournaments: [createTournament()],
+        matches: [],
+      });
+      const service = new TournamentsService(prisma as unknown as PrismaService);
+
+      const result = await service.resolveTournamentContext({
+        explicitTournamentId: 'tournament-1',
+      });
+
+      expect(result.tournament.id).toBe('tournament-1');
+      expect(result.source).toBe('explicit');
+    });
+
+    it('resolves selected slug from cookie when provided', async () => {
+      const prisma = createPrismaMock({
+        tournaments: [createTournament()],
+        matches: [],
+      });
+      const service = new TournamentsService(prisma as unknown as PrismaService);
+
+      const result = await service.resolveTournamentContext({
+        selectedSlug: 'world-cup-2026-demo',
+      });
+
+      expect(result.tournament.slug).toBe('world-cup-2026-demo');
+      expect(result.source).toBe('cookie');
+    });
+
+    it('falls back to ACTIVE tournament when no context provided', async () => {
+      const prisma = createPrismaMock({
+        tournaments: [createTournament()],
+        matches: [],
+      });
+      const service = new TournamentsService(prisma as unknown as PrismaService);
+
+      const result = await service.resolveTournamentContext({});
+
+      expect(result.tournament.status).toBe(TournamentStatus.ACTIVE);
+      expect(result.source).toBe('active');
+    });
+
+    it('falls back to ACTIVE when selected slug is invalid', async () => {
+      const prisma = createPrismaMock({
+        tournaments: [createTournament()],
+        matches: [],
+      });
+      const service = new TournamentsService(prisma as unknown as PrismaService);
+
+      const result = await service.resolveTournamentContext({
+        selectedSlug: 'invalid-slug',
+      });
+
+      expect(result.tournament.status).toBe(TournamentStatus.ACTIVE);
+      expect(result.source).toBe('active');
+    });
+
+    it('throws when explicit tournament ID is not found', async () => {
+      const prisma = createPrismaMock({
+        tournaments: [createTournament()],
+        matches: [],
+      });
+      const service = new TournamentsService(prisma as unknown as PrismaService);
+
+      await expect(
+        service.resolveTournamentContext({
+          explicitTournamentId: 'non-existent-id',
+        }),
+      ).rejects.toThrow('Tournament non-existent-id was not found');
+    });
+
+    it('prefers explicit ID over selected slug', async () => {
+      const secondTournament = createTournament({
+        id: 'tournament-2',
+        name: 'World Cup 2026 Real',
+        slug: 'world-cup-2026',
+        year: 2026,
+        status: TournamentStatus.DRAFT,
+      });
+      const prisma = createPrismaMock({
+        tournaments: [createTournament(), secondTournament],
+        matches: [],
+      });
+      const service = new TournamentsService(prisma as unknown as PrismaService);
+
+      const result = await service.resolveTournamentContext({
+        explicitTournamentId: 'tournament-2',
+        selectedSlug: 'world-cup-2026-demo',
+      });
+
+      expect(result.tournament.id).toBe('tournament-2');
+      expect(result.source).toBe('explicit');
+    });
+  });
+
+  describe('getStrictActiveTournament', () => {
+    it('returns active tournament without context resolution', async () => {
+      const prisma = createPrismaMock({
+        tournaments: [createTournament()],
+        matches: [],
+      });
+      const service = new TournamentsService(prisma as unknown as PrismaService);
+
+      const tournament = await service.getStrictActiveTournament();
+
+      expect(tournament.status).toBe(TournamentStatus.ACTIVE);
+    });
   });
 });

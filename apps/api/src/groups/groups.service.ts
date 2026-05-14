@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
 
 import type { AuthenticatedIdentity } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
-import { TournamentsService } from '../tournaments/tournaments.service';
+import { TournamentsService, type TournamentContextInput } from '../tournaments/tournaments.service';
 import { UsersService } from '../users/users.service';
 
 const GROUP_NAME_MAX_LENGTH = 80;
@@ -22,6 +22,7 @@ const GROUP_VIEW_SELECT = {
 export interface CreateGroupInput {
   identity: AuthenticatedIdentity;
   name: unknown;
+  tournamentContext?: TournamentContextInput;
 }
 
 export interface JoinGroupInput {
@@ -66,7 +67,9 @@ export class GroupsService {
   async createGroup(input: CreateGroupInput): Promise<GroupView> {
     const user = await this.usersService.syncAuthenticatedUser(input.identity);
     const name = this.normalizeGroupName(input.name);
-    const activeTournament = await this.tournamentsService.getActiveTournament();
+
+    // Resolve tournament context: explicit -> cookie -> ACTIVE fallback
+    const resolved = await this.tournamentsService.resolveTournamentContext(input.tournamentContext ?? {});
 
     for (let attempt = 0; attempt < INVITE_CODE_MAX_ATTEMPTS; attempt += 1) {
       const inviteCode = this.generateInviteCode();
@@ -75,7 +78,7 @@ export class GroupsService {
         const createdGroup = await this.prisma.$transaction(async (transaction) => {
           const group = await transaction.group.create({
             data: {
-              tournamentId: activeTournament.id,
+              tournamentId: resolved.tournament.id,
               ownerId: user.id,
               name,
               inviteCode,
@@ -157,12 +160,18 @@ export class GroupsService {
     return this.toGroupView(group, await this.countGroupMembers(group.id));
   }
 
-  async getMyGroups(input: { identity: AuthenticatedIdentity }): Promise<MyGroupView[]> {
+  async getMyGroups(input: { identity: AuthenticatedIdentity; tournamentContext?: TournamentContextInput }): Promise<MyGroupView[]> {
     const user = await this.usersService.syncAuthenticatedUser(input.identity);
+
+    // Resolve tournament context to filter groups by tournament when provided
+    const resolved = await this.tournamentsService.resolveTournamentContext(input.tournamentContext ?? {});
 
     const memberships = await this.prisma.groupMembership.findMany({
       where: {
         userId: user.id,
+        group: {
+          tournamentId: resolved.tournament.id,
+        },
       },
       orderBy: {
         joinedAt: 'desc',

@@ -2,6 +2,7 @@ import { MatchStatus, TournamentStatus } from '@prisma/client';
 
 import { MatchesService, type FinalizeMatchSummary } from '../matches/matches.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { TournamentsService, type TournamentContextInput, type TournamentView } from '../tournaments/tournaments.service';
 import { MOCK_SPORTS_DATA_PROVIDER_SNAPSHOT, MockSportsDataProvider } from './mock-sports-data.provider';
 import { SportsDataSyncService } from './sports-data-sync.service';
 import type { SportsDataFinalResultDTO } from './sports-data.types';
@@ -212,6 +213,68 @@ function createMatchesServiceMock(summary: FinalizeMatchSummary): MatchesService
   return {
     finalizeMatch: jest.fn(async (_input: unknown) => summary),
   };
+}
+
+/**
+ * Mock TournamentsService for backward compatibility with existing tests.
+ * Provides ACTIVE tournament resolution.
+ */
+function createTournamentsServiceMock(overrides?: { id?: string; slug?: string }): TournamentsService {
+  const tournamentId = overrides?.id ?? 'tournament-1';
+  const tournamentSlug = overrides?.slug ?? 'world-cup-2026';
+  return {
+    listTournaments: jest.fn(),
+    resolveTournamentContext: jest.fn(async (input: TournamentContextInput) => {
+      // If explicit tournament ID is provided, use it
+      if (input?.explicitTournamentId) {
+        return {
+          tournament: {
+            id: input.explicitTournamentId,
+            name: 'Test Tournament',
+            slug: tournamentSlug,
+            year: 2026,
+            status: TournamentStatus.ACTIVE,
+            startsAt: new Date('2026-06-11'),
+            endsAt: new Date('2026-07-19'),
+          },
+          source: 'explicit' as const,
+        };
+      }
+      // Default to ACTIVE tournament
+      return {
+        tournament: {
+          id: tournamentId,
+          name: 'World Cup 2026',
+          slug: tournamentSlug,
+          year: 2026,
+          status: TournamentStatus.ACTIVE,
+          startsAt: new Date('2026-06-11'),
+          endsAt: new Date('2026-07-19'),
+        },
+        source: 'active' as const,
+      };
+    }),
+    getStrictActiveTournament: jest.fn(async () => ({
+      id: 'tournament-1',
+      name: 'World Cup 2026',
+      slug: 'world-cup-2026',
+      year: 2026,
+      status: TournamentStatus.ACTIVE,
+      startsAt: new Date('2026-06-11'),
+      endsAt: new Date('2026-07-19'),
+    })),
+    getActiveTournament: jest.fn(async () => ({
+      id: 'tournament-1',
+      name: 'World Cup 2026',
+      slug: 'world-cup-2026',
+      year: 2026,
+      status: TournamentStatus.ACTIVE,
+      startsAt: new Date('2026-06-11'),
+      endsAt: new Date('2026-07-19'),
+    })),
+    getActiveTournamentMatches: jest.fn(),
+    getTournamentMatches: jest.fn(),
+  } as unknown as TournamentsService;
 }
 
 function createFinalizeMatchSummary(matchId: string, tournamentId: string): FinalizeMatchSummary {
@@ -557,6 +620,7 @@ describe('SportsDataSyncService', () => {
       prisma as unknown as PrismaService,
       createProvider(),
       createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+      createTournamentsServiceMock() as unknown as TournamentsService,
     );
 
     const firstRun = await service.importTournament();
@@ -595,13 +659,14 @@ describe('SportsDataSyncService', () => {
       prisma as unknown as PrismaService,
       provider as unknown as MockSportsDataProvider,
       createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-db-id')) as unknown as MatchesService,
+      createTournamentsServiceMock({ id: 'tournament-db-id', slug: 'world-cup-2026' }) as unknown as TournamentsService,
     );
 
     await service.importTournament('tournament-db-id');
 
-    expect(provider.listTeams).toHaveBeenCalledWith('world-cup-2026-demo');
-    expect(provider.listVenues).toHaveBeenCalledWith('world-cup-2026-demo');
-    expect(provider.listFixtures).toHaveBeenCalledWith('world-cup-2026-demo');
+    expect(provider.listTeams).toHaveBeenCalledWith('world-cup-2026');
+    expect(provider.listVenues).toHaveBeenCalledWith('world-cup-2026');
+    expect(provider.listFixtures).toHaveBeenCalledWith('world-cup-2026');
   });
 
   it('records success with zero staged results when the provider has nothing to finalize', async () => {
@@ -611,6 +676,7 @@ describe('SportsDataSyncService', () => {
       prisma as unknown as PrismaService,
       createProvider(),
       createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+      createTournamentsServiceMock() as unknown as TournamentsService,
     );
 
     const summary = await service.syncResults();
@@ -622,6 +688,80 @@ describe('SportsDataSyncService', () => {
       updatedCount: 0,
     });
     expect(state.externalMatchResults).toHaveLength(0);
+  });
+
+  it('rejects import for unsupported provider tournaments (demo tournaments)', async () => {
+    const state = createInitialState();
+    const prisma = createPrismaMock(state);
+
+    // Create a mock that returns a demo/unsupported tournament
+    const unsupportedTournamentsService = {
+      listTournaments: jest.fn(),
+      resolveTournamentContext: jest.fn(async () => ({
+        tournament: {
+          id: 'demo-tournament-id',
+          name: 'Demo Tournament',
+          slug: 'demo-tournament', // Not in SUPPORTED_PROVIDER_TOURNAMENT_SLUGS
+          year: 2026,
+          status: TournamentStatus.ACTIVE,
+          startsAt: new Date('2026-01-01'),
+          endsAt: new Date('2026-12-31'),
+        },
+        source: 'explicit' as const,
+      })),
+      getStrictActiveTournament: jest.fn(),
+      getActiveTournament: jest.fn(),
+      getActiveTournamentMatches: jest.fn(),
+      getTournamentMatches: jest.fn(),
+    } as unknown as TournamentsService;
+
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      createProvider(),
+      createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+      unsupportedTournamentsService,
+    );
+
+    await expect(service.importTournament('demo-tournament-id')).rejects.toThrow(
+      'does not support provider sync operations',
+    );
+  });
+
+  it('rejects sync results for unsupported provider tournaments (demo tournaments)', async () => {
+    const state = createInitialState();
+    const prisma = createPrismaMock(state);
+
+    // Create a mock that returns a demo/unsupported tournament
+    const unsupportedTournamentsService = {
+      listTournaments: jest.fn(),
+      resolveTournamentContext: jest.fn(async () => ({
+        tournament: {
+          id: 'demo-tournament-id',
+          name: 'Demo Tournament',
+          slug: 'demo-tournament', // Not in SUPPORTED_PROVIDER_TOURNAMENT_SLUGS
+          year: 2026,
+          status: TournamentStatus.ACTIVE,
+          startsAt: new Date('2026-01-01'),
+          endsAt: new Date('2026-12-31'),
+        },
+        source: 'explicit' as const,
+      })),
+      getStrictActiveTournament: jest.fn(),
+      getActiveTournament: jest.fn(),
+      getActiveTournamentMatches: jest.fn(),
+      getTournamentMatches: jest.fn(),
+    } as unknown as TournamentsService;
+
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      createProvider(),
+      createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+      unsupportedTournamentsService,
+    );
+
+    await expect(service.syncResults('demo-tournament-id')).rejects.toThrow(
+      'does not support provider sync operations',
+    );
   });
 
   it('lists pending staged results with linked match context', async () => {
@@ -699,6 +839,7 @@ describe('SportsDataSyncService', () => {
       prisma as unknown as PrismaService,
       createProvider(),
       createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+      createTournamentsServiceMock() as unknown as TournamentsService,
     );
 
     const results = await service.listExternalMatchResults();
@@ -729,8 +870,70 @@ describe('SportsDataSyncService', () => {
     ]);
     expect(prisma.externalMatchResult.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { state: 'PENDING_CONFIRMATION' },
+        where: { state: 'PENDING_CONFIRMATION', tournamentId: 'tournament-1' },
         orderBy: { stagedAt: 'desc' },
+      }),
+    );
+  });
+
+it('filters external match results by explicit tournament context', async () => {
+    const state = createInitialState();
+    const prisma = createPrismaMock(state);
+
+    // Create a mock that returns tournament-2 when explicitly requested
+    const tournamentsService = {
+      listTournaments: jest.fn(),
+      resolveTournamentContext: jest.fn(async (input: TournamentContextInput) => {
+        if (input?.explicitTournamentId === 'tournament-2') {
+          return {
+            tournament: {
+              id: 'tournament-2',
+              name: 'World Cup 2026',
+              slug: 'world-cup-2026',
+              year: 2026,
+              status: TournamentStatus.ACTIVE,
+              startsAt: new Date('2026-06-11'),
+              endsAt: new Date('2026-07-19'),
+            },
+            source: 'explicit' as const,
+          };
+        }
+        return {
+          tournament: {
+            id: 'tournament-1',
+            name: 'World Cup 2026',
+            slug: 'world-cup-2026',
+            year: 2026,
+            status: TournamentStatus.ACTIVE,
+            startsAt: new Date('2026-06-11'),
+            endsAt: new Date('2026-07-19'),
+          },
+          source: 'active' as const,
+        };
+      }),
+      getStrictActiveTournament: jest.fn(),
+      getActiveTournament: jest.fn(),
+      getActiveTournamentMatches: jest.fn(),
+      getTournamentMatches: jest.fn(),
+    } as unknown as TournamentsService;
+
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      createProvider(),
+      createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+      tournamentsService,
+    );
+
+    // Request results for tournament-2 explicitly
+    await service.listExternalMatchResults({
+      state: 'PENDING_CONFIRMATION',
+      tournamentContext: { explicitTournamentId: 'tournament-2' },
+    });
+
+    // Verify the query was made with tournament-2
+    expect(prisma.externalMatchResult.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { state: 'PENDING_CONFIRMATION', tournamentId: 'tournament-2' },
       }),
     );
   });
@@ -803,6 +1006,7 @@ describe('SportsDataSyncService', () => {
       prisma as unknown as PrismaService,
       createProvider(),
       createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+      createTournamentsServiceMock() as unknown as TournamentsService,
     );
 
     const diagnostics = await service.listExternalMatchMappingDiagnostics();
@@ -869,6 +1073,7 @@ describe('SportsDataSyncService', () => {
       prisma as unknown as PrismaService,
       createProvider(),
       createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+      createTournamentsServiceMock() as unknown as TournamentsService,
     );
 
     const syncRuns = await service.listRecentSyncRuns();
@@ -949,6 +1154,7 @@ describe('SportsDataSyncService', () => {
       prisma as unknown as PrismaService,
       provider,
       createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+      createTournamentsServiceMock() as unknown as TournamentsService,
     );
 
     const firstRun = await service.syncResults();
@@ -1006,6 +1212,7 @@ describe('SportsDataSyncService', () => {
       prisma as unknown as PrismaService,
       createProvider(),
       matchesService as unknown as MatchesService,
+      createTournamentsServiceMock() as unknown as TournamentsService,
     );
 
     const summary = await service.confirmExternalMatchResult({ externalMatchResultId: 'external-result-1' });
@@ -1055,6 +1262,7 @@ describe('SportsDataSyncService', () => {
       prisma as unknown as PrismaService,
       createProvider(),
       matchesService as unknown as MatchesService,
+      createTournamentsServiceMock() as unknown as TournamentsService,
     );
 
     const summary = await service.discardExternalMatchResult({ externalMatchResultId: 'external-result-1' });
@@ -1099,6 +1307,7 @@ describe('SportsDataSyncService', () => {
       prisma as unknown as PrismaService,
       createProvider(),
       matchesService as unknown as MatchesService,
+      createTournamentsServiceMock() as unknown as TournamentsService,
     );
 
     await expect(service.confirmExternalMatchResult({ externalMatchResultId: 'external-result-1' })).rejects.toThrow(
@@ -1132,6 +1341,7 @@ describe('SportsDataSyncService', () => {
       prisma as unknown as PrismaService,
       createProvider(),
       matchesService as unknown as MatchesService,
+      createTournamentsServiceMock() as unknown as TournamentsService,
     );
 
     await expect(service.confirmExternalMatchResult({ externalMatchResultId: 'external-result-1' })).rejects.toThrow(
@@ -1165,6 +1375,7 @@ describe('SportsDataSyncService', () => {
       prisma as unknown as PrismaService,
       createProvider(),
       matchesService as unknown as MatchesService,
+      createTournamentsServiceMock() as unknown as TournamentsService,
     );
 
     await expect(service.discardExternalMatchResult({ externalMatchResultId: 'external-result-1' })).rejects.toThrow(

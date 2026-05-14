@@ -1,9 +1,14 @@
-import { Controller, Param, Post, UseGuards } from '@nestjs/common';
+import { Controller, Param, Post, Query, UseGuards } from '@nestjs/common';
 
 import { Auth0JwtGuard } from '../auth/auth.guard';
 import { CurrentAuthUser } from '../auth/current-auth-user.decorator';
 import type { AuthenticatedIdentity } from '../auth/auth.types';
 import { ShareCardsService, type ShareCardView } from './share-cards.service';
+
+interface TournamentContextQuery {
+  tournamentId?: string | null;
+  tournamentSlug?: string | null;
+}
 
 @UseGuards(Auth0JwtGuard)
 @Controller('share-cards')
@@ -13,8 +18,12 @@ export class ShareCardsController {
   @Post('me/global-ranking')
   async createMyGlobalRankingShareCard(
     @CurrentAuthUser() identity: AuthenticatedIdentity,
+    @Query() query: TournamentContextQuery,
   ): Promise<ShareCardView> {
-    return this.shareCardsService.createMyGlobalRankingShareCard(identity);
+    return this.shareCardsService.createMyGlobalRankingShareCard(identity, {
+      explicitTournamentId: query.tournamentId,
+      selectedSlug: query.tournamentSlug,
+    });
   }
 
   @Post('groups/:groupId/ranking')

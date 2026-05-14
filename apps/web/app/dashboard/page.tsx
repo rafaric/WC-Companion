@@ -23,6 +23,7 @@ import { isProfileComplete } from "@/lib/profile";
 import { cn } from "@/lib/cn";
 import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
 import { getFriendlyDisplayName } from "@/lib/user-display";
+import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
 import { RecentlyScoredResults, type RecentlyScoredResultItem } from "./recently-scored-results";
 import { MatchPredictionAccordion } from "./match-prediction-accordion";
 import { CopyInviteCodeButton } from "../groups/copy-invite-code-button";
@@ -320,8 +321,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     redirect("/auth/login?returnTo=/dashboard");
   }
 
+  // Resolve selected tournament from cookie (null → API uses ACTIVE fallback)
+  const tournamentSlug = await resolveTournamentSlug();
+
   const resolvedSearchParams = await searchParams;
-  const globalRankingPromise = getGlobalRanking().catch(() => [] as RankingEntry[]);
 
   let accessToken: string;
 
@@ -333,10 +336,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const [currentUserProfile, matches, predictions, globalRanking, myGroups] = await Promise.all([
     getCurrentUserProfile(accessToken).catch(() => null),
-    getActiveTournamentMatches().catch(() => []),
+    getActiveTournamentMatches(tournamentSlug).catch(() => []),
     getMyPredictions(accessToken).catch(() => []),
-    globalRankingPromise,
-    getMyGroups(accessToken).catch(() => [] as MyGroupView[]),
+    getGlobalRanking(tournamentSlug).catch(() => [] as RankingEntry[]),
+    getMyGroups(accessToken, tournamentSlug).catch(() => [] as MyGroupView[]),
   ]);
 
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;

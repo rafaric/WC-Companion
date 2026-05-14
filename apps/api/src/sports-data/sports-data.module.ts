@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthModule } from '../auth/auth.module';
 import { MatchesModule } from '../matches/matches.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { TournamentsModule } from '../tournaments/tournaments.module';
 import { SPORTS_DATA_PROVIDER, SPORTS_DATA_PROVIDER_KEYS } from './sports-data.constants';
 import { FootballDataClient } from './football-data.client';
 import { FOOTBALL_DATA_TOURNAMENT_CONFIGS } from './football-data.config';
@@ -13,7 +14,7 @@ import { SportsDataController } from './sports-data.controller';
 import { SportsDataSyncService } from './sports-data-sync.service';
 
 @Module({
-  imports: [PrismaModule, AuthModule, MatchesModule],
+  imports: [PrismaModule, AuthModule, MatchesModule, TournamentsModule],
   controllers: [SportsDataController],
   providers: [
     SportsDataSyncService,

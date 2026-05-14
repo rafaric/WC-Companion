@@ -1,11 +1,15 @@
 "use client";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactNode } from "react";
-import { useState } from "react";
+import { type ReactNode } from "react";
 
-export function Providers({ children }: Readonly<{ children: ReactNode }>) {
-  const [queryClient] = useState(() => new QueryClient());
+interface ProvidersProps {
+  children: ReactNode;
+}
 
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+/**
+ * Client-side providers wrapper for the application.
+ * Contains context providers that need client-side rendering.
+ */
+export function Providers({ children }: ProvidersProps) {
+  return <>{children}</>;
 }

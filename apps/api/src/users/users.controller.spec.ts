@@ -34,7 +34,7 @@ describe('UsersController', () => {
     expect(usersService.getCurrentUser).toHaveBeenCalledWith(identity);
   });
 
-  it('delegates profile updates to the service', async () => {
+  it('delegates profile updates to the service with tournament context', async () => {
     const profile: CurrentUserProfileView = {
       id: 'user-1',
       email: 'messi@example.com',
@@ -64,8 +64,15 @@ describe('UsersController', () => {
       favoriteTeamId: 'team-1',
       preferredLanguage: 'es',
     };
+    const query = { tournamentId: 'tournament-123', tournamentSlug: null };
 
-    await expect(controller.updateCurrentUserProfile(identity, body)).resolves.toEqual(profile);
-    expect(usersService.updateCurrentUserProfile).toHaveBeenCalledWith(identity, body);
+    await expect(controller.updateCurrentUserProfile(identity, body, query)).resolves.toEqual(profile);
+    expect(usersService.updateCurrentUserProfile).toHaveBeenCalledWith(identity, {
+      ...body,
+      tournamentContext: {
+        explicitTournamentId: 'tournament-123',
+        selectedSlug: null,
+      },
+    });
   });
 });
