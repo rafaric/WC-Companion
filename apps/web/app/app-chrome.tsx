@@ -118,50 +118,55 @@ export function AppChrome({ availableTeams, canAccessExternalResults, children, 
 
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8">
         <header className="fixed inset-x-4 top-4 z-40 mx-auto max-w-6xl rounded-full border border-slate-800/80 bg-slate-900/85 px-4 py-3 shadow-2xl shadow-slate-950/30 backdrop-blur sm:inset-x-6 lg:inset-x-8">
-          <div className="flex items-center justify-between gap-4">
-            <Link href="/dashboard" className="inline-flex min-w-0 items-center gap-3 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400">
+          <div className="flex items-center justify-between gap-4 md:gap-3">
+            <Link href="/dashboard" className="inline-flex shrink-0 items-center gap-3 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400">
               <Image src="/assets/LogoLong.png" alt="WorldPredict logo" width={144} height={40} priority className="h-8 w-auto object-contain pb-1" />
-              <div className="min-w-0">
+              <div className="min-w-0 md:hidden">
                 <p className="truncate text-xs text-slate-400">{getSectionLabel(pathname)}</p>
               </div>
             </Link>
 
-            <nav aria-label="Primary" className="hidden items-center gap-2 md:flex">
-              {tournamentSelector && (
-                <div className="mr-2">{tournamentSelector}</div>
-              )}
-              {navItems.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            <div className="hidden min-w-0 flex-1 items-center justify-end gap-3 md:flex">
+              <nav aria-label="Primary" className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                {tournamentSelector && <div className="shrink-0">{tournamentSelector}</div>}
+                <div className="flex min-w-0 items-center justify-end gap-2 overflow-x-auto scrollbar-none">
+                  {navItems.map((item) => {
+                    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-current={isActive ? "page" : undefined}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 ${
-                      isActive
-                        ? "bg-cyan-400/10 text-cyan-200"
-                        : "text-slate-200 hover:bg-slate-800/80 hover:text-white"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-              <button
-                type="button"
-                onClick={() => setProfileModalOpen(true)}
-                className="rounded-full px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800/80 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
-              >
-                {displayName}
-              </button>
-              <Link
-                href="/auth/logout"
-                className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
-              >
-                Log out
-              </Link>
-            </nav>
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={isActive ? "page" : undefined}
+                        className={`shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 lg:px-4 ${
+                          isActive
+                            ? "bg-cyan-400/10 text-cyan-200"
+                            : "text-slate-200 hover:bg-slate-800/80 hover:text-white"
+                        }`}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </nav>
+
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setProfileModalOpen(true)}
+                  className="max-w-44 truncate whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800/80 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 lg:px-4"
+                >
+                  {displayName}
+                </button>
+                <Link
+                  href="/auth/logout"
+                  className="shrink-0 whitespace-nowrap rounded-full border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 lg:px-4"
+                >
+                  Log out
+                </Link>
+              </div>
+            </div>
 
             <div className="relative md:hidden">
               {menuOpen ? (
