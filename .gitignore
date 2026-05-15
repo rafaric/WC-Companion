@@ -13,3 +13,4 @@ apps/**/.next
 apps/**/tsconfig.tsbuildinfo
 apps/**/.env
 apps/**/.prisma
+.atl/
