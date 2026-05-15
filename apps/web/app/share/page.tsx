@@ -24,7 +24,7 @@ import { formatCountryLabel, getTeamLabel } from "@/lib/profile";
 import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
 import { getFriendlyDisplayName } from "@/lib/user-display";
 import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
-import { getTeamFlagEmoji } from "@/lib/flags";
+import { FlagIcon } from "@/components/FlagIcon";
 
 import { ShareActions } from "./share-actions";
 
@@ -252,8 +252,6 @@ function getShareErrorCode(error: unknown, kind: "prediction" | "performance" | 
 function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetId, shareActions }: PredictionShareTemplateProps) {
   const match = predictionOption?.match ?? null;
   const prediction = predictionOption?.prediction ?? null;
-  const homeFlag = match ? getTeamFlagEmoji(match.homeTeam.flagCode, match.homeTeam.countryCode) : null;
-  const awayFlag = match ? getTeamFlagEmoji(match.awayTeam.flagCode, match.awayTeam.countryCode) : null;
 
   return (
     <article id="prediction-preview" className="relative scroll-mt-24 overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-slate-950 p-5 shadow-2xl shadow-cyan-950/30">
@@ -280,13 +278,17 @@ function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetI
           <p className="text-center text-[11px] font-bold uppercase tracking-[0.24em] text-slate-300">Selected match</p>
           <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
             <div className="rounded-3xl border border-cyan-300/30 bg-cyan-400/10 p-4 text-center">
-              <p className="text-3xl" aria-hidden="true">{homeFlag ?? "⚽"}</p>
+              <p className="flex items-center justify-center" aria-hidden="true">
+                <FlagIcon flagCode={match?.homeTeam.flagCode ?? null} countryCode={match?.homeTeam.countryCode ?? null} size="2.75rem" />
+              </p>
               <p className="mt-2 text-xl font-black text-white">{match?.homeTeam.shortName ?? "---"}</p>
               <p className="mt-1 truncate text-xs text-cyan-100/70">{match?.homeTeam.name ?? "Home team"}</p>
             </div>
             <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">vs</span>
             <div className="rounded-3xl border border-violet-300/30 bg-violet-400/10 p-4 text-center">
-              <p className="text-3xl" aria-hidden="true">{awayFlag ?? "⚽"}</p>
+              <p className="flex items-center justify-center" aria-hidden="true">
+                <FlagIcon flagCode={match?.awayTeam.flagCode ?? null} countryCode={match?.awayTeam.countryCode ?? null} size="2.75rem" />
+              </p>
               <p className="mt-2 text-xl font-black text-white">{match?.awayTeam.shortName ?? "---"}</p>
               <p className="mt-1 truncate text-xs text-violet-100/70">{match?.awayTeam.name ?? "Away team"}</p>
             </div>

@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import type { MatchView, PredictionView } from "@/lib/api";
-import { getTeamFlagEmoji } from "@/lib/flags";
+import { FlagIcon } from "@/components/FlagIcon";
 
 interface MatchPredictionCard extends MatchView {
   prediction: PredictionView | null;
@@ -446,8 +446,6 @@ export function MatchPredictionAccordion({
         const matchFinished = isMatchFinished(match);
         const scoringExplanation = getScoringExplanation(match);
         const expanded = expandedMatchId === match.id;
-        const homeFlag = getTeamFlagEmoji(match.homeTeam.flagCode, match.homeTeam.countryCode);
-        const awayFlag = getTeamFlagEmoji(match.awayTeam.flagCode, match.awayTeam.countryCode);
         const predictionLabel = formatPredictionLabel(match.prediction);
 
         return (
@@ -460,11 +458,11 @@ export function MatchPredictionAccordion({
             >
               <span className="min-w-0">
                 <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-white sm:text-base">
-                  <span aria-hidden="true">{homeFlag ?? "⚽"}</span>
+                  <FlagIcon flagCode={match.homeTeam.flagCode} countryCode={match.homeTeam.countryCode} />
                   <span>{match.homeTeam.shortName}</span>
                   <span className="text-slate-500">vs</span>
                   <span>{match.awayTeam.shortName}</span>
-                  <span aria-hidden="true">{awayFlag ?? "⚽"}</span>
+                  <FlagIcon flagCode={match.awayTeam.flagCode} countryCode={match.awayTeam.countryCode} />
                 </span>
                 <span className="mt-1 block truncate text-xs text-slate-500">
                   {match.stage}{match.groupName ? ` · ${match.groupName}` : ""} · {formatKickoff(match.kickoffAt)}

@@ -16,6 +16,7 @@ import { buildPageMetadata, metadataBase, SITE_DESCRIPTION, SITE_NAME } from "@/
 import { formatCountryLabel, getTeamLabel, isProfileComplete } from "@/lib/profile";
 import { getFriendlyDisplayName, getFriendlyEmailLabel } from "@/lib/user-display";
 import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
+import { FlagIcon } from "@/components/FlagIcon";
 import Image from "next/image";
 
 export const metadata = buildPageMetadata({
@@ -104,17 +105,6 @@ const ACCOUNT_REASSURANCE = [
   { icon: "👥", label: "Private groups" },
 ] as const;
 
-const FIFA_FLAG_EMOJI: Record<string, string> = {
-  ARG: "🇦🇷",
-  BRA: "🇧🇷",
-  ENG: "🏴",
-  ESP: "🇪🇸",
-  FRA: "🇫🇷",
-  GER: "🇩🇪",
-  POR: "🇵🇹",
-  URU: "🇺🇾",
-};
-
 interface LivePreviewItem {
   label: string;
   value: string;
@@ -146,24 +136,6 @@ function formatKickoff(kickoffAt: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(kickoffAt));
-}
-
-function getFlagEmoji(flagCode: string | null): string | null {
-  if (!flagCode) {
-    return null;
-  }
-
-  const normalizedCode = flagCode.trim().toUpperCase();
-
-  if (FIFA_FLAG_EMOJI[normalizedCode]) {
-    return FIFA_FLAG_EMOJI[normalizedCode];
-  }
-
-  if (!/^[A-Z]{2}$/.test(normalizedCode)) {
-    return null;
-  }
-
-  return String.fromCodePoint(...Array.from(normalizedCode).map((char) => 127397 + char.charCodeAt(0)));
 }
 
 function buildPreviewItems(
@@ -246,8 +218,6 @@ export default async function HomePage() {
   const accountEmail = user ? getFriendlyEmailLabel(user, currentUserProfile) : null;
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;
   const favoriteTeam = currentUserProfile ? getTeamById(matches, currentUserProfile.favoriteTeamId) : null;
-  const homeFlag = getFlagEmoji(previewMatch?.homeTeam.flagCode ?? null) ?? getFlagEmoji(previewMatch?.homeTeam.countryCode ?? null);
-  const awayFlag = getFlagEmoji(previewMatch?.awayTeam.flagCode ?? null) ?? getFlagEmoji(previewMatch?.awayTeam.countryCode ?? null);
   const primaryCtaHref = user ? (profileComplete ? "/dashboard" : "/onboarding") : "/auth/login?returnTo=/dashboard";
   const primaryCtaLabel = user ? (profileComplete ? "Open dashboard" : "Complete profile") : "Log in to predict";
   const secondaryCtaHref = user ? "/groups" : "/auth/login";
@@ -381,7 +351,9 @@ export default async function HomePage() {
                 <>
                   <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center">
                     <div className="min-w-0 rounded-3xl border border-slate-800 bg-slate-900/80 p-3 sm:p-4">
-                      <p className="text-3xl" aria-hidden="true">{homeFlag ?? "⚽"}</p>
+                      <p className="flex justify-center text-3xl" aria-hidden="true">
+                        <FlagIcon flagCode={previewMatch.homeTeam.flagCode} countryCode={previewMatch.homeTeam.countryCode} size="2.75rem" />
+                      </p>
                       <p className="mt-2 text-lg font-black text-white">{previewMatch.homeTeam.shortName}</p>
                       <p className="truncate text-xs text-slate-400">{previewMatch.homeTeam.name}</p>
                     </div>
@@ -389,7 +361,9 @@ export default async function HomePage() {
                       VS
                     </div>
                     <div className="min-w-0 rounded-3xl border border-slate-800 bg-slate-900/80 p-3 sm:p-4">
-                      <p className="text-3xl" aria-hidden="true">{awayFlag ?? "⚽"}</p>
+                      <p className="flex justify-center text-3xl" aria-hidden="true">
+                        <FlagIcon flagCode={previewMatch.awayTeam.flagCode} countryCode={previewMatch.awayTeam.countryCode} size="2.75rem" />
+                      </p>
                       <p className="mt-2 text-lg font-black text-white">{previewMatch.awayTeam.shortName}</p>
                       <p className="truncate text-xs text-slate-400">{previewMatch.awayTeam.name}</p>
                     </div>

@@ -6,6 +6,8 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 import type { CurrentUserProfile, TeamView } from "@/lib/api";
+import { FlagIcon } from "@/components/FlagIcon";
+import { getFlagEmoji } from "@/lib/flags";
 import { getFriendlyDisplayName, getFriendlyEmailLabel, type SessionDisplayUser } from "@/lib/user-display";
 import { ProfileEditModal } from "./profile-edit-modal";
 
@@ -26,17 +28,6 @@ interface NavItem {
 }
 
 const AUTHENTICATED_PATH_PREFIXES = ["/admin", "/dashboard", "/groups", "/rankings", "/share"] as const;
-
-const FIFA_FLAG_EMOJI: Record<string, string> = {
-  ARG: "🇦🇷",
-  BRA: "🇧🇷",
-  ENG: "🏴",
-  ESP: "🇪🇸",
-  FRA: "🇫🇷",
-  GER: "🇩🇪",
-  POR: "🇵🇹",
-  URU: "🇺🇾",
-};
 
 function isAuthenticatedPath(pathname: string): boolean {
   return AUTHENTICATED_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -64,24 +55,6 @@ function getSectionLabel(pathname: string): string {
   }
 
   return "Predictions dashboard";
-}
-
-function getFlagEmoji(code: string | null): string | null {
-  if (!code) {
-    return null;
-  }
-
-  const normalizedCode = code.trim().toUpperCase();
-
-  if (FIFA_FLAG_EMOJI[normalizedCode]) {
-    return FIFA_FLAG_EMOJI[normalizedCode];
-  }
-
-  if (!/^[A-Z]{2}$/.test(normalizedCode)) {
-    return null;
-  }
-
-  return String.fromCodePoint(...Array.from(normalizedCode).map((char) => 127397 + char.charCodeAt(0)));
 }
 
 export function AppChrome({ availableTeams, canAccessExternalResults, children, currentUserProfile, favoriteTeam, sessionUser, tournamentSelector }: AppChromeProps) {
@@ -137,7 +110,6 @@ export function AppChrome({ availableTeams, canAccessExternalResults, children, 
   const displayName = getFriendlyDisplayName(sessionUser, currentUserProfile);
   const emailLabel = getFriendlyEmailLabel(sessionUser, currentUserProfile);
   const countryFlag = getFlagEmoji(currentUserProfile?.country ?? null);
-  const favoriteTeamFlag = getFlagEmoji(favoriteTeam?.flagCode ?? null) ?? getFlagEmoji(favoriteTeam?.countryCode ?? null);
   const favoriteTeamLabel = favoriteTeam?.shortName ?? "Team";
 
   return (
@@ -245,7 +217,7 @@ export function AppChrome({ availableTeams, canAccessExternalResults, children, 
                         {currentUserProfile?.country ?? "--"}
                       </span>
                       <span className="inline-flex items-center gap-1 rounded-full border border-slate-800 bg-slate-900 px-2 py-1">
-                        <span aria-hidden="true">{favoriteTeamFlag ?? "⚽"}</span>
+                        <FlagIcon flagCode={favoriteTeam?.flagCode ?? null} countryCode={favoriteTeam?.countryCode ?? null} size="1.1rem" />
                         {favoriteTeamLabel}
                       </span>
                     </div>

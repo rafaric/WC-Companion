@@ -1,124 +1,141 @@
 /**
- * Flag emoji normalization utilities for country codes.
+ * Flag normalization utilities for country codes.
  *
- * Handles various input formats (FIFA-3, ISO-2, legacy codes like GB-ENG)
- * and returns emoji flags for web display.
+ * The current data feed mixes FIFA-style 3-letter codes, ISO-3 codes, ISO-2 codes,
+ * and a few special legacy values like GB-ENG/GB-SCT.
  *
- * Flag display is supplementary—always provide accessible country names.
+ * We normalize all of those into either:
+ * - a locally supported special code, or
+ * - a standard ISO-2 code that can be rendered as emoji or CDN image.
  */
 
-/**
- * Mapping of common FIFA-3 or legacy codes to emoji flags.
- * FIFA-3 codes (ARG, BRA, etc.) or legacy codes (GB-ENG) need explicit mapping.
- */
-const FIFA_TO_FLAG: Record<string, string> = {
-  // FIFA-3 codes
-  ARG: "🇦🇷",
-  AUS: "🇦🇺",
-  BEL: "🇧🇪",
-  BRA: "🇧🇷",
-  CMR: "🇨🇲",
-  CAN: "🇨🇦",
-  CHI: "🇨🇱",
-  CHN: "🇨🇳",
-  COL: "🇨🇴",
-  CRC: "🇨🇷",
-  CRO: "🇭🇷",
-  DEN: "🇩🇰",
-  ECU: "🇪🇨",
-  EGY: "🇪🇬",
+const SPECIAL_FLAG_EMOJI: Record<string, string> = {
   ENG: "🏴",
-  ESP: "🇪🇸",
-  FRA: "🇫🇷",
-  GER: "🇩🇪",
-  GHA: "🇬🇭",
-  HON: "🇭🇳",
-  IRN: "🇮🇷",
-  IRQ: "🇮🇶",
-  ITA: "🇮🇹",
-  JAM: "🇯🇲",
-  JPN: "🇯🇵",
-  KOR: "🇰🇷",
-  KSA: "🇸🇦",
-  MAR: "🇲🇦",
-  MEX: "🇲🇽",
-  NED: "🇳🇱",
-  NGA: "🇳🇬",
-  NOR: "🇳🇴",
-  NZL: "🇳🇿",
-  PAN: "🇵🇦",
-  PAR: "🇵🇾",
-  PER: "🇵🇪",
-  POL: "🇵🇱",
-  POR: "🇵🇹",
-  QAT: "🇶🇦",
-  ROU: "🇷🇴",
-  RSA: "🇿🇦",
-  RUS: "🇷🇺",
-  SEN: "🇸🇳",
-  SRB: "🇷🇸",
-  SUI: "🇨🇭",
-  SWE: "🇸🇪",
-  TUN: "🇹🇳",
-  TUR: "🇹🇷",
-  UAE: "🇦🇪",
-  URU: "🇺🇾",
-  USA: "🇺🇸",
-  VEN: "🇻🇪",
+  SCO: "🏴",
   WAL: "🏴",
-  // Legacy / special codes (converted to ISO-2 where possible)
   "GB-ENG": "🏴",
-  "GB-SCT": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
-  "GB-WLS": "🏴󠁧󠁢󠁷󠁬󠁳󠁿",
-  "GB-NIR": "🏴󠁧󠁢󠁮󠁩󠁲󠁿",
+  "GB-SCT": "🏴",
+  "GB-WLS": "🏴",
+  "GB-NIR": "🏴",
 };
 
-/**
- * Converts a country/flag code to a flag emoji.
- *
- * @param code - The country code (FIFA-3 like "ARG", ISO-2 like "AR", or legacy like "GB-ENG")
- * @returns The flag emoji, or null if the code cannot be resolved
- *
- * @example
- * getFlagEmoji("BRA") // "🇧🇷"
- * getFlagEmoji("GB-ENG") // "🏴"
- * getFlagEmoji("AR") // "🇦🇷"
- * getFlagEmoji("unknown") // null
- */
-export function getFlagEmoji(code: string | null): string | null {
+const PROVIDER_TO_ISO2: Record<string, string> = {
+  ALG: "DZ",
+  ANT: "CW",
+  ARG: "AR",
+  AUS: "AU",
+  AUT: "AT",
+  BEL: "BE",
+  BIH: "BA",
+  BRA: "BR",
+  CAN: "CA",
+  CHE: "CH",
+  CIV: "CI",
+  COD: "CD",
+  COL: "CO",
+  CPV: "CV",
+  CRO: "HR",
+  CZE: "CZ",
+  DEU: "DE",
+  ECU: "EC",
+  EGY: "EG",
+  ESP: "ES",
+  FRA: "FR",
+  GHA: "GH",
+  HRV: "HR",
+  HTI: "HT",
+  IRN: "IR",
+  IRQ: "IQ",
+  JOR: "JO",
+  JPN: "JP",
+  KOR: "KR",
+  KSA: "SA",
+  MAR: "MA",
+  MEX: "MX",
+  NLD: "NL",
+  NOR: "NO",
+  NZL: "NZ",
+  PAN: "PA",
+  PAR: "PY",
+  POR: "PT",
+  PRY: "PY",
+  QAT: "QA",
+  RSA: "ZA",
+  SEN: "SN",
+  SUI: "CH",
+  SWE: "SE",
+  TUN: "TN",
+  TUR: "TR",
+  UAE: "AE",
+  URU: "UY",
+  URY: "UY",
+  USA: "US",
+  UZB: "UZ",
+};
+
+function isIso2Code(code: string): boolean {
+  return /^[A-Z]{2}$/.test(code);
+}
+
+function normalizeFlagCode(code: string | null): string | null {
   if (!code) {
     return null;
   }
 
   const normalizedCode = code.trim().toUpperCase();
 
-  // First check explicit FIFA/legacy mapping
-  if (FIFA_TO_FLAG[normalizedCode]) {
-    return FIFA_TO_FLAG[normalizedCode];
+  if (normalizedCode in SPECIAL_FLAG_EMOJI) {
+    return normalizedCode;
   }
 
-  // Try ISO-2 conversion: convert country code to regional indicator symbols
-  // ISO-2 codes are exactly 2 uppercase letters
-  if (/^[A-Z]{2}$/.test(normalizedCode)) {
-    return String.fromCodePoint(
-      ...Array.from(normalizedCode).map((char) => 127397 + char.charCodeAt(0)),
-    );
+  if (isIso2Code(normalizedCode)) {
+    return normalizedCode;
   }
 
-  // Unresolvable: return null (caller should provide fallback)
-  return null;
+  return PROVIDER_TO_ISO2[normalizedCode] ?? null;
 }
 
 /**
- * Gets the best available flag emoji for a team.
- *
- * Tries flagCode first (preferred), then falls back to countryCode.
- * If neither works, returns null.
- *
- * @param flagCode - The team's flag code (preferred)
- * @param countryCode - The team's country code (fallback)
- * @returns The flag emoji, or null if neither code can be resolved
+ * Converts a country/flag code to a flag emoji.
  */
+export function getFlagEmoji(code: string | null): string | null {
+  const normalizedCode = normalizeFlagCode(code);
+
+  if (!normalizedCode) {
+    return null;
+  }
+
+  if (SPECIAL_FLAG_EMOJI[normalizedCode]) {
+    return SPECIAL_FLAG_EMOJI[normalizedCode];
+  }
+
+  if (!isIso2Code(normalizedCode)) {
+    return null;
+  }
+
+  return String.fromCodePoint(
+    ...Array.from(normalizedCode).map((char) => 127397 + char.charCodeAt(0)),
+  );
+}
+
+function getFlagCdnUrl(code: string | null): string | null {
+  const normalizedCode = normalizeFlagCode(code);
+
+  if (!normalizedCode || SPECIAL_FLAG_EMOJI[normalizedCode]) {
+    return null;
+  }
+
+  if (isIso2Code(normalizedCode)) {
+    return `https://flagcdn.com/w80/${normalizedCode.toLowerCase()}.png`;
+  }
+
+  return null;
+}
+
+export function getTeamFlagUrl(flagCode: string | null, countryCode: string | null): string | null {
+  return getFlagCdnUrl(flagCode) ?? getFlagCdnUrl(countryCode);
+}
+
 export function getTeamFlagEmoji(flagCode: string | null, countryCode: string | null): string | null {
   return getFlagEmoji(flagCode) ?? getFlagEmoji(countryCode);
 }
