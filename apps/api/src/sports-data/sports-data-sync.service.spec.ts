@@ -149,22 +149,22 @@ interface PrismaMock {
     create: jest.Mock<Promise<Pick<MatchRecord, 'id'>>, [unknown]>;
     update: jest.Mock<Promise<MatchRecord>, [unknown]>;
   };
-  externalTeamReference: {
-    findUnique: jest.Mock<Promise<ExternalTeamReferenceRecord | null>, [unknown]>;
-    create: jest.Mock<Promise<ExternalTeamReferenceRecord>, [unknown]>;
-    upsert: jest.Mock<Promise<ExternalTeamReferenceRecord>, [unknown]>;
-  };
-  externalVenueReference: {
-    findUnique: jest.Mock<Promise<ExternalVenueReferenceRecord | null>, [unknown]>;
-    create: jest.Mock<Promise<ExternalVenueReferenceRecord>, [unknown]>;
-    upsert: jest.Mock<Promise<ExternalVenueReferenceRecord>, [unknown]>;
-  };
-  externalMatchReference: {
-    findUnique: jest.Mock<Promise<ExternalMatchReferenceRecord | null>, [unknown]>;
-    create: jest.Mock<Promise<ExternalMatchReferenceRecord>, [unknown]>;
-    upsert: jest.Mock<Promise<ExternalMatchReferenceRecord>, [unknown]>;
-  };
-  externalSyncRun: {
+externalTeamReference: {
+      findFirst: jest.Mock<Promise<ExternalTeamReferenceRecord | null>, [unknown]>;
+      upsert: jest.Mock<Promise<ExternalTeamReferenceRecord>, [unknown]>;
+      create: jest.Mock<Promise<ExternalTeamReferenceRecord>, [unknown]>;
+    };
+    externalVenueReference: {
+      findFirst: jest.Mock<Promise<ExternalVenueReferenceRecord | null>, [unknown]>;
+      create: jest.Mock<Promise<ExternalVenueReferenceRecord>, [unknown]>;
+      update: jest.Mock<Promise<ExternalVenueReferenceRecord>, [unknown]>;
+    };
+    externalMatchReference: {
+      findFirst: jest.Mock<Promise<ExternalMatchReferenceRecord | null>, [unknown]>;
+      create: jest.Mock<Promise<ExternalMatchReferenceRecord>, [unknown]>;
+      update: jest.Mock<Promise<ExternalMatchReferenceRecord>, [unknown]>;
+    };
+    externalSyncRun: {
     create: jest.Mock<Promise<SyncRunRecord>, [unknown]>;
     findMany: jest.Mock<Promise<SyncRunRecord[]>, [unknown]>;
     update: jest.Mock<Promise<SyncRunRecord>, [unknown]>;
@@ -425,38 +425,45 @@ function createPrismaMock(state: PrismaState): PrismaMock {
         return match;
       }),
     },
-    externalTeamReference: {
-      findUnique: jest.fn(async ({ where }: { where: { providerKey_externalId: { providerKey: string; externalId: string } } }) =>
+externalTeamReference: {
+      findFirst: jest.fn(async ({ where }: { where: { providerKey: string; tournamentId: string; externalId: string } }) =>
         state.externalTeamReferences.find(
           (reference) =>
-            reference.providerKey === where.providerKey_externalId.providerKey && reference.externalId === where.providerKey_externalId.externalId,
+            reference.providerKey === where.providerKey &&
+            reference.tournamentId === where.tournamentId &&
+            reference.externalId === where.externalId,
         ) ?? null,
       ),
-      create: jest.fn(async ({ data }: { data: ExternalTeamReferenceRecord }) => {
-        const record = { ...data };
-        state.externalTeamReferences.push(record);
-        return record;
-      }),
-      upsert: jest.fn(async ({ where, create, update }: { where: { providerKey_externalId: { providerKey: string; externalId: string } }; create: ExternalTeamReferenceRecord; update: Partial<ExternalTeamReferenceRecord> }) => {
+      upsert: jest.fn(async ({ where, create, update }: { where: { providerKey_tournamentId_teamId: { providerKey: string; tournamentId: string; teamId: string } }; create: ExternalTeamReferenceRecord; update: Partial<ExternalTeamReferenceRecord> }) => {
         const existing = state.externalTeamReferences.find(
           (reference) =>
-            reference.providerKey === where.providerKey_externalId.providerKey && reference.externalId === where.providerKey_externalId.externalId,
+            reference.providerKey === where.providerKey_tournamentId_teamId.providerKey &&
+            reference.tournamentId === where.providerKey_tournamentId_teamId.tournamentId &&
+            reference.teamId === where.providerKey_tournamentId_teamId.teamId,
         );
 
         if (existing === undefined) {
-          state.externalTeamReferences.push({ ...create });
-          return create;
+          const record = { ...create };
+          state.externalTeamReferences.push(record);
+          return record;
         }
 
         Object.assign(existing, update);
         return existing;
       }),
+      create: jest.fn(async ({ data }: { data: ExternalTeamReferenceRecord }) => {
+        const record = { ...data };
+        state.externalTeamReferences.push(record);
+        return record;
+      }),
     },
-    externalVenueReference: {
-      findUnique: jest.fn(async ({ where }: { where: { providerKey_externalId: { providerKey: string; externalId: string } } }) =>
+externalVenueReference: {
+      findFirst: jest.fn(async ({ where }: { where: { providerKey: string; tournamentId: string; externalId: string } }) =>
         state.externalVenueReferences.find(
           (reference) =>
-            reference.providerKey === where.providerKey_externalId.providerKey && reference.externalId === where.providerKey_externalId.externalId,
+            reference.providerKey === where.providerKey &&
+            reference.tournamentId === where.tournamentId &&
+            reference.externalId === where.externalId,
         ) ?? null,
       ),
       create: jest.fn(async ({ data }: { data: ExternalVenueReferenceRecord }) => {
@@ -464,26 +471,29 @@ function createPrismaMock(state: PrismaState): PrismaMock {
         state.externalVenueReferences.push(record);
         return record;
       }),
-      upsert: jest.fn(async ({ where, create, update }: { where: { providerKey_externalId: { providerKey: string; externalId: string } }; create: ExternalVenueReferenceRecord; update: Partial<ExternalVenueReferenceRecord> }) => {
-        const existing = state.externalVenueReferences.find(
-          (reference) =>
-            reference.providerKey === where.providerKey_externalId.providerKey && reference.externalId === where.providerKey_externalId.externalId,
+      update: jest.fn(async ({ where, data }: { where: { providerKey_tournamentId_externalId: { providerKey: string; tournamentId: string; externalId: string } }; data: Partial<ExternalVenueReferenceRecord> }) => {
+        const reference = state.externalVenueReferences.find(
+          (candidate) =>
+            candidate.providerKey === where.providerKey_tournamentId_externalId.providerKey &&
+            candidate.tournamentId === where.providerKey_tournamentId_externalId.tournamentId &&
+            candidate.externalId === where.providerKey_tournamentId_externalId.externalId,
         );
 
-        if (existing === undefined) {
-          state.externalVenueReferences.push({ ...create });
-          return create;
+        if (reference === undefined) {
+          throw new Error(`Missing external venue reference`);
         }
 
-        Object.assign(existing, update);
-        return existing;
+        Object.assign(reference, data);
+        return reference;
       }),
     },
     externalMatchReference: {
-      findUnique: jest.fn(async ({ where }: { where: { providerKey_externalId: { providerKey: string; externalId: string } } }) =>
+      findFirst: jest.fn(async ({ where }: { where: { providerKey: string; tournamentId: string; externalId: string } }) =>
         state.externalMatchReferences.find(
           (reference) =>
-            reference.providerKey === where.providerKey_externalId.providerKey && reference.externalId === where.providerKey_externalId.externalId,
+            reference.providerKey === where.providerKey &&
+            reference.tournamentId === where.tournamentId &&
+            reference.externalId === where.externalId,
         ) ?? null,
       ),
       create: jest.fn(async ({ data }: { data: ExternalMatchReferenceRecord }) => {
@@ -491,19 +501,20 @@ function createPrismaMock(state: PrismaState): PrismaMock {
         state.externalMatchReferences.push(record);
         return record;
       }),
-      upsert: jest.fn(async ({ where, create, update }: { where: { providerKey_externalId: { providerKey: string; externalId: string } }; create: ExternalMatchReferenceRecord; update: Partial<ExternalMatchReferenceRecord> }) => {
-        const existing = state.externalMatchReferences.find(
-          (reference) =>
-            reference.providerKey === where.providerKey_externalId.providerKey && reference.externalId === where.providerKey_externalId.externalId,
+      update: jest.fn(async ({ where, data }: { where: { providerKey_tournamentId_externalId: { providerKey: string; tournamentId: string; externalId: string } }; data: Partial<ExternalMatchReferenceRecord> }) => {
+        const reference = state.externalMatchReferences.find(
+          (candidate) =>
+            candidate.providerKey === where.providerKey_tournamentId_externalId.providerKey &&
+            candidate.tournamentId === where.providerKey_tournamentId_externalId.tournamentId &&
+            candidate.externalId === where.providerKey_tournamentId_externalId.externalId,
         );
 
-        if (existing === undefined) {
-          state.externalMatchReferences.push({ ...create });
-          return create;
+        if (reference === undefined) {
+          throw new Error(`Missing external match reference`);
         }
 
-        Object.assign(existing, update);
-        return existing;
+        Object.assign(reference, data);
+        return reference;
       }),
     },
     externalSyncRun: {
@@ -576,11 +587,12 @@ function createPrismaMock(state: PrismaState): PrismaMock {
           };
         });
       }),
-      upsert: jest.fn(async ({ where, create, update }: { where: { providerKey_externalMatchId: { providerKey: string; externalMatchId: string } }; create: ExternalMatchResultRecord; update: Partial<ExternalMatchResultRecord> }) => {
+      upsert: jest.fn(async ({ where, create, update }: { where: { providerKey_tournamentId_externalMatchId: { providerKey: string; tournamentId: string; externalMatchId: string } }; create: ExternalMatchResultRecord; update: Partial<ExternalMatchResultRecord> }) => {
         const existing = state.externalMatchResults.find(
           (result) =>
-            result.providerKey === where.providerKey_externalMatchId.providerKey &&
-            result.externalMatchId === where.providerKey_externalMatchId.externalMatchId,
+            result.providerKey === where.providerKey_tournamentId_externalMatchId.providerKey &&
+            result.tournamentId === where.providerKey_tournamentId_externalMatchId.tournamentId &&
+            result.externalMatchId === where.providerKey_tournamentId_externalMatchId.externalMatchId,
         );
 
         if (existing === undefined) {
@@ -1382,5 +1394,378 @@ it('filters external match results by explicit tournament context', async () => 
       'already discarded',
     );
     expect(matchesService.finalizeMatch).not.toHaveBeenCalled();
+  });
+
+  describe('cross-tournament coexistence', () => {
+    it('does not cross-link teams when two tournaments share the same provider external team id', async () => {
+      // Both tournaments have a team named "Argentina" but they are distinct internal teams.
+      // They share the same provider external id "team-argentina". The sync must scope
+      // the external reference lookup to the tournament so tournament-1's Argentina does
+      // not get linked to tournament-2's internal team.
+      const state = createInitialState({
+        tournaments: [
+          { id: 'tournament-1', slug: 'world-cup-2026', status: TournamentStatus.ACTIVE },
+          { id: 'tournament-2', slug: 'euro-2026', status: TournamentStatus.ACTIVE },
+        ],
+        teams: [
+          { id: 'team-t1-arg', tournamentId: 'tournament-1', name: 'Argentina', shortName: 'ARG', countryCode: 'AR', flagCode: 'ARG', primaryColor: '#74ACDF', secondaryColor: '#F6E7A1' },
+          { id: 'team-t2-arg', tournamentId: 'tournament-2', name: 'Argentina', shortName: 'ARG', countryCode: 'AR', flagCode: 'ARG', primaryColor: '#74ACDF', secondaryColor: '#F6E7A1' },
+        ],
+        // Only tournament-1 has an external reference for this provider+externalId
+        externalTeamReferences: [
+          { providerKey: 'mock', tournamentId: 'tournament-1', externalId: 'team-argentina', teamId: 'team-t1-arg' },
+        ],
+      });
+      const prisma = createPrismaMock(state);
+
+      const tournamentsService = {
+        listTournaments: jest.fn(),
+        resolveTournamentContext: jest.fn(async (input: TournamentContextInput) => {
+          const id = input?.explicitTournamentId ?? 'tournament-1';
+          return {
+            tournament: { id, name: id === 'tournament-1' ? 'World Cup 2026' : 'Euro 2026', slug: 'world-cup-2026', year: 2026, status: TournamentStatus.ACTIVE, startsAt: new Date('2026-06-11'), endsAt: new Date('2026-07-19') },
+            source: 'explicit' as const,
+          };
+        }),
+        getStrictActiveTournament: jest.fn(),
+        getActiveTournament: jest.fn(),
+        getActiveTournamentMatches: jest.fn(),
+        getTournamentMatches: jest.fn(),
+      } as unknown as TournamentsService;
+
+      const provider = new MockSportsDataProvider({
+        teams: [{ externalId: 'team-argentina', name: 'Argentina', shortName: 'ARG', countryCode: 'AR', flagCode: 'ARG', primaryColor: '#74ACDF', secondaryColor: '#F6E7A1' }],
+        venues: [],
+        fixtures: [],
+        finalResults: [],
+      });
+
+      const service = new SportsDataSyncService(
+        prisma as unknown as PrismaService,
+        provider,
+        createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+        tournamentsService,
+      );
+
+      // Sync tournament-2 — Argentina already exists (found by tournamentId_name) but has no
+      // external reference for this provider. The code must call upsert to create one scoped
+      // to tournament-2, WITHOUT affecting tournament-1's reference.
+      await service.importTournament('tournament-2');
+
+      // tournament-1 reference must be untouched
+      expect(state.externalTeamReferences).toContainEqual(
+        expect.objectContaining({ providerKey: 'mock', tournamentId: 'tournament-1', externalId: 'team-argentina', teamId: 'team-t1-arg' }),
+      );
+      // tournament-2 must now have its own reference pointing to its own team
+      expect(state.externalTeamReferences).toContainEqual(
+        expect.objectContaining({ providerKey: 'mock', tournamentId: 'tournament-2', externalId: 'team-argentina', teamId: 'team-t2-arg' }),
+      );
+    });
+
+    it('does not resolve the wrong venue when two tournaments share the same provider external venue id', async () => {
+      const state = createInitialState({
+        tournaments: [
+          { id: 'tournament-1', slug: 'world-cup-2026', status: TournamentStatus.ACTIVE },
+          { id: 'tournament-2', slug: 'euro-2026', status: TournamentStatus.ACTIVE },
+        ],
+        venues: [
+          { id: 'venue-t1', tournamentId: 'tournament-1', name: 'Estadio Azteca', city: 'Mexico City', countryCode: 'MX', capacity: 87523 },
+          { id: 'venue-t2', tournamentId: 'tournament-2', name: 'Estadio Azteca', city: 'Mexico City', countryCode: 'MX', capacity: 87523 },
+        ],
+        externalVenueReferences: [
+          { providerKey: 'mock', tournamentId: 'tournament-1', externalId: 'venue-azteca', venueId: 'venue-t1' },
+        ],
+      });
+      const prisma = createPrismaMock(state);
+
+      const tournamentsService = {
+        listTournaments: jest.fn(),
+        resolveTournamentContext: jest.fn(async (input: TournamentContextInput) => {
+          const id = input?.explicitTournamentId ?? 'tournament-1';
+          return {
+            tournament: { id, name: id === 'tournament-1' ? 'World Cup 2026' : 'Euro 2026', slug: 'world-cup-2026', year: 2026, status: TournamentStatus.ACTIVE, startsAt: new Date('2026-06-11'), endsAt: new Date('2026-07-19') },
+            source: 'explicit' as const,
+          };
+        }),
+        getStrictActiveTournament: jest.fn(),
+        getActiveTournament: jest.fn(),
+        getActiveTournamentMatches: jest.fn(),
+        getTournamentMatches: jest.fn(),
+      } as unknown as TournamentsService;
+
+      const provider = new MockSportsDataProvider({
+        teams: [],
+        venues: [{ externalId: 'venue-azteca', name: 'Estadio Azteca', city: 'Mexico City', countryCode: 'MX', capacity: 87523 }],
+        fixtures: [],
+        finalResults: [],
+      });
+
+      const service = new SportsDataSyncService(
+        prisma as unknown as PrismaService,
+        provider,
+        createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+        tournamentsService,
+      );
+
+      await service.importTournament('tournament-2');
+
+      // tournament-1's reference is untouched
+      expect(state.externalVenueReferences).toContainEqual(
+        expect.objectContaining({ providerKey: 'mock', tournamentId: 'tournament-1', externalId: 'venue-azteca', venueId: 'venue-t1' }),
+      );
+      // tournament-2 gets its own reference pointing to its own venue
+      expect(state.externalVenueReferences).toContainEqual(
+        expect.objectContaining({ providerKey: 'mock', tournamentId: 'tournament-2', externalId: 'venue-azteca', venueId: 'venue-t2' }),
+      );
+    });
+
+    it('does not resolve or update the wrong match when two tournaments share the same provider external match id', async () => {
+      const state = createInitialState({
+        tournaments: [
+          { id: 'tournament-1', slug: 'world-cup-2026', status: TournamentStatus.ACTIVE },
+          { id: 'tournament-2', slug: 'euro-2026', status: TournamentStatus.ACTIVE },
+        ],
+        teams: [
+          { id: 't1-home', tournamentId: 'tournament-1', name: 'Argentina', shortName: 'ARG', countryCode: 'AR', flagCode: 'ARG', primaryColor: null, secondaryColor: null },
+          { id: 't1-away', tournamentId: 'tournament-1', name: 'Brazil', shortName: 'BRA', countryCode: 'BR', flagCode: 'BRA', primaryColor: null, secondaryColor: null },
+          { id: 't2-home', tournamentId: 'tournament-2', name: 'Argentina', shortName: 'ARG', countryCode: 'AR', flagCode: 'ARG', primaryColor: null, secondaryColor: null },
+          { id: 't2-away', tournamentId: 'tournament-2', name: 'Brazil', shortName: 'BRA', countryCode: 'BR', flagCode: 'BRA', primaryColor: null, secondaryColor: null },
+        ],
+        venues: [
+          { id: 'venue-t1', tournamentId: 'tournament-1', name: 'Estadio Azteca', city: 'Mexico City', countryCode: 'MX', capacity: 87523 },
+          { id: 'venue-t2', tournamentId: 'tournament-2', name: 'Estadio Azteca', city: 'Mexico City', countryCode: 'MX', capacity: 87523 },
+        ],
+        matches: [
+          { id: 'match-t1', tournamentId: 'tournament-1', homeTeamId: 't1-home', awayTeamId: 't1-away', venueId: 'venue-t1', kickoffAt: new Date('2026-06-11T16:00:00.000Z'), stage: 'Group Stage', groupName: 'Group A', status: MatchStatus.UPCOMING },
+          { id: 'match-t2', tournamentId: 'tournament-2', homeTeamId: 't2-home', awayTeamId: 't2-away', venueId: 'venue-t2', kickoffAt: new Date('2026-06-11T16:00:00.000Z'), stage: 'Group Stage', groupName: 'Group A', status: MatchStatus.UPCOMING },
+        ],
+        externalMatchReferences: [
+          { providerKey: 'mock', tournamentId: 'tournament-1', externalId: 'fixture-arg-bra', matchId: 'match-t1' },
+          { providerKey: 'mock', tournamentId: 'tournament-2', externalId: 'fixture-arg-bra', matchId: 'match-t2' },
+        ],
+        // Pre-populate team refs so resolveTeamIdForTournament works for tournament-2
+        externalTeamReferences: [
+          { providerKey: 'mock', tournamentId: 'tournament-1', externalId: 'team-argentina', teamId: 't1-home' },
+          { providerKey: 'mock', tournamentId: 'tournament-1', externalId: 'team-brazil', teamId: 't1-away' },
+          { providerKey: 'mock', tournamentId: 'tournament-2', externalId: 'team-argentina', teamId: 't2-home' },
+          { providerKey: 'mock', tournamentId: 'tournament-2', externalId: 'team-brazil', teamId: 't2-away' },
+        ],
+        // Pre-populate venue refs so resolveVenueId works for tournament-2
+        externalVenueReferences: [
+          { providerKey: 'mock', tournamentId: 'tournament-1', externalId: 'venue-azteca', venueId: 'venue-t1' },
+          { providerKey: 'mock', tournamentId: 'tournament-2', externalId: 'venue-azteca', venueId: 'venue-t2' },
+        ],
+      });
+      const prisma = createPrismaMock(state);
+
+      const tournamentsService = {
+        listTournaments: jest.fn(),
+        resolveTournamentContext: jest.fn(async (input: TournamentContextInput) => {
+          const id = input?.explicitTournamentId ?? 'tournament-1';
+          return {
+            tournament: { id, name: id === 'tournament-1' ? 'World Cup 2026' : 'Euro 2026', slug: 'world-cup-2026', year: 2026, status: TournamentStatus.ACTIVE, startsAt: new Date('2026-06-11'), endsAt: new Date('2026-07-19') },
+            source: 'explicit' as const,
+          };
+        }),
+        getStrictActiveTournament: jest.fn(),
+        getActiveTournament: jest.fn(),
+        getActiveTournamentMatches: jest.fn(),
+        getTournamentMatches: jest.fn(),
+      } as unknown as TournamentsService;
+
+      const provider = new MockSportsDataProvider({
+        teams: [],
+        venues: [],
+        fixtures: [
+          { externalId: 'fixture-arg-bra', homeTeamExternalId: 'team-argentina', awayTeamExternalId: 'team-brazil', venueExternalId: 'venue-azteca', kickoffAt: new Date('2026-06-11T16:00:00.000Z'), stage: 'Group Stage', groupName: 'Group A' },
+        ],
+        finalResults: [],
+      });
+
+      const service = new SportsDataSyncService(
+        prisma as unknown as PrismaService,
+        provider,
+        createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+        tournamentsService,
+      );
+
+      await service.importTournament('tournament-2');
+
+      // tournament-1's reference must not be overwritten — match-t1 must still be linked to fixture-arg-bra
+      expect(state.externalMatchReferences).toContainEqual(
+        expect.objectContaining({ providerKey: 'mock', tournamentId: 'tournament-1', externalId: 'fixture-arg-bra', matchId: 'match-t1' }),
+      );
+      // tournament-2 gets its own reference pointing to match-t2
+      expect(state.externalMatchReferences).toContainEqual(
+        expect.objectContaining({ providerKey: 'mock', tournamentId: 'tournament-2', externalId: 'fixture-arg-bra', matchId: 'match-t2' }),
+      );
+    });
+
+    it('does not overwrite staged results when two tournaments stage results with the same provider external match id', async () => {
+      const state = createInitialState({
+        tournaments: [
+          { id: 'tournament-1', slug: 'world-cup-2026', status: TournamentStatus.ACTIVE },
+          { id: 'tournament-2', slug: 'euro-2026', status: TournamentStatus.ACTIVE },
+        ],
+        teams: [
+          { id: 't1-home', tournamentId: 'tournament-1', name: 'Argentina', shortName: 'ARG', countryCode: 'AR', flagCode: 'ARG', primaryColor: null, secondaryColor: null },
+          { id: 't1-away', tournamentId: 'tournament-1', name: 'Brazil', shortName: 'BRA', countryCode: 'BR', flagCode: 'BRA', primaryColor: null, secondaryColor: null },
+          { id: 't2-home', tournamentId: 'tournament-2', name: 'Argentina', shortName: 'ARG', countryCode: 'AR', flagCode: 'ARG', primaryColor: null, secondaryColor: null },
+          { id: 't2-away', tournamentId: 'tournament-2', name: 'Brazil', shortName: 'BRA', countryCode: 'BR', flagCode: 'BRA', primaryColor: null, secondaryColor: null },
+        ],
+        matches: [
+          { id: 'match-t1', tournamentId: 'tournament-1', homeTeamId: 't1-home', awayTeamId: 't1-away', venueId: null, kickoffAt: new Date('2026-06-11T16:00:00.000Z'), stage: 'Group Stage', groupName: 'Group A', status: MatchStatus.UPCOMING },
+          { id: 'match-t2', tournamentId: 'tournament-2', homeTeamId: 't2-home', awayTeamId: 't2-away', venueId: null, kickoffAt: new Date('2026-06-11T16:00:00.000Z'), stage: 'Group Stage', groupName: 'Group A', status: MatchStatus.UPCOMING },
+        ],
+        externalMatchReferences: [
+          { providerKey: 'mock', tournamentId: 'tournament-1', externalId: 'fixture-arg-bra', matchId: 'match-t1' },
+          { providerKey: 'mock', tournamentId: 'tournament-2', externalId: 'fixture-arg-bra', matchId: 'match-t2' },
+        ],
+        // Pre-stage a result for tournament-1 so we can verify it survives the tournament-2 sync
+        externalMatchResults: [
+          {
+            id: 'existing-result-t1',
+            providerKey: 'mock',
+            tournamentId: 'tournament-1',
+            externalMatchId: 'fixture-arg-bra',
+            matchId: 'match-t1',
+            externalSyncRunId: 'sync-t1',
+            homeScore: 2,
+            awayScore: 1,
+            playedAt: new Date('2026-06-11T19:00:00.000Z'),
+            stagedAt: new Date('2026-06-11T20:00:00.000Z'),
+            state: 'PENDING_CONFIRMATION',
+            confirmedAt: null,
+            discardedAt: null,
+          },
+        ],
+      });
+      const prisma = createPrismaMock(state);
+
+      const tournamentsService = {
+        listTournaments: jest.fn(),
+        resolveTournamentContext: jest.fn(async (input: TournamentContextInput) => {
+          const id = input?.explicitTournamentId ?? 'tournament-1';
+          return {
+            tournament: { id, name: id === 'tournament-1' ? 'World Cup 2026' : 'Euro 2026', slug: 'world-cup-2026', year: 2026, status: TournamentStatus.ACTIVE, startsAt: new Date('2026-06-11'), endsAt: new Date('2026-07-19') },
+            source: 'explicit' as const,
+          };
+        }),
+        getStrictActiveTournament: jest.fn(),
+        getActiveTournament: jest.fn(),
+        getActiveTournamentMatches: jest.fn(),
+        getTournamentMatches: jest.fn(),
+      } as unknown as TournamentsService;
+
+      const provider = new MockSportsDataProvider({
+        teams: [],
+        venues: [],
+        fixtures: [],
+        finalResults: [
+          // Same external match id, different scores — used by both tournaments
+          { externalMatchId: 'fixture-arg-bra', homeScore: 3, awayScore: 2, playedAt: new Date('2026-06-11T19:00:00.000Z') },
+        ],
+      });
+
+      const service = new SportsDataSyncService(
+        prisma as unknown as PrismaService,
+        provider,
+        createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+        tournamentsService,
+      );
+
+      // Sync tournament-2 — should stage its own result without affecting tournament-1's staged result
+      const result = await service.syncResults('tournament-2');
+
+      expect(result).toMatchObject({ status: 'SUCCESS', stagedCount: 1 });
+
+      // Tournament-1's pre-existing result must remain untouched
+      expect(state.externalMatchResults).toContainEqual(
+        expect.objectContaining({
+          id: 'existing-result-t1',
+          providerKey: 'mock',
+          tournamentId: 'tournament-1',
+          externalMatchId: 'fixture-arg-bra',
+          homeScore: 2,
+          awayScore: 1,
+          state: 'PENDING_CONFIRMATION',
+        }),
+      );
+
+      // Tournament-2 should have its own newly-staged result with different scores
+      const t2Result = state.externalMatchResults.find(
+        (r) => r.tournamentId === 'tournament-2' && r.externalMatchId === 'fixture-arg-bra',
+      );
+      expect(t2Result).toBeDefined();
+      expect(t2Result?.homeScore).toBe(3);
+      expect(t2Result?.awayScore).toBe(2);
+      expect(t2Result?.matchId).toBe('match-t2');
+    });
+
+    it('upserts externalTeamReference when a team already exists in the tournament but has no provider reference yet', async () => {
+      // This exercises the branch: team is found by (tournamentId, name) → existingTeam != null
+      // → team is updated → externalTeamReference.upsert(...) is called
+      const state = createInitialState({
+        tournaments: [
+          { id: 'tournament-1', slug: 'world-cup-2026', status: TournamentStatus.ACTIVE },
+        ],
+        teams: [
+          { id: 'team-1', tournamentId: 'tournament-1', name: 'Argentina', shortName: 'ARG', countryCode: 'AR', flagCode: 'ARG', primaryColor: null, secondaryColor: null },
+        ],
+        // No externalTeamReference for this team+provider+tournament yet
+        externalTeamReferences: [],
+      });
+      const prisma = createPrismaMock(state);
+
+      const provider = new MockSportsDataProvider({
+        teams: [
+          { externalId: 'team-argentina', name: 'Argentina', shortName: 'ARG', countryCode: 'AR', flagCode: 'ARG', primaryColor: '#74ACDF', secondaryColor: '#F6E7A1' },
+        ],
+        venues: [],
+        fixtures: [],
+        finalResults: [],
+      });
+
+      const service = new SportsDataSyncService(
+        prisma as unknown as PrismaService,
+        provider,
+        createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+        createTournamentsServiceMock() as unknown as TournamentsService,
+      );
+
+      await service.importTournament();
+
+      // The upsert was called with the correct tournament-scoped key
+      expect(prisma.externalTeamReference.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            providerKey_tournamentId_teamId: {
+              providerKey: 'mock',
+              tournamentId: 'tournament-1',
+              teamId: 'team-1',
+            },
+          },
+          create: expect.objectContaining({
+            providerKey: 'mock',
+            tournamentId: 'tournament-1',
+            externalId: 'team-argentina',
+            teamId: 'team-1',
+          }),
+          update: expect.objectContaining({
+            externalId: 'team-argentina',
+          }),
+        }),
+      );
+
+      // The reference is now stored
+      expect(state.externalTeamReferences).toContainEqual(
+        expect.objectContaining({
+          providerKey: 'mock',
+          tournamentId: 'tournament-1',
+          externalId: 'team-argentina',
+          teamId: 'team-1',
+        }),
+      );
+    });
   });
 });
