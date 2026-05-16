@@ -2,11 +2,13 @@
 
 import { useRef, useEffect, useState, useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { CurrentUserProfile, TeamView } from "@/lib/api";
 import { PROFILE_COUNTRY_OPTIONS, PROFILE_LANGUAGE_OPTIONS } from "@/lib/profile";
 import { parseTournamentSlug, TOURNAMENT_COOKIE_NAME } from "@/lib/tournament-context";
+import { getLocalizedPath, stripLocalePrefix, type AppLocale } from "@/lib/locale-nav";
 import { updateProfile } from "./actions/update-profile";
 
 interface ProfileEditModalProps {
@@ -70,6 +72,7 @@ async function fetchCurrentTournamentTeams(): Promise<TeamView[]> {
 
 function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
+  const t = useTranslations("profileEdit");
 
   return (
     <button
@@ -77,7 +80,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
       disabled={pending || disabled}
       className="rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-6 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
     >
-      {pending ? "Saving..." : "Save changes"}
+      {pending ? t("saving") : t("saveChanges")}
     </button>
   );
 }
@@ -92,7 +95,11 @@ export function ProfileEditModal({
   isOpen,
   onClose,
 }: ProfileEditModalProps) {
-  const locale = useLocale() as "en" | "es";
+  const locale = useLocale() as AppLocale;
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const t = useTranslations("profileEdit");
   const [state, formAction] = useActionState(
     async (prevState: { error: string } | undefined, formData: FormData) =>
       updateProfile(prevState, formData, locale),
@@ -197,6 +204,7 @@ export function ProfileEditModal({
 
   // Close modal on successful submission - track submission start and check for success
   const [submitted, setSubmitted] = useState(false);
+  const [submittedLocale, setSubmittedLocale] = useState<AppLocale | null>(null);
   const mustPickNewTeam = !savedFavoriteTeamIsAvailable && currentUserProfile.favoriteTeamId !== null;
 
   useEffect(() => {
@@ -204,10 +212,21 @@ export function ProfileEditModal({
       // Success - state is undefined after successful server action
       onClose();
       setSubmitted(false);
-    }
-  }, [submitted, state, onClose]);
 
-  function handleSubmit() {
+      if (submittedLocale && submittedLocale !== locale) {
+        const currentPath = stripLocalePrefix(pathname) as `/${string}`;
+        const queryString = searchParams.toString();
+        const localizedPath = getLocalizedPath(submittedLocale, currentPath);
+        router.replace(queryString ? `${localizedPath}?${queryString}` : localizedPath);
+        router.refresh();
+      }
+    }
+  }, [locale, onClose, pathname, router, searchParams, state, submitted, submittedLocale]);
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    const formData = new FormData(event.currentTarget);
+    const preferredLanguage = String(formData.get("preferredLanguage") ?? "");
+    setSubmittedLocale(preferredLanguage === "en" || preferredLanguage === "es" ? preferredLanguage : null);
     setSubmitted(true);
   }
 
@@ -236,13 +255,13 @@ export function ProfileEditModal({
       >
         <div className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
           <h2 id="profile-edit-title" className="text-lg font-bold text-white">
-            Edit profile
+            {t("title")}
           </h2>
           <button
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            aria-label="Close profile editing"
+            aria-label={t("close")}
             className="rounded-full p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
           >
             <span aria-hidden="true" className="text-xl leading-none">
@@ -264,7 +283,7 @@ export function ProfileEditModal({
           )}
 
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-slate-200">Country</span>
+            <span className="text-sm font-medium text-slate-200">{t("country")}</span>
             <select
               name="country"
               defaultValue={currentUserProfile.country ?? ""}
@@ -272,7 +291,7 @@ export function ProfileEditModal({
               required
             >
               <option value="" disabled>
-                Select a country
+                {t("selectCountry")}
               </option>
               {PROFILE_COUNTRY_OPTIONS.map((option) => (
                 <option key={option.code} value={option.code}>
@@ -283,7 +302,7 @@ export function ProfileEditModal({
           </label>
 
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-slate-200">Preferred language</span>
+            <span className="text-sm font-medium text-slate-200">{t("preferredLanguage")}</span>
             <select
               name="preferredLanguage"
               defaultValue={currentUserProfile.preferredLanguage ?? "es"}
@@ -299,21 +318,21 @@ export function ProfileEditModal({
           </label>
 
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-slate-200">Favorite team</span>
+            <span className="text-sm font-medium text-slate-200">{t("favoriteTeam")}</span>
             {mustPickNewTeam && (
               <p className="text-sm leading-5 text-amber-200">
-                Your saved favorite team is not in the current tournament. Please select a new one.
+                {t("mustPickNewTeam")}
               </p>
             )}
             {!mustPickNewTeam && !savedFavoriteTeamIsAvailable && currentUserProfile.favoriteTeamId && (
               <p className="text-xs leading-5 text-slate-400">
-                Select a team if you want to change your favorite.
+                {t("changeFavoriteTeam")}
               </p>
             )}
             {isLoadingFreshTeams ? (
               <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-sm text-slate-400">
                 <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-cyan-400" />
-                Loading teams...
+                {t("loadingTeams")}
               </div>
             ) : (
               <select
@@ -327,7 +346,7 @@ export function ProfileEditModal({
                 disabled={availableTeams.length === 0}
               >
                 <option value="" disabled>
-                  {availableTeams.length === 0 ? "No teams available yet" : mustPickNewTeam ? "You must select a team" : "Select a team"}
+                  {availableTeams.length === 0 ? t("noTeamsAvailable") : mustPickNewTeam ? t("mustSelectTeam") : t("selectTeam")}
                 </option>
                 {availableTeams.map((team) => (
                   <option key={team.id} value={team.id}>
@@ -344,7 +363,7 @@ export function ProfileEditModal({
               onClick={onClose}
               className="rounded-full border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-slate-600 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
             >
-              Cancel
+              {t("cancel")}
             </button>
             <SubmitButton disabled={availableTeams.length === 0 || isLoadingFreshTeams || !selectedFavoriteTeamIsAvailable} />
           </div>
