@@ -494,5 +494,101 @@
     "cancel": "Cancelar",
     "saving": "Guardando...",
     "saveChanges": "Guardar cambios"
+  },
+  "admin": {
+    "externalResults": {
+      "metadata": {
+        "title": "Administración de resultados externos",
+        "description": "Revisá los resultados de fútbol cargados desde proveedores externos antes de confirmarlos o descartarlos."
+      },
+      "adminOnlyBadge": "Cola de revisión administrativa",
+      "matchup": "{homeTeam} vs. {awayTeam}",
+      "pageTitle": "Confirmá los resultados externos cargados.",
+      "permissionNotice": "Esta pantalla requiere el permiso {permission}. Revisá los resultados cargados por el proveedor con cuidado antes de confirmarlos o descartarlos, porque la confirmación finaliza el partido interno y actualiza las tablas de posiciones.",
+      "errors": {
+        "accessDenied": "Necesitás el permiso matches:finalize para revisar o confirmar resultados cargados.",
+        "alreadyProcessed": "Este resultado ya fue confirmado o descartado.",
+        "badRequest": "No pudimos procesar ese resultado cargado.",
+        "invalidInput": "Falta el identificador del resultado cargado.",
+        "notFound": "No encontramos ese resultado cargado.",
+        "sessionExpired": "Tu sesión expiró o no tiene el permiso admin requerido.",
+        "unlinkedMatch": "Este resultado no está vinculado a un partido interno todavía.",
+        "listLoadFailed": "No pudimos cargar los resultados cargados ahora."
+      },
+      "success": {
+        "confirmed": "Resultado confirmado y el partido vinculado fue finalizado.",
+        "discarded": "Resultado descartado sin tocar el partido vinculado.",
+        "imported": "Importación de prueba del torneo completada.",
+        "synced": "Sincronización de prueba de resultados completada."
+      },
+      "actions": {
+        "syncSectionBadge": "Acciones de mantenimiento del proveedor",
+        "importTournament": "Importar torneo",
+        "syncResults": "Sincronizar resultados"
+      },
+      "syncSection": {
+        "badge": "Sincronización de datos deportivos",
+        "title": "Ejecuciones recientes del proveedor",
+        "subtitle": "Revisá las últimas ejecuciones de importación/resultados antes de depurar resultados cargados. Si una ejecución falló o nunca terminó, la cola de revisión puede verse vacía aunque existan partidos.",
+        "runs": "{count, plural, one {# ejecución} other {# ejecuciones}}"
+      },
+      "syncRunCard": {
+        "imported": "Importados",
+        "updated": "Actualizados",
+        "staged": "Cargados",
+        "skipped": "Omitidos",
+        "started": "Iniciada",
+        "completed": "Completada",
+        "recentHistory": "Historial reciente",
+        "noSyncYet": "Todavía no hay ejecución de {type} registrada."
+      },
+      "stateLabels": {
+        "pendingConfirmation": "Pendientes de confirmación",
+        "confirmed": "Confirmados",
+        "discarded": "Descartados"
+      },
+      "syncTypeLabels": {
+        "import": "Importación",
+        "results": "Resultados"
+      },
+      "syncStatusLabels": {
+        "success": "Correcta",
+        "failed": "Fallida",
+        "running": "En curso"
+      },
+      "diagnosticsSection": {
+        "badge": "Diagnóstico de mapeo externo",
+        "title": "Partidos visibles para usuarios",
+        "subtitle": "Esto muestra cada partido del torneo activo y si existe el mapeo/resultado del proveedor. Si falta un partido del panel como resultado pendiente, mirá primero su referencia externa y el último estado del resultado.",
+        "matches": "{count, plural, one {# partido} other {# partidos}}",
+        "emptyState": "No se encontraron partidos del torneo activo para diagnóstico."
+      },
+      "diagnosticCard": {
+        "externalRef": "Ref externa",
+        "latestResult": "Último resultado",
+        "providerStatus": "Estado del proveedor",
+        "internalMatchId": "Interno",
+        "missing": "Falta",
+        "noExternalResultYet": "Sin resultado externo todavía"
+      },
+      "resultCard": {
+        "provider": "Proveedor",
+        "externalMatchId": "ID de partido externo",
+        "internalMatch": "Partido interno",
+        "proposedScore": "Resultado propuesto",
+        "state": "Estado",
+        "playedAt": "Jugado el",
+        "stagedAt": "Cargado el",
+        "confirmedAt": "Confirmado el",
+        "discardedAt": "Descartado el",
+        "discardResult": "Descartar resultado",
+        "confirmResult": "Confirmar resultado",
+        "notLinked": "Sin vincular todavía — confirmá solo después de que exista el partido interno.",
+        "stageUnavailable": "Etapa no disponible"
+      },
+      "emptyState": {
+        "noResults": "No hay resultados {state} cargados ahora."
+      }
+    }
   }
 }
