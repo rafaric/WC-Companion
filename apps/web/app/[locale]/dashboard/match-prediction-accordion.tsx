@@ -11,10 +11,49 @@ interface MatchPredictionCard extends MatchView {
   prediction: PredictionView | null;
 }
 
+export interface DashboardStrings {
+  noUpcomingMatches: string;
+  loadingLocalDates: string;
+  previousDate: string;
+  nextDate: string;
+  vs: string;
+  exactScore: string;
+  finalResult: string;
+  yourPick: string;
+  pointsEarned: string;
+  scoredAt: string;
+  whyThisScore: string;
+  noPredictionSubmitted: string;
+  yourPrediction: string;
+  setExactWorldCupScore: string;
+  savePrediction: string;
+  matchFinalLocked: string;
+  matchNoLongerOpen: string;
+  completeProfileToUnlock: string;
+  pending: string;
+  resultPending: string;
+  unknown: string;
+  waitingForFinalResult: string;
+  noPredictionSubmittedLabel: string;
+  predictionWaitingToBeScored: string;
+  youEarned: string;
+  formatPointsLabel: (points: number) => string;
+  formatStatusLabel: (status: string) => string;
+  formatOutcomeLabel: (outcome: "home-win" | "away-win" | "draw") => string;
+  formatScoredAt: (value: string | null) => string;
+  waitingForScoring: string;
+  waitingForScoringDetail: string;
+  finalScoreUnavailable: string;
+  finalScoreUnavailableDetail: string;
+  correctOutcome: string;
+  wrongOutcome: string;
+}
+
 interface MatchPredictionAccordionProps {
   matches: MatchPredictionCard[];
   profileComplete: boolean;
   submitPredictionAction: (matchId: string, formData: FormData) => Promise<void>;
+  i18n: DashboardStrings;
 }
 
 const MATCH_OUTCOME = {
@@ -61,47 +100,6 @@ function formatKickoff(kickoffAt: string): string {
   }).format(new Date(kickoffAt));
 }
 
-function formatStatusLabel(status: string): string {
-  if (!status) {
-    return "Unknown";
-  }
-
-  const normalized = status.split("_").join(" ").toLowerCase();
-
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-}
-
-function formatPredictionLabel(prediction: PredictionView | null): string {
-  if (!prediction) {
-    return "Pending";
-  }
-
-  return `${prediction.homeScore}–${prediction.awayScore}`;
-}
-
-function formatActualScoreLabel(match: MatchView): string {
-  if (match.homeScore === null || match.awayScore === null) {
-    return "Result pending";
-  }
-
-  return `${match.homeScore}–${match.awayScore}`;
-}
-
-function formatPointsLabel(points: number): string {
-  return points === 1 ? "1 point" : `${points} points`;
-}
-
-function formatScoredAt(value: string | null): string {
-  if (!value) {
-    return "Not scored yet";
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
 function resolveOutcome(score: ScoreLine): MatchOutcome {
   if (score.homeScore > score.awayScore) {
     return MATCH_OUTCOME.HOME_WIN;
@@ -112,17 +110,6 @@ function resolveOutcome(score: ScoreLine): MatchOutcome {
   }
 
   return MATCH_OUTCOME.DRAW;
-}
-
-function formatOutcomeLabel(outcome: MatchOutcome): string {
-  switch (outcome) {
-    case MATCH_OUTCOME.HOME_WIN:
-      return "home win";
-    case MATCH_OUTCOME.AWAY_WIN:
-      return "away win";
-    case MATCH_OUTCOME.DRAW:
-      return "draw";
-  }
 }
 
 function getActualScoreLine(match: MatchView): ScoreLine | null {
@@ -143,7 +130,7 @@ function getPredictionScoreLine(prediction: PredictionView): ScoreLine {
   };
 }
 
-function getScoringExplanation(match: MatchPredictionCard): ScoringExplanation | null {
+function getScoringExplanation(match: MatchPredictionCard, i18n: DashboardStrings): ScoringExplanation | null {
   if (!match.prediction) {
     return null;
   }
@@ -151,8 +138,8 @@ function getScoringExplanation(match: MatchPredictionCard): ScoringExplanation |
   if (match.prediction.scoringStatus !== CLIENT_PREDICTION_SCORING_STATUS.SCORED) {
     return {
       kind: SCORING_EXPLANATION_KIND.NOT_SCORED,
-      title: "Waiting for scoring",
-      detail: "Your prediction exists, but this match has not been scored yet.",
+      title: i18n.waitingForScoring,
+      detail: i18n.waitingForScoringDetail,
     };
   }
 
@@ -161,8 +148,8 @@ function getScoringExplanation(match: MatchPredictionCard): ScoringExplanation |
   if (!actualScore) {
     return {
       kind: SCORING_EXPLANATION_KIND.NOT_SCORED,
-      title: "Final score unavailable",
-      detail: "We have the match marked as final, but the score is not available yet.",
+      title: i18n.finalScoreUnavailable,
+      detail: i18n.finalScoreUnavailableDetail,
     };
   }
 
@@ -173,8 +160,8 @@ function getScoringExplanation(match: MatchPredictionCard): ScoringExplanation |
   if (exactScore) {
     return {
       kind: SCORING_EXPLANATION_KIND.EXACT_SCORE,
-      title: "Exact score",
-      detail: `You nailed the final score: ${formatPointsLabel(match.prediction.pointsAwarded)} awarded.`,
+      title: i18n.exactScore,
+      detail: `You nailed the final score: ${i18n.formatPointsLabel(match.prediction.pointsAwarded)} awarded.`,
     };
   }
 
@@ -184,15 +171,15 @@ function getScoringExplanation(match: MatchPredictionCard): ScoringExplanation |
   if (predictedOutcome === actualOutcome) {
     return {
       kind: SCORING_EXPLANATION_KIND.CORRECT_OUTCOME,
-      title: "Correct outcome",
-      detail: `You predicted a ${formatOutcomeLabel(predictedOutcome)}, and the match ended as a ${formatOutcomeLabel(actualOutcome)}.`,
+      title: i18n.correctOutcome,
+      detail: `You predicted a ${i18n.formatOutcomeLabel(predictedOutcome)}, and the match ended as a ${i18n.formatOutcomeLabel(actualOutcome)}.`,
     };
   }
 
   return {
     kind: SCORING_EXPLANATION_KIND.WRONG_OUTCOME,
-    title: "Wrong outcome",
-    detail: `You predicted a ${formatOutcomeLabel(predictedOutcome)}, but the match ended as a ${formatOutcomeLabel(actualOutcome)}.`,
+    title: i18n.wrongOutcome,
+    detail: `You predicted a ${i18n.formatOutcomeLabel(predictedOutcome)}, but the match ended as ${i18n.formatOutcomeLabel(actualOutcome)}.`,
   };
 }
 
@@ -217,20 +204,20 @@ function isMatchFinished(match: MatchView): boolean {
   return match.status === CLIENT_MATCH_STATUS.FINISHED || match.finalizedAt !== null;
 }
 
-function getPredictionOutcomeLabel(match: MatchPredictionCard): string {
+function getPredictionOutcomeLabel(match: MatchPredictionCard, i18n: DashboardStrings): string {
   if (!isMatchFinished(match)) {
-    return "Waiting for final result";
+    return i18n.waitingForFinalResult;
   }
 
   if (match.prediction === null) {
-    return "No prediction submitted";
+    return i18n.noPredictionSubmittedLabel;
   }
 
   if (match.prediction.scoringStatus === CLIENT_PREDICTION_SCORING_STATUS.SCORED) {
-    return `You earned ${formatPointsLabel(match.prediction.pointsAwarded)}`;
+    return i18n.youEarned.replace("{points}", i18n.formatPointsLabel(match.prediction.pointsAwarded));
   }
 
-  return "Prediction waiting to be scored";
+  return i18n.predictionWaitingToBeScored;
 }
 
 function getInitialExpandedMatchId(matches: MatchPredictionCard[]): string | null {
@@ -244,7 +231,6 @@ interface MatchGroup {
 }
 
 function getLocalDateKey(date: Date): string {
-  // Use local date parts to create a consistent key that matches displayed dates
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -274,7 +260,6 @@ function groupMatchesByDate(matches: MatchPredictionCard[]): MatchGroup[] {
     group.matches.push(match);
   }
 
-  // Sort groups by date (earliest first)
   return Array.from(groups.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
@@ -282,11 +267,12 @@ export function MatchPredictionAccordion({
   matches,
   profileComplete,
   submitPredictionAction,
+  i18n,
 }: MatchPredictionAccordionProps) {
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(() => getInitialExpandedMatchId(matches));
   const [hasHydrated, setHasHydrated] = useState(false);
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
-  const [animationDirection, setAnimationDirection] = useState(0); // -1 = back, 1 = forward, 0 = initial
+  const [animationDirection, setAnimationDirection] = useState(0);
   const shouldReduceMotion = useReducedMotion();
 
   const matchGroups = hasHydrated ? groupMatchesByDate(matches) : [];
@@ -295,7 +281,6 @@ export function MatchPredictionAccordion({
     setHasHydrated(true);
   }, []);
 
-  // Clamp currentGroupIndex to valid range if match groups change between renders
   useEffect(() => {
     if (!hasHydrated) {
       return;
@@ -306,11 +291,10 @@ export function MatchPredictionAccordion({
     }
   }, [hasHydrated, matchGroups.length, currentGroupIndex]);
 
-  // All hooks and hook-dependent calculations above this line
   if (matches.length === 0) {
     return (
       <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 text-sm leading-6 text-slate-300">
-        No upcoming World Cup matches open for prediction right now. New scored matches will appear above when results land.
+        {i18n.noUpcomingMatches}
       </div>
     );
   }
@@ -318,7 +302,7 @@ export function MatchPredictionAccordion({
   if (!hasHydrated) {
     return (
       <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 text-sm leading-6 text-slate-300">
-        Loading local match dates...
+        {i18n.loadingLocalDates}
       </div>
     );
   }
@@ -343,7 +327,6 @@ export function MatchPredictionAccordion({
     }
   };
 
-  // Animation variants for horizontal slide
   const slideVariants = shouldReduceMotion
     ? {
         enter: { opacity: 1, x: 0 },
@@ -367,14 +350,13 @@ export function MatchPredictionAccordion({
 
   return (
     <div className="space-y-6">
-      {/* Pager UI */}
       {hasMultipleGroups && (
         <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900/50 px-4 py-3">
           <button
             type="button"
             onClick={handlePrevious}
             disabled={!canGoPrevious}
-            aria-label="Previous date"
+            aria-label={i18n.previousDate}
             className={`flex h-10 w-10 items-center justify-center rounded-full border transition ${
               canGoPrevious
                 ? "border-slate-700 bg-slate-800 text-slate-300 hover:border-cyan-400/50 hover:bg-slate-700 hover:text-cyan-300"
@@ -404,7 +386,7 @@ export function MatchPredictionAccordion({
             type="button"
             onClick={handleNext}
             disabled={!canGoNext}
-            aria-label="Next date"
+            aria-label={i18n.nextDate}
             className={`flex h-10 w-10 items-center justify-center rounded-full border transition ${
               canGoNext
                 ? "border-slate-700 bg-slate-800 text-slate-300 hover:border-cyan-400/50 hover:bg-slate-700 hover:text-cyan-300"
@@ -425,7 +407,6 @@ export function MatchPredictionAccordion({
         </div>
       )}
 
-      {/* Single-day view with animation */}
       <AnimatePresence mode="wait" custom={animationDirection}>
         <motion.div
           key={safeCurrentGroupIndex}
@@ -443,172 +424,189 @@ export function MatchPredictionAccordion({
               </h2>
             )}
             {currentGroup.matches.map((match) => {
-        const matchFinished = isMatchFinished(match);
-        const scoringExplanation = getScoringExplanation(match);
-        const expanded = expandedMatchId === match.id;
-        const predictionLabel = formatPredictionLabel(match.prediction);
+              const matchFinished = isMatchFinished(match);
+              const scoringExplanation = getScoringExplanation(match, i18n);
+              const expanded = expandedMatchId === match.id;
+              const predictionLabel = match.prediction
+                ? `${match.prediction.homeScore}–${match.prediction.awayScore}`
+                : i18n.pending;
 
-        return (
-          <article key={match.id} className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-slate-950/30">
-            <button
-              type="button"
-              aria-expanded={expanded}
-              onClick={() => setExpandedMatchId((current) => (current === match.id ? null : match.id))}
-              className="grid w-full grid-cols-[1fr_auto] items-center gap-3 p-4 text-left transition hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 sm:p-5"
-            >
-              <span className="min-w-0">
-                <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-white sm:text-base">
-                  <FlagIcon flagCode={match.homeTeam.flagCode} countryCode={match.homeTeam.countryCode} />
-                  <span>{match.homeTeam.shortName}</span>
-                  <span className="text-slate-500">vs</span>
-                  <span>{match.awayTeam.shortName}</span>
-                  <FlagIcon flagCode={match.awayTeam.flagCode} countryCode={match.awayTeam.countryCode} />
-                </span>
-                <span className="mt-1 block truncate text-xs text-slate-500">
-                  {match.stage}{match.groupName ? ` · ${match.groupName}` : ""} · {formatKickoff(match.kickoffAt)}
-                </span>
-              </span>
-
-              <span className="flex items-center gap-2">
-                <span className="whitespace-nowrap rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-xs font-semibold text-cyan-300 sm:px-3">
-                  {predictionLabel}
-                </span>
-                <span aria-hidden="true" className="text-sm text-slate-500">
-                  {expanded ? "−" : "+"}
-                </span>
-              </span>
-            </button>
-
-            {expanded ? (
-              <div className="border-t border-slate-800 p-4 pt-5 sm:p-5">
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 font-semibold text-slate-300">
-                    {formatStatusLabel(match.status)}
-                  </span>
-                  {matchFinished ? (
-                    <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 font-semibold text-emerald-300">
-                      Final {formatActualScoreLabel(match)}
+              return (
+                <article
+                  key={match.id}
+                  className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-slate-950/30"
+                >
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    onClick={() => setExpandedMatchId((current) => (current === match.id ? null : match.id))}
+                    className="grid w-full grid-cols-[1fr_auto] items-center gap-3 p-4 text-left transition hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 sm:p-5"
+                  >
+                    <span className="min-w-0">
+                      <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-white sm:text-base">
+                        <FlagIcon flagCode={match.homeTeam.flagCode} countryCode={match.homeTeam.countryCode} />
+                        <span>{match.homeTeam.shortName}</span>
+                        <span className="text-slate-500">{i18n.vs}</span>
+                        <span>{match.awayTeam.shortName}</span>
+                        <FlagIcon flagCode={match.awayTeam.flagCode} countryCode={match.awayTeam.countryCode} />
+                      </span>
+                      <span className="mt-1 block truncate text-xs text-slate-500">
+                        {match.stage}
+                        {match.groupName ? ` · ${match.groupName}` : ""} · {formatKickoff(match.kickoffAt)}
+                      </span>
                     </span>
-                  ) : null}
-                </div>
 
-                {matchFinished ? (
-                  <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">Final result</p>
-                        <p className="mt-1 text-2xl font-black text-white">{formatActualScoreLabel(match)}</p>
-                        <p className="mt-1 text-sm text-emerald-100/80">{getPredictionOutcomeLabel(match)}</p>
+                    <span className="flex items-center gap-2">
+                      <span className="whitespace-nowrap rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-xs font-semibold text-cyan-300 sm:px-3">
+                        {predictionLabel}
+                      </span>
+                      <span aria-hidden="true" className="text-sm text-slate-500">
+                        {expanded ? "−" : "+"}
+                      </span>
+                    </span>
+                  </button>
+
+                  {expanded ? (
+                    <div className="border-t border-slate-800 p-4 pt-5 sm:p-5">
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <span className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 font-semibold text-slate-300">
+                          {i18n.formatStatusLabel(match.status)}
+                        </span>
+                        {matchFinished ? (
+                          <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 font-semibold text-emerald-300">
+                            {i18n.finalResult}{" "}
+                            {match.homeScore !== null && match.awayScore !== null
+                              ? `${match.homeScore}–${match.awayScore}`
+                              : i18n.resultPending}
+                          </span>
+                        ) : null}
                       </div>
 
-                      {match.prediction ? (
-                        <div className="grid gap-3 sm:min-w-72 sm:grid-cols-2">
-                          <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-3">
-                            <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">Your pick</p>
-                            <p className="mt-1 text-lg font-bold text-white">{formatPredictionLabel(match.prediction)}</p>
-                          </div>
-                          <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-3">
-                            <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">Points earned</p>
-                            <p className="mt-1 text-lg font-bold text-white">{formatPointsLabel(match.prediction.pointsAwarded)}</p>
-                          </div>
-                          <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-3 sm:col-span-2">
-                            <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">Scored at</p>
-                            <p className="mt-1 text-sm font-semibold text-white">{formatScoredAt(match.prediction.scoredAt)}</p>
-                          </div>
-                          {scoringExplanation ? (
-                            <div
-                              className={`rounded-2xl border p-3 sm:col-span-2 ${getScoringExplanationClassName(scoringExplanation.kind)}`}
-                            >
-                              <p className="text-[11px] uppercase tracking-[0.2em] opacity-75">Why this score?</p>
-                              <p className="mt-1 text-sm font-bold">{scoringExplanation.title}</p>
-                              <p className="mt-1 text-xs leading-5 opacity-90">{scoringExplanation.detail}</p>
+                      {matchFinished ? (
+                        <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+                          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">{i18n.finalResult}</p>
+                              <p className="mt-1 text-2xl font-black text-white">
+                                {match.homeScore !== null && match.awayScore !== null
+                                  ? `${match.homeScore}–${match.awayScore}`
+                                  : i18n.resultPending}
+                              </p>
+                              <p className="mt-1 text-sm text-emerald-100/80">
+                                {getPredictionOutcomeLabel(match, i18n)}
+                              </p>
                             </div>
-                          ) : null}
+
+                            {match.prediction ? (
+                              <div className="grid gap-3 sm:min-w-72 sm:grid-cols-2">
+                                <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-3">
+                                  <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">{i18n.yourPick}</p>
+                                  <p className="mt-1 text-lg font-bold text-white">
+                                    {match.prediction.homeScore}–{match.prediction.awayScore}
+                                  </p>
+                                </div>
+                                <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-3">
+                                  <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">{i18n.pointsEarned}</p>
+                                  <p className="mt-1 text-lg font-bold text-white">
+                                    {i18n.formatPointsLabel(match.prediction.pointsAwarded)}
+                                  </p>
+                                </div>
+                                <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-3 sm:col-span-2">
+                                  <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">{i18n.scoredAt}</p>
+                                  <p className="mt-1 text-sm font-semibold text-white">
+                                    {i18n.formatScoredAt(match.prediction.scoredAt)}
+                                  </p>
+                                </div>
+                                {scoringExplanation ? (
+                                  <div
+                                    className={`rounded-2xl border p-3 sm:col-span-2 ${getScoringExplanationClassName(scoringExplanation.kind)}`}
+                                  >
+                                    <p className="text-[11px] uppercase tracking-[0.2em] opacity-75">{i18n.whyThisScore}</p>
+                                    <p className="mt-1 text-sm font-bold">{scoringExplanation.title}</p>
+                                    <p className="mt-1 text-xs leading-5 opacity-90">{scoringExplanation.detail}</p>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-6 text-slate-300 sm:max-w-xs">
+                                {i18n.noPredictionSubmitted}
+                              </div>
+                            )}
+                          </div>
                         </div>
+                      ) : null}
+
+                      {profileComplete && isMatchOpenForPrediction(match) ? (
+                        <form action={submitPredictionAction.bind(null, match.id)} className="mt-5">
+                          <div className="mb-4 flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">{i18n.yourPrediction}</p>
+                              <p className="mt-1 text-sm text-cyan-100/75">{i18n.setExactWorldCupScore}</p>
+                            </div>
+                            <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-200">
+                              {i18n.exactScore}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+                            <label className="group rounded-3xl border border-slate-800 bg-slate-950/70 p-3 text-center transition duration-200 focus-within:-translate-y-0.5 focus-within:border-cyan-300/60 focus-within:bg-slate-950 focus-within:shadow-lg focus-within:shadow-cyan-500/15 sm:p-4">
+                              <span className="block truncate text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 group-focus-within:text-cyan-300">
+                                {match.homeTeam.shortName}
+                              </span>
+                              <input
+                                name="homeScore"
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                max={20}
+                                step={1}
+                                defaultValue={match.prediction?.homeScore ?? ""}
+                                className="score-input mt-2 w-full border-0 bg-transparent text-center text-4xl font-black tabular-nums text-cyan-200 outline-none ring-0 transition placeholder:text-slate-700 focus:outline-none focus:ring-0 focus-visible:outline-none sm:text-5xl"
+                                placeholder="0"
+                                required
+                              />
+                            </label>
+
+                            <span className="pb-5 text-2xl font-black text-slate-600 sm:pb-6">–</span>
+
+                            <label className="group rounded-3xl border border-slate-800 bg-slate-950/70 p-3 text-center transition duration-200 focus-within:-translate-y-0.5 focus-within:border-violet-300/60 focus-within:bg-slate-950 focus-within:shadow-lg focus-within:shadow-violet-500/15 sm:p-4">
+                              <span className="block truncate text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 group-focus-within:text-violet-300">
+                                {match.awayTeam.shortName}
+                              </span>
+                              <input
+                                name="awayScore"
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                max={20}
+                                step={1}
+                                defaultValue={match.prediction?.awayScore ?? ""}
+                                className="score-input mt-2 w-full border-0 bg-transparent text-center text-4xl font-black tabular-nums text-violet-200 outline-none ring-0 transition placeholder:text-slate-700 focus:outline-none focus:ring-0 focus-visible:outline-none sm:text-5xl"
+                                placeholder="0"
+                                required
+                              />
+                            </label>
+                          </div>
+
+                          <button
+                            type="submit"
+                            className="mt-4 w-full rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.01] hover:brightness-110 active:scale-[0.99]"
+                          >
+                            {i18n.savePrediction}
+                          </button>
+                        </form>
+                      ) : profileComplete ? (
+                        <p className="mt-5 text-sm leading-6 text-slate-400">
+                          {matchFinished ? i18n.matchFinalLocked : i18n.matchNoLongerOpen}
+                        </p>
                       ) : (
-                        <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-6 text-slate-300 sm:max-w-xs">
-                          You did not submit a prediction for this match, so no points were awarded.
-                        </div>
+                        <p className="mt-5 text-sm leading-6 text-slate-400">{i18n.completeProfileToUnlock}</p>
                       )}
                     </div>
-                  </div>
-                ) : null}
-
-                {profileComplete && isMatchOpenForPrediction(match) ? (
-                  <form action={submitPredictionAction.bind(null, match.id)} className="mt-5">
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Your prediction</p>
-                        <p className="mt-1 text-sm text-cyan-100/75">Set the exact World Cup score.</p>
-                      </div>
-                      <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-200">
-                        Exact score
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
-                      <label className="group rounded-3xl border border-slate-800 bg-slate-950/70 p-3 text-center transition duration-200 focus-within:-translate-y-0.5 focus-within:border-cyan-300/60 focus-within:bg-slate-950 focus-within:shadow-lg focus-within:shadow-cyan-500/15 sm:p-4">
-                        <span className="block truncate text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 group-focus-within:text-cyan-300">
-                          {match.homeTeam.shortName}
-                        </span>
-                        <input
-                          name="homeScore"
-                          type="number"
-                          inputMode="numeric"
-                          min={0}
-                          max={20}
-                          step={1}
-                          defaultValue={match.prediction?.homeScore ?? ""}
-                          className="score-input mt-2 w-full border-0 bg-transparent text-center text-4xl font-black tabular-nums text-cyan-200 outline-none ring-0 transition placeholder:text-slate-700 focus:outline-none focus:ring-0 focus-visible:outline-none sm:text-5xl"
-                          placeholder="0"
-                          required
-                        />
-                      </label>
-
-                      <span className="pb-5 text-2xl font-black text-slate-600 sm:pb-6">–</span>
-
-                      <label className="group rounded-3xl border border-slate-800 bg-slate-950/70 p-3 text-center transition duration-200 focus-within:-translate-y-0.5 focus-within:border-violet-300/60 focus-within:bg-slate-950 focus-within:shadow-lg focus-within:shadow-violet-500/15 sm:p-4">
-                        <span className="block truncate text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 group-focus-within:text-violet-300">
-                          {match.awayTeam.shortName}
-                        </span>
-                        <input
-                          name="awayScore"
-                          type="number"
-                          inputMode="numeric"
-                          min={0}
-                          max={20}
-                          step={1}
-                          defaultValue={match.prediction?.awayScore ?? ""}
-                          className="score-input mt-2 w-full border-0 bg-transparent text-center text-4xl font-black tabular-nums text-violet-200 outline-none ring-0 transition placeholder:text-slate-700 focus:outline-none focus:ring-0 focus-visible:outline-none sm:text-5xl"
-                          placeholder="0"
-                          required
-                        />
-                      </label>
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="mt-4 w-full rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:scale-[1.01] hover:brightness-110 active:scale-[0.99]"
-                    >
-                      Save prediction
-                    </button>
-                  </form>
-                ) : profileComplete ? (
-                  <p className="mt-5 text-sm leading-6 text-slate-400">
-                    {matchFinished
-                      ? "This match is final, so predictions are locked."
-                      : "This match is no longer open for predictions."}
-                  </p>
-                ) : (
-                  <p className="mt-5 text-sm leading-6 text-slate-400">
-                    Complete your profile to unlock the prediction form for this match.
-                  </p>
-                )}
-              </div>
-            ) : null}
-          </article>
-        );
-      })}
+                  ) : null}
+                </article>
+              );
+            })}
           </section>
         </motion.div>
       </AnimatePresence>

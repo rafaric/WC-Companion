@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 
 import { auth0 } from "@/lib/auth0";
 import {
@@ -19,21 +20,29 @@ import {
   type PredictionView,
   type RankingEntry,
 } from "@/lib/api";
-import { buildPageMetadata } from "@/lib/metadata";
 import { formatCountryLabel, getTeamLabel } from "@/lib/profile";
 import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
 import { getFriendlyDisplayName } from "@/lib/user-display";
 import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
 import { FlagIcon } from "@/components/FlagIcon";
+import { getTranslations } from "next-intl/server";
+import { getLocale } from "next-intl/server";
+import { getLocalizedPath, type AppLocale } from "@/lib/locale-nav";
+import { buildPageMetadata } from "@/lib/metadata";
 
 import { ShareActions } from "./share-actions";
 
-export const metadata = buildPageMetadata({
-  title: "Share cards",
-  description: "Preview and share your football prediction snapshots, performance summaries, and private group standings.",
-  index: false,
-  path: "/share",
-});
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations("metadata.share");
+  return buildPageMetadata({
+    description: t("description"),
+    index: false,
+    locale,
+    path: "/share",
+    title: t("title"),
+  });
+}
 
 type ShareSearchParams = {
   error?: string;
@@ -44,6 +53,7 @@ type ShareSearchParams = {
 
 interface SharePageProps {
   searchParams?: Promise<ShareSearchParams>;
+  params: Promise<{ locale: string }>;
 }
 
 const SHARE_SUCCESS = {
@@ -52,40 +62,15 @@ const SHARE_SUCCESS = {
   GROUP_RANKING: "group_ranking",
 } as const;
 
-const SHARE_ERROR = {
-  INVALID_INPUT: "invalid_input",
-  SESSION_EXPIRED: "session_expired",
-  PREDICTION_NOT_FOUND: "prediction_not_found",
-  PERFORMANCE_NOT_READY: "performance_not_ready",
-  GROUP_FORBIDDEN: "group_forbidden",
-  GROUP_NOT_READY: "group_not_ready",
-  CREATE_FAILED: "create_failed",
-} as const;
-
 type ShareSuccess = (typeof SHARE_SUCCESS)[keyof typeof SHARE_SUCCESS];
-type ShareError = (typeof SHARE_ERROR)[keyof typeof SHARE_ERROR];
-
-const SUCCESS_MESSAGES: Record<ShareSuccess, string> = {
-  prediction: "Prediction preview ready.",
-  performance_summary: "Performance summary ready.",
-  group_ranking: "Group standing ready.",
-};
-
-const ERROR_MESSAGES: Record<ShareError, string> = {
-  invalid_input: "Choose a valid prediction or group before generating a share card.",
-  session_expired: "Your session expired. Sign in again to generate share cards.",
-  prediction_not_found: "We could not find that saved prediction.",
-  performance_not_ready: "Your performance summary is not ready yet.",
-  group_forbidden: "You need access to that group before sharing its standing.",
-  group_not_ready: "We could not find a ranking snapshot for that group yet.",
-  create_failed: "We could not generate the share card right now. Try again.",
-};
 
 interface PredictionShareTemplateProps {
   predictionOption: { prediction: PredictionView; match: MatchView | null } | null;
   predictedBy: string;
   captureTargetId?: string;
   shareActions?: ReactNode;
+  locale: string;
+  t: Awaited<ReturnType<typeof getTranslations<"share">>>;
 }
 
 interface PerformanceSummaryShareTemplateProps {
@@ -95,6 +80,8 @@ interface PerformanceSummaryShareTemplateProps {
   leaderboardCount: number;
   captureTargetId?: string;
   shareActions?: ReactNode;
+  locale: string;
+  t: Awaited<ReturnType<typeof getTranslations<"share">>>;
 }
 
 interface GroupShareTemplateProps {
@@ -103,6 +90,8 @@ interface GroupShareTemplateProps {
   previewId?: string;
   captureTargetId?: string;
   shareActions?: ReactNode;
+  locale: string;
+  t: Awaited<ReturnType<typeof getTranslations<"share">>>;
 }
 
 interface ShareContent {
@@ -111,8 +100,8 @@ interface ShareContent {
   url: string;
 }
 
-function formatDate(date: string): string {
-  return new Intl.DateTimeFormat("en", {
+function formatDate(date: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(date));
@@ -141,8 +130,8 @@ async function getRequestOrigin(): Promise<string> {
   return `${protocol}://${host}`;
 }
 
-function buildShareUrl(origin: string, query: Record<string, string | null | undefined>): string {
-  const url = new URL("/share", origin);
+function buildShareUrl(origin: string, locale: string, query: Record<string, string | null | undefined>): string {
+  const url = new URL(`/${locale}/share`, origin);
 
   for (const [key, value] of Object.entries(query)) {
     if (value) {
@@ -155,11 +144,13 @@ function buildShareUrl(origin: string, query: Record<string, string | null | und
 
 function buildPredictionShareContent(
   origin: string,
+  locale: string,
   username: string,
   selectedPrediction: { prediction: PredictionView; match: MatchView | null },
+  t: Awaited<ReturnType<typeof getTranslations<"share">>>,
 ): ShareContent {
   const { prediction, match } = selectedPrediction;
-  const title = "WorldPredict prediction preview";
+  const title = t("templates.shareMyPrediction");
   const text = [
     title,
     `${username} picked ${match ? formatMatchLabel(match) : prediction.matchId}`,
@@ -170,12 +161,18 @@ function buildPredictionShareContent(
   return {
     title,
     text,
-    url: buildShareUrl(origin, { success: SHARE_SUCCESS.PREDICTION, matchId: prediction.matchId }),
+    url: buildShareUrl(origin, locale, { success: SHARE_SUCCESS.PREDICTION, matchId: prediction.matchId }),
   };
 }
 
-function buildPerformanceSummaryShareContent(origin: string, username: string, rankingEntry: RankingEntry): ShareContent {
-  const title = "WorldPredict performance summary";
+function buildPerformanceSummaryShareContent(
+  origin: string,
+  locale: string,
+  username: string,
+  rankingEntry: RankingEntry,
+  t: Awaited<ReturnType<typeof getTranslations<"share">>>,
+): ShareContent {
+  const title = t("templates.mySquadPerformance");
   const text = [
     title,
     `${username} is #${rankingEntry.position} with ${rankingEntry.totalPoints} points`,
@@ -186,18 +183,20 @@ function buildPerformanceSummaryShareContent(origin: string, username: string, r
   return {
     title,
     text,
-    url: buildShareUrl(origin, { success: SHARE_SUCCESS.PERFORMANCE_SUMMARY }),
+    url: buildShareUrl(origin, locale, { success: SHARE_SUCCESS.PERFORMANCE_SUMMARY }),
   };
 }
 
 function buildGroupRankingShareContent(
   origin: string,
+  locale: string,
   username: string,
   groupName: string,
   rankingEntry: RankingEntry,
   groupId: string,
+  t: Awaited<ReturnType<typeof getTranslations<"share">>>,
 ): ShareContent {
-  const title = "WorldPredict group ranking";
+  const title = t("templates.groupStanding");
   const text = [
     title,
     groupName,
@@ -207,49 +206,49 @@ function buildGroupRankingShareContent(
   return {
     title,
     text,
-    url: buildShareUrl(origin, { success: SHARE_SUCCESS.GROUP_RANKING, groupId }),
+    url: buildShareUrl(origin, locale, { success: SHARE_SUCCESS.GROUP_RANKING, groupId }),
   };
 }
 
-function getShareErrorCode(error: unknown, kind: "prediction" | "performance" | "group"): ShareError {
+function getShareErrorCode(error: unknown, kind: "prediction" | "performance" | "group"): string {
   if (!(error instanceof ApiError)) {
-    return SHARE_ERROR.CREATE_FAILED;
+    return "createFailed";
   }
 
   if (error.status === 401) {
-    return SHARE_ERROR.SESSION_EXPIRED;
+    return "sessionExpired";
   }
 
   if (error.status === 403 && kind !== "group") {
-    return SHARE_ERROR.SESSION_EXPIRED;
+    return "sessionExpired";
   }
 
   if (kind === "prediction") {
     if (error.status === 404) {
-      return SHARE_ERROR.PREDICTION_NOT_FOUND;
+      return "predictionNotFound";
     }
-    return error.status === 400 ? SHARE_ERROR.INVALID_INPUT : SHARE_ERROR.CREATE_FAILED;
+    return error.status === 400 ? "invalidInput" : "createFailed";
   }
 
   if (kind === "performance") {
     if (error.status === 404) {
-      return SHARE_ERROR.PERFORMANCE_NOT_READY;
+      return "performanceNotReady";
     }
-    return error.status === 400 ? SHARE_ERROR.INVALID_INPUT : SHARE_ERROR.CREATE_FAILED;
+    return error.status === 400 ? "invalidInput" : "createFailed";
   }
 
   if (error.status === 403) {
-    return SHARE_ERROR.GROUP_FORBIDDEN;
+    return "groupForbidden";
   }
 
   if (error.status === 404) {
-    return SHARE_ERROR.GROUP_NOT_READY;
+    return "groupNotReady";
   }
 
-  return error.status === 400 ? SHARE_ERROR.INVALID_INPUT : SHARE_ERROR.CREATE_FAILED;
+  return error.status === 400 ? "invalidInput" : "createFailed";
 }
 
-function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetId, shareActions }: PredictionShareTemplateProps) {
+function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetId, shareActions, locale, t }: PredictionShareTemplateProps) {
   const match = predictionOption?.match ?? null;
   const prediction = predictionOption?.prediction ?? null;
 
@@ -267,22 +266,22 @@ function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetI
           backgroundRepeat: "no-repeat",
         }}
       >
-        <p className="text-center text-[11px] font-black uppercase tracking-[0.28em] text-cyan-200">Share my prediction</p>
+        <p className="text-center text-[11px] font-black uppercase tracking-[0.28em] text-cyan-200">{t("templates.shareMyPrediction")}</p>
 
         <div className="mt-5 rounded-3xl border border-slate-800 bg-slate-900/80 p-4">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Predicted by</p>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{t("templates.predictedBy")}</p>
           <p className="mt-1 truncate text-base font-semibold text-white">{predictedBy}</p>
         </div>
 
         <div className="mt-5">
-          <p className="text-center text-[11px] font-bold uppercase tracking-[0.24em] text-slate-300">Selected match</p>
+          <p className="text-center text-[11px] font-bold uppercase tracking-[0.24em] text-slate-300">{t("templates.selectedMatch")}</p>
           <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
             <div className="rounded-3xl border border-cyan-300/30 bg-cyan-400/10 p-4 text-center">
               <p className="flex items-center justify-center" aria-hidden="true">
                 <FlagIcon flagCode={match?.homeTeam.flagCode ?? null} countryCode={match?.homeTeam.countryCode ?? null} size="2.75rem" />
               </p>
               <p className="mt-2 text-xl font-black text-white">{match?.homeTeam.shortName ?? "---"}</p>
-              <p className="mt-1 truncate text-xs text-cyan-100/70">{match?.homeTeam.name ?? "Home team"}</p>
+              <p className="mt-1 truncate text-xs text-cyan-100/70">{match?.homeTeam.name ?? t("templates.homeTeam")}</p>
             </div>
             <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">vs</span>
             <div className="rounded-3xl border border-violet-300/30 bg-violet-400/10 p-4 text-center">
@@ -290,13 +289,13 @@ function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetI
                 <FlagIcon flagCode={match?.awayTeam.flagCode ?? null} countryCode={match?.awayTeam.countryCode ?? null} size="2.75rem" />
               </p>
               <p className="mt-2 text-xl font-black text-white">{match?.awayTeam.shortName ?? "---"}</p>
-              <p className="mt-1 truncate text-xs text-violet-100/70">{match?.awayTeam.name ?? "Away team"}</p>
+              <p className="mt-1 truncate text-xs text-violet-100/70">{match?.awayTeam.name ?? t("templates.awayTeam")}</p>
             </div>
           </div>
         </div>
 
         <div className="mt-8 mb-2 text-center">
-          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-300">Predicted score</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-300">{t("templates.predictedScore")}</p>
           <p className="mt-4 flex items-center justify-center gap-6 text-5xl font-black tabular-nums text-white">
             <span>{prediction?.homeScore ?? "?"}</span>
             <span className="text-slate-500">–</span>
@@ -305,25 +304,25 @@ function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetI
         </div>
 
         <div className="mt-5 rounded-3xl border border-slate-800 bg-slate-900/80 p-4">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Match context</p>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{t("templates.matchContext")}</p>
           <p className="mt-2 text-sm font-semibold text-white">
-            {match ? `${match.stage}${match.groupName ? ` · ${match.groupName}` : ""}` : "Choose a saved prediction"}
+            {match ? `${match.stage}${match.groupName ? ` · ${match.groupName}` : ""}` : t("templates.previewCardBeforeSharing")}
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            {match ? formatDate(match.kickoffAt) : "Preview the card before sharing."}
+            {match ? formatDate(match.kickoffAt, locale) : t("templates.previewCardBeforeSharing")}
           </p>
         </div>
 
-        <p className="mt-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Share with your crew</p>
+        <p className="mt-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{t("templates.shareWithYourCrew")}</p>
 
         {prediction ? (
           <div className="mt-5 grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3 text-center">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Points</p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{t("templates.points")}</p>
               <p className="mt-1 text-sm font-bold text-white">{prediction.pointsAwarded}</p>
             </div>
             <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3 text-center">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Status</p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{t("templates.status")}</p>
               <p className="mt-1 truncate text-sm font-bold text-white">{prediction.scoringStatus}</p>
             </div>
           </div>
@@ -342,6 +341,8 @@ function PerformanceSummaryShareTemplate({
   leaderboardCount,
   captureTargetId,
   shareActions,
+  locale,
+  t,
 }: PerformanceSummaryShareTemplateProps) {
   return (
     <article id="performance-preview" className="relative scroll-mt-24 overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-slate-950 p-5 shadow-2xl shadow-cyan-950/30">
@@ -360,45 +361,45 @@ function PerformanceSummaryShareTemplate({
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-400 via-cyan-300 to-violet-400" />
 
         <div className="relative text-center">
-          <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-200">My squad performance</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-200">{t("templates.mySquadPerformance")}</p>
           <div className="mx-auto mt-4 flex h-20 w-20 items-center justify-center rounded-full border border-cyan-300/40 bg-slate-900/70 text-4xl shadow-lg shadow-cyan-500/10">
             <span aria-hidden="true">👤</span>
           </div>
           <p className="mt-3 truncate text-lg font-black text-white">{displayName}</p>
-          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-400">{countryLabel ?? "World Cup contender"}</p>
+          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-400">{countryLabel ?? t("templates.countryLabelDefault")}</p>
         </div>
 
         <div className="mt-5 space-y-3">
           <div className="rounded-3xl border border-violet-400/25 bg-gradient-to-r from-violet-500/30 via-violet-400/15 to-cyan-400/15 p-4">
-            <p className="text-center text-[11px] font-bold uppercase tracking-[0.22em] text-white/80">Total points</p>
+            <p className="text-center text-[11px] font-bold uppercase tracking-[0.22em] text-white/80">{t("templates.totalPoints")}</p>
             <p className="mt-3 text-center text-4xl font-black tabular-nums text-white">{rankingEntry ? rankingEntry.totalPoints : "---"}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-3xl border border-cyan-300/20 bg-slate-900/75 p-4 text-center">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Exact picks</p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{t("templates.exactPicks")}</p>
               <p className="mt-2 text-3xl font-black text-white tabular-nums">{rankingEntry ? rankingEntry.exactPredictions : "--"}</p>
             </div>
             <div className="rounded-3xl border border-cyan-300/20 bg-slate-900/75 p-4 text-center">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Rank</p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{t("templates.rank")}</p>
               <p className="mt-2 text-3xl font-black text-white tabular-nums">{rankingEntry ? `#${rankingEntry.position}` : "--"}</p>
             </div>
           </div>
 
           <div className="rounded-3xl border border-cyan-300/20 bg-slate-900/75 p-4 text-center">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Saved predictions</p>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{t("templates.savedPredictions")}</p>
             <p className="mt-2 text-3xl font-black text-white tabular-nums">{rankingEntry ? rankingEntry.predictionsCount : "--"}</p>
           </div>
 
           <div className="rounded-3xl border border-cyan-300/20 bg-gradient-to-r from-violet-500/30 via-cyan-400/20 to-cyan-300/30 p-4">
-            <p className="text-lg font-black uppercase leading-6 text-white">Subtle celebration</p>
+            <p className="text-lg font-black uppercase leading-6 text-white">{t("templates.subtleCelebration")}</p>
             <p className="mt-1 text-sm text-white/80">
-              {rankingEntry ? `Currently in the top ${Math.min(rankingEntry.position, leaderboardCount)} of ${leaderboardCount}.` : "Your tournament progress will show up here once your ranking is ready."}
+              {rankingEntry ? t("templates.topOfLeaderboard", { position: Math.min(rankingEntry.position, leaderboardCount), total: leaderboardCount }) : t("templates.progressNotReady")}
             </p>
           </div>
         </div>
 
-        <p className="mt-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Share with your squad</p>
+        <p className="mt-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">{t("templates.shareWithYourSquad")}</p>
       </div>
 
       {shareActions ? <div className="relative mt-4">{shareActions}</div> : null}
@@ -406,7 +407,7 @@ function PerformanceSummaryShareTemplate({
   );
 }
 
-function GroupShareTemplate({ group, rankingEntry, previewId, captureTargetId, shareActions }: GroupShareTemplateProps) {
+function GroupShareTemplate({ group, rankingEntry, previewId, captureTargetId, shareActions, locale, t }: GroupShareTemplateProps) {
   return (
     <article id={previewId} className="relative scroll-mt-24 overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-slate-950 p-5 shadow-2xl shadow-cyan-950/30">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.2),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.16),transparent_32%)]" />
@@ -424,42 +425,42 @@ function GroupShareTemplate({ group, rankingEntry, previewId, captureTargetId, s
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-400 via-cyan-300 to-violet-400" />
 
         <div className="relative text-center">
-          <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-200">Group standing</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-200">{t("templates.groupStanding")}</p>
           <div className="mx-auto mt-4 flex h-20 w-20 items-center justify-center rounded-full border border-cyan-300/40 bg-slate-900/70 text-4xl shadow-lg shadow-cyan-500/10">
             <span aria-hidden="true">🏆</span>
           </div>
-          <p className="mt-3 truncate text-lg font-black text-white">{group?.name ?? "Choose a group"}</p>
-          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-400">Share your squad table</p>
+          <p className="mt-3 truncate text-lg font-black text-white">{group?.name ?? t("templates.chooseAGroup")}</p>
+          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-400">{t("templates.shareYourSquadTable")}</p>
         </div>
 
         <div className="mt-5 space-y-3">
           <div className="rounded-3xl border border-violet-400/25 bg-gradient-to-r from-violet-500/30 via-violet-400/15 to-cyan-400/15 p-4">
-            <p className="text-center text-[11px] font-bold uppercase tracking-[0.22em] text-white/80">Current place</p>
+            <p className="text-center text-[11px] font-bold uppercase tracking-[0.22em] text-white/80">{t("templates.currentPlace")}</p>
             <p className="mt-3 text-center text-4xl font-black tabular-nums text-white">{rankingEntry ? `#${rankingEntry.position}` : "---"}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-3xl border border-cyan-300/20 bg-slate-900/75 p-4 text-center">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Points</p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{t("templates.points")}</p>
               <p className="mt-2 text-3xl font-black text-white tabular-nums">{rankingEntry ? rankingEntry.totalPoints : "--"}</p>
             </div>
             <div className="rounded-3xl border border-cyan-300/20 bg-slate-900/75 p-4 text-center">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Predictions</p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">{t("templates.savedPredictions")}</p>
               <p className="mt-2 text-3xl font-black text-white tabular-nums">{rankingEntry ? rankingEntry.predictionsCount : "--"}</p>
             </div>
           </div>
 
           <div className="rounded-3xl border border-cyan-300/20 bg-gradient-to-r from-violet-500/30 via-cyan-400/20 to-cyan-300/30 p-4">
-            <p className="text-lg font-black uppercase leading-6 text-white">Squad snapshot</p>
+            <p className="text-lg font-black uppercase leading-6 text-white">{t("templates.squadSnapshot")}</p>
             <p className="mt-1 text-sm text-white/80">
               {rankingEntry
-                ? `Your group is live with ${rankingEntry.totalPoints} points and ${rankingEntry.predictionsCount} predictions on the board.`
-                : "Pick one of your groups to preview the current table before sharing it."}
+                ? t("templates.groupLiveMessage", { points: rankingEntry.totalPoints, count: rankingEntry.predictionsCount })
+                : t("templates.pickGroupToPreview")}
             </p>
           </div>
         </div>
 
-        <p className="mt-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Share with your squad</p>
+        <p className="mt-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">{t("templates.shareWithYourSquad")}</p>
       </div>
 
       {shareActions ? <div className="relative mt-4">{shareActions}</div> : null}
@@ -514,11 +515,20 @@ function findGroupById(groups: MyGroupView[], groupId: string | null | undefined
   return groups.find((group) => group.id === groupId) ?? null;
 }
 
-export default async function SharePage({ searchParams }: SharePageProps) {
+const PREVIEW_HASH = {
+  prediction: "#prediction-preview",
+  performance: "#performance-preview",
+  group: "#group-preview",
+} as const;
+
+export default async function SharePage({ searchParams, params }: SharePageProps) {
+  const { locale } = await params;
+  const t = await getTranslations("share");
+
   const session = await auth0.getSession();
 
   if (!session) {
-    redirect("/auth/login?returnTo=/share");
+    redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/share")}`);
   }
 
   // Resolve selected tournament from cookie (null → API uses ACTIVE fallback)
@@ -531,7 +541,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
   try {
     accessToken = (await auth0.getAccessToken()).token;
   } catch {
-    redirect("/auth/login?returnTo=/share");
+    redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/share")}`);
   }
 
   const [currentUserProfile, matches, predictions, myGroups, globalRanking] = await Promise.all([
@@ -559,20 +569,14 @@ export default async function SharePage({ searchParams }: SharePageProps) {
   const shareUsername = displayName;
 
   const predictionShareContent = selectedPrediction
-    ? buildPredictionShareContent(shareOrigin, shareUsername, selectedPrediction)
+    ? buildPredictionShareContent(shareOrigin, locale, shareUsername, selectedPrediction, t)
     : null;
   const performanceSummaryShareContent = currentUserRankingEntry
-    ? buildPerformanceSummaryShareContent(shareOrigin, shareUsername, currentUserRankingEntry)
+    ? buildPerformanceSummaryShareContent(shareOrigin, locale, shareUsername, currentUserRankingEntry, t)
     : null;
   const groupRankingShareContent = selectedGroup && selectedGroupRanking[0]
-    ? buildGroupRankingShareContent(shareOrigin, shareUsername, selectedGroup.name, selectedGroupRanking[0], selectedGroup.id)
+    ? buildGroupRankingShareContent(shareOrigin, locale, shareUsername, selectedGroup.name, selectedGroupRanking[0], selectedGroup.id, t)
     : null;
-
-  const PREVIEW_HASH = {
-    prediction: "#prediction-preview",
-    performance: "#performance-preview",
-    group: "#group-preview",
-  } as const;
 
   async function submitPredictionPreview(formData: FormData) {
     "use server";
@@ -580,7 +584,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     const matchId = String(formData.get("matchId") ?? "").trim();
 
     if (!matchId) {
-      redirect(`/share?error=invalid_input${PREVIEW_HASH.prediction}`);
+      redirect(`${getLocalizedPath(locale as AppLocale, "/share")}?error=invalidInput${PREVIEW_HASH.prediction}`);
     }
 
     let actionToken: string;
@@ -588,7 +592,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     try {
       actionToken = (await auth0.getAccessToken()).token;
     } catch {
-      redirect("/auth/login?returnTo=/share");
+      redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/share")}`);
     }
 
     const tournamentSlug = await resolveTournamentSlug();
@@ -596,10 +600,10 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     try {
       await createPredictionShareCard(actionToken, matchId, tournamentSlug);
     } catch (error) {
-      redirect(`/share?error=${getShareErrorCode(error, "prediction")}${PREVIEW_HASH.prediction}`);
+      redirect(`${getLocalizedPath(locale as AppLocale, "/share")}?error=${getShareErrorCode(error, "prediction")}${PREVIEW_HASH.prediction}`);
     }
 
-    redirect(`/share?success=${SHARE_SUCCESS.PREDICTION}&matchId=${matchId}${PREVIEW_HASH.prediction}`);
+    redirect(`${getLocalizedPath(locale as AppLocale, "/share")}?success=${SHARE_SUCCESS.PREDICTION}&matchId=${matchId}${PREVIEW_HASH.prediction}`);
   }
 
   async function submitPerformanceSummaryPreview(_formData: FormData) {
@@ -612,7 +616,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     try {
       actionToken = (await auth0.getAccessToken()).token;
     } catch {
-      redirect("/auth/login?returnTo=/share");
+      redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/share")}`);
     }
 
     const tournamentSlug = await resolveTournamentSlug();
@@ -620,10 +624,10 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     try {
       await createMyPerformanceSummaryShareCard(actionToken, tournamentSlug);
     } catch (error) {
-      redirect(`/share?error=${getShareErrorCode(error, "performance")}${PREVIEW_HASH.performance}`);
+      redirect(`${getLocalizedPath(locale as AppLocale, "/share")}?error=${getShareErrorCode(error, "performance")}${PREVIEW_HASH.performance}`);
     }
 
-    redirect(`/share?success=${SHARE_SUCCESS.PERFORMANCE_SUMMARY}${PREVIEW_HASH.performance}`);
+    redirect(`${getLocalizedPath(locale as AppLocale, "/share")}?success=${SHARE_SUCCESS.PERFORMANCE_SUMMARY}${PREVIEW_HASH.performance}`);
   }
 
   async function submitGroupRankingPreview(formData: FormData) {
@@ -632,7 +636,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     const groupId = String(formData.get("groupId") ?? "").trim();
 
     if (!groupId) {
-      redirect(`/share?error=invalid_input${PREVIEW_HASH.group}`);
+      redirect(`${getLocalizedPath(locale as AppLocale, "/share")}?error=invalidInput${PREVIEW_HASH.group}`);
     }
 
     let actionToken: string;
@@ -640,7 +644,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     try {
       actionToken = (await auth0.getAccessToken()).token;
     } catch {
-      redirect("/auth/login?returnTo=/share");
+      redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/share")}`);
     }
 
     const tournamentSlug = await resolveTournamentSlug();
@@ -648,30 +652,30 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     try {
       await createGroupRankingShareCard(actionToken, groupId, tournamentSlug);
     } catch (error) {
-      redirect(`/share?error=${getShareErrorCode(error, "group")}&groupId=${groupId}${PREVIEW_HASH.group}`);
+      redirect(`${getLocalizedPath(locale as AppLocale, "/share")}?error=${getShareErrorCode(error, "group")}&groupId=${groupId}${PREVIEW_HASH.group}`);
     }
 
-    redirect(`/share?success=${SHARE_SUCCESS.GROUP_RANKING}&groupId=${groupId}${PREVIEW_HASH.group}`);
+    redirect(`${getLocalizedPath(locale as AppLocale, "/share")}?success=${SHARE_SUCCESS.GROUP_RANKING}&groupId=${groupId}${PREVIEW_HASH.group}`);
   }
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-5xl">
       <section className="space-y-8 py-2 sm:py-4">
           <SectionHeader
-            eyebrow="Shareable snapshots"
-            title="Preview the card before you share it."
-            description="Preview your prediction, group standing, or performance summary with the current visual card treatment before you copy or share it."
+            eyebrow={t("eyebrow.shareableSnapshots")}
+            title={t("title.previewTheCard")}
+            description={t("description.previewDescription")}
           />
 
           {resolvedSearchParams?.success ? (
             <div role="status" aria-live="polite" className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
-              {SUCCESS_MESSAGES[resolvedSearchParams.success as ShareSuccess] ?? "Ready."}
+              {t(`successMessages.${resolvedSearchParams.success as ShareSuccess}`)}
             </div>
           ) : null}
 
           {resolvedSearchParams?.error ? (
             <div role="alert" aria-live="assertive" className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
-              {ERROR_MESSAGES[resolvedSearchParams.error as ShareError] ?? "Something went wrong. Please try again."}
+              {t(`errorMessages.${resolvedSearchParams.error}`)}
             </div>
           ) : null}
 
@@ -679,17 +683,17 @@ export default async function SharePage({ searchParams }: SharePageProps) {
             <form action={submitPredictionPreview} className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-2xl shadow-slate-950/30">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Prediction</p>
-                  <h2 className="mt-1 text-lg font-semibold text-white">Share your prediction</h2>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("predictionForm.prediction")}</p>
+                  <h2 className="mt-1 text-lg font-semibold text-white">{t("predictionForm.shareYourPrediction")}</h2>
                 </div>
               </div>
 
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Pick one of your saved predictions and turn it into a clean share card.
+                {t("predictionForm.pickOneSaved")}
               </p>
 
               <label className="mt-4 block space-y-2">
-                <span className="text-sm font-medium text-slate-200">Saved prediction</span>
+                <span className="text-sm font-medium text-slate-200">{t("predictionForm.savedPrediction")}</span>
                 <select
                   name="matchId"
                   defaultValue={selectedPrediction?.prediction.matchId ?? ""}
@@ -698,7 +702,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                   disabled={predictionOptions.length === 0}
                 >
                   <option value="" disabled>
-                    {predictionOptions.length === 0 ? "No predictions available" : "Choose a prediction"}
+                    {predictionOptions.length === 0 ? t("predictionForm.noPredictionsAvailable") : t("predictionForm.choosePrediction")}
                   </option>
                   {predictionOptions.map(({ prediction, match }) => (
                     <option key={prediction.id} value={prediction.matchId}>
@@ -709,13 +713,13 @@ export default async function SharePage({ searchParams }: SharePageProps) {
               </label>
 
               <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs leading-5 text-slate-500">Uses your saved prediction data and the current visual card background.</p>
+                <p className="text-xs leading-5 text-slate-500">{t("predictionForm.usesYourSavedData")}</p>
                 <button
                   type="submit"
                   className="w-full whitespace-nowrap rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-5 sm:py-2.5 sm:text-sm"
                   disabled={predictionOptions.length === 0}
                 >
-                  Preview prediction
+                  {t("predictionForm.previewPrediction")}
                 </button>
               </div>
             </form>
@@ -734,9 +738,11 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                     captureTargetId={selectedPrediction ? `prediction-share-card-${selectedPrediction.prediction.matchId}` : undefined}
                   />
                 ) : (
-                  <p className="text-center text-xs leading-5 text-slate-400">Pick a saved prediction to enable copy/share.</p>
+                  <p className="text-center text-xs leading-5 text-slate-400">{t("fallback.pickPredictionToEnable")}</p>
                 )
               }
+              locale={locale}
+              t={t}
             />
           </div>
 
@@ -744,22 +750,22 @@ export default async function SharePage({ searchParams }: SharePageProps) {
             <form action={submitPerformanceSummaryPreview} className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-2xl shadow-slate-950/30">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Performance summary</p>
-                  <h2 className="mt-1 text-lg font-semibold text-white">Share your tournament progress</h2>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("performanceForm.performanceSummary")}</p>
+                  <h2 className="mt-1 text-lg font-semibold text-white">{t("performanceForm.shareYourTournamentProgress")}</h2>
                 </div>
               </div>
 
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Create a clean share card with your points, exact picks, and current place in the World Cup race.
+                {t("performanceForm.showYourPoints")}
               </p>
 
               <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs leading-5 text-slate-500">Show your points, exact picks, and current position in one card.</p>
+                <p className="text-xs leading-5 text-slate-500">{t("performanceForm.showYourPoints")}</p>
                 <button
                   type="submit"
                   className="w-full whitespace-nowrap rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 sm:w-auto sm:px-5 sm:py-2.5 sm:text-sm"
                 >
-                  Preview summary
+                  {t("performanceForm.previewSummary")}
                 </button>
               </div>
             </form>
@@ -780,6 +786,8 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                   />
                 ) : null
               }
+              locale={locale}
+              t={t}
             />
           </div>
 
@@ -787,17 +795,17 @@ export default async function SharePage({ searchParams }: SharePageProps) {
             <form action={submitGroupRankingPreview} className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-2xl shadow-slate-950/30">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Group standing</p>
-                  <h2 className="mt-1 text-lg font-semibold text-white">Share group standing</h2>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("groupForm.groupStanding")}</p>
+                  <h2 className="mt-1 text-lg font-semibold text-white">{t("groupForm.shareGroupStanding")}</h2>
                 </div>
               </div>
 
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Choose one of your groups and turn the current table into a clean share card.
+                {t("groupForm.chooseGroup")}
               </p>
 
               <label className="mt-4 block space-y-2">
-                <span className="text-sm font-medium text-slate-200">My groups</span>
+                <span className="text-sm font-medium text-slate-200">{t("groupForm.myGroups")}</span>
                 <select
                   name="groupId"
                   defaultValue={selectedGroup?.id ?? ""}
@@ -806,7 +814,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                   disabled={myGroups.length === 0}
                 >
                   <option value="" disabled>
-                    {myGroups.length === 0 ? "No groups available" : "Choose a group"}
+                    {myGroups.length === 0 ? t("groupForm.noGroupsAvailable") : t("groupForm.chooseGroupOption")}
                   </option>
                   {myGroups.map((group) => (
                     <option key={group.id} value={group.id}>
@@ -817,13 +825,13 @@ export default async function SharePage({ searchParams }: SharePageProps) {
               </label>
 
               <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs leading-5 text-slate-500">Show your group name, current place, points, and predictions in one card.</p>
+                <p className="text-xs leading-5 text-slate-500">{t("groupForm.showGroupInfo")}</p>
                 <button
                   type="submit"
                   className="w-full whitespace-nowrap rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-4 py-2 text-xs font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-5 sm:py-2.5 sm:text-sm"
                   disabled={myGroups.length === 0}
                 >
-                  Generate group card
+                  {t("groupForm.generateGroupCard")}
                 </button>
               </div>
             </form>
@@ -842,9 +850,11 @@ export default async function SharePage({ searchParams }: SharePageProps) {
                     captureTargetId={selectedGroupRanking[0] ? `group-share-card-${selectedGroupRanking[0].userId}-${selectedGroup?.id ?? selectedGroupId ?? "group"}` : undefined}
                   />
                 ) : selectedGroup ? (
-                  <p className="text-center text-xs leading-5 text-slate-400">Generate the group card to enable copy/share.</p>
+                  <p className="text-center text-xs leading-5 text-slate-400">{t("fallback.generateCardToEnable")}</p>
                 ) : null
               }
+              locale={locale}
+              t={t}
             />
           </div>
       </section>
