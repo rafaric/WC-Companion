@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState, useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import { useLocale } from "next-intl";
 
 import type { CurrentUserProfile, TeamView } from "@/lib/api";
 import { PROFILE_COUNTRY_OPTIONS, PROFILE_LANGUAGE_OPTIONS } from "@/lib/profile";
@@ -91,7 +92,12 @@ export function ProfileEditModal({
   isOpen,
   onClose,
 }: ProfileEditModalProps) {
-  const [state, formAction] = useActionState(updateProfile, initialState);
+  const locale = useLocale() as "en" | "es";
+  const [state, formAction] = useActionState(
+    async (prevState: { error: string } | undefined, formData: FormData) =>
+      updateProfile(prevState, formData, locale),
+    initialState,
+  );
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const [clientIsOpen, setClientIsOpen] = useState(false);

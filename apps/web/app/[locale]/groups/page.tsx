@@ -18,6 +18,7 @@ import { isProfileComplete } from "@/lib/profile";
 import { CopyInviteCodeButton } from "./copy-invite-code-button";
 import { GroupActionTabs } from "./group-action-tabs";
 import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
+import { getLocalizedPath, type AppLocale } from "@/lib/locale-nav";
 
 export const metadata = buildPageMetadata({
   title: "Groups",
@@ -33,6 +34,7 @@ type GroupsSearchParams = {
 
 interface GroupsPageProps {
   searchParams?: Promise<GroupsSearchParams>;
+  params: Promise<{ locale: string }>;
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -83,7 +85,12 @@ function formatMemberCount(memberCount: number): string {
   return `${memberCount} ${memberCount === 1 ? "member" : "members"}`;
 }
 
-function GroupCard({ group }: { group: MyGroupView }) {
+interface GroupCardProps {
+  group: MyGroupView;
+  locale: AppLocale;
+}
+
+function GroupCard({ group, locale }: GroupCardProps) {
   return (
     <article className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30 transition hover:border-slate-700">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -107,7 +114,7 @@ function GroupCard({ group }: { group: MyGroupView }) {
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs leading-5 text-slate-500">Share the invite code or open the private ranking.</p>
         <Link
-          href={`/groups/${group.id}`}
+          href={getLocalizedPath(locale, `/groups/${group.id}`)}
           className="rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
         >
           Open ranking
@@ -117,11 +124,13 @@ function GroupCard({ group }: { group: MyGroupView }) {
   );
 }
 
-export default async function GroupsPage({ searchParams }: GroupsPageProps) {
+export default async function GroupsPage({ searchParams, params }: GroupsPageProps) {
+  const { locale } = await params;
+
   const session = await auth0.getSession();
 
   if (!session) {
-    redirect("/auth/login?returnTo=/groups");
+    redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/groups")}`);
   }
 
   const resolvedSearchParams = await searchParams;
@@ -131,7 +140,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
   try {
     accessToken = (await auth0.getAccessToken()).token;
   } catch {
-    redirect("/auth/login?returnTo=/groups");
+    redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/groups")}`);
   }
 
   const tournamentSlug = await resolveTournamentSlug();
@@ -165,7 +174,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
     const name = String(formData.get("name") ?? "").trim();
 
     if (!name) {
-      redirect("/groups?error=invalid_input");
+      redirect(getLocalizedPath(locale as AppLocale, "/groups?error=invalid_input"));
     }
 
     let actionToken: string;
@@ -173,7 +182,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
     try {
       actionToken = (await auth0.getAccessToken()).token;
     } catch {
-      redirect("/auth/login?returnTo=/groups");
+      redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/groups")}`);
     }
 
     // Get selected tournament context for the new group
@@ -184,11 +193,11 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
     try {
       createdGroup = await createGroup(actionToken, { name }, tournamentSlug);
     } catch (error) {
-      redirect(`/groups?error=${getGroupActionErrorCode(error, "create")}`);
+      redirect(getLocalizedPath(locale as AppLocale, `/groups?error=${getGroupActionErrorCode(error, "create")}`));
     }
 
-    revalidatePath("/groups");
-    redirect(`/groups/${createdGroup.id}`);
+    revalidatePath(getLocalizedPath(locale as AppLocale, "/groups"));
+    redirect(getLocalizedPath(locale as AppLocale, `/groups/${createdGroup.id}`));
   }
 
   async function submitJoinGroup(formData: FormData) {
@@ -197,7 +206,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
     const inviteCode = String(formData.get("inviteCode") ?? "").trim();
 
     if (!inviteCode) {
-      redirect("/groups?error=invalid_input");
+      redirect(getLocalizedPath(locale as AppLocale, "/groups?error=invalid_input"));
     }
 
     let actionToken: string;
@@ -205,7 +214,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
     try {
       actionToken = (await auth0.getAccessToken()).token;
     } catch {
-      redirect("/auth/login?returnTo=/groups");
+      redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/groups")}`);
     }
 
     let joinedGroup: GroupView;
@@ -213,11 +222,11 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
     try {
       joinedGroup = await joinGroup(actionToken, { inviteCode });
     } catch (error) {
-      redirect(`/groups?error=${getGroupActionErrorCode(error, "join")}`);
+      redirect(getLocalizedPath(locale as AppLocale, `/groups?error=${getGroupActionErrorCode(error, "join")}`));
     }
 
-    revalidatePath("/groups");
-    redirect(`/groups/${joinedGroup.id}`);
+    revalidatePath(getLocalizedPath(locale as AppLocale, "/groups"));
+    redirect(getLocalizedPath(locale as AppLocale, `/groups/${joinedGroup.id}`));
   }
 
   return (
@@ -254,7 +263,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                 Finish onboarding first. Group actions stay visible, but disabled until your profile is complete.
               </p>
               <Link
-                href="/onboarding"
+                href={getLocalizedPath(locale as AppLocale, "/onboarding")}
                 className="inline-flex rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-110"
               >
                 Complete profile
@@ -283,14 +292,14 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             {filteredGroups.length > 0 ? (
               <div className="grid gap-4">
                 {filteredGroups.map((group) => (
-                  <GroupCard key={group.id} group={group} />
+                  <GroupCard key={group.id} group={group} locale={locale as AppLocale} />
                 ))}
               </div>
             ) : (
               <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 text-sm leading-6 text-slate-300">
                 <p className="text-base font-semibold text-white">No groups yet.</p>
                 <p className="mt-2 text-slate-300">
-                  Create one above to get your first invite code, or join a friend’s group to start together.
+                  Create one above to get your first invite code, or join a friend&apos;s group to start together.
                 </p>
               </div>
             )}

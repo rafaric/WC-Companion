@@ -7,6 +7,7 @@ import { auth0 } from "@/lib/auth0";
 import { ApiError, getActiveTournamentMatches, updateCurrentUserProfile } from "@/lib/api";
 import { extractUniqueTeamsFromMatches, PROFILE_COUNTRY_OPTIONS, PROFILE_LANGUAGE_OPTIONS } from "@/lib/profile";
 import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
+import { getLocalizedPath, type AppLocale } from "@/lib/locale-nav";
 
 interface ProfileUpdateError {
   error: string;
@@ -25,6 +26,7 @@ function getProfileUpdateErrorMessage(error: unknown): string {
 export async function updateProfile(
   prevState: ProfileUpdateError | undefined,
   formData: FormData,
+  locale: AppLocale,
 ): Promise<ProfileUpdateError | undefined> {
   void prevState;
 
@@ -52,16 +54,16 @@ export async function updateProfile(
       preferredLanguage,
       tournamentSlug,
     });
-    revalidatePath("/");
-    revalidatePath("/dashboard");
-    revalidatePath("/onboarding");
+    revalidatePath(getLocalizedPath(locale, "/"));
+    revalidatePath(getLocalizedPath(locale, "/dashboard"));
+    revalidatePath(getLocalizedPath(locale, "/onboarding"));
     return undefined;
   } catch (error) {
     return { error: getProfileUpdateErrorMessage(error) };
   }
 }
 
-export async function updateProfileAndRedirect(formData: FormData, redirectTo: string) {
+export async function updateProfileAndRedirect(formData: FormData, redirectTo: string, locale: AppLocale) {
   const country = String(formData.get("country") ?? "");
   const favoriteTeamId = String(formData.get("favoriteTeamId") ?? "");
   const preferredLanguage = String(formData.get("preferredLanguage") ?? "");
@@ -74,7 +76,7 @@ export async function updateProfileAndRedirect(formData: FormData, redirectTo: s
   const favoriteTeamIsValid = teamIds.includes(favoriteTeamId);
 
   if (!countryIsValid || !languageIsValid || !favoriteTeamIsValid) {
-    redirect("/onboarding?error=invalid_input");
+    redirect(getLocalizedPath(locale, `/onboarding?error=invalid_input`));
   }
 
   try {
@@ -87,10 +89,10 @@ export async function updateProfileAndRedirect(formData: FormData, redirectTo: s
       tournamentSlug,
     });
   } catch {
-    redirect("/onboarding?error=update_failed");
+    redirect(getLocalizedPath(locale, "/onboarding?error=update_failed"));
   }
 
-  revalidatePath("/");
-  revalidatePath("/onboarding");
+  revalidatePath(getLocalizedPath(locale, "/"));
+  revalidatePath(getLocalizedPath(locale, "/onboarding"));
   redirect(redirectTo);
 }

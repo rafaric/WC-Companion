@@ -21,6 +21,7 @@ import {
 } from "@/lib/api";
 import { buildPageMetadata } from "@/lib/metadata";
 import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
+import { getLocalizedPath, type AppLocale } from "@/lib/locale-nav";
 
 export const metadata = buildPageMetadata({
   title: "External results admin",
@@ -37,6 +38,7 @@ type AdminExternalResultsSearchParams = {
 
 interface AdminExternalResultsPageProps {
   searchParams?: Promise<AdminExternalResultsSearchParams>;
+  params: Promise<{ locale: string }>;
 }
 
 const RESULT_ERROR_MESSAGES: Record<string, string> = {
@@ -89,6 +91,7 @@ function resolveResultStateFilter(value: string | undefined): ExternalMatchResul
 }
 
 function buildExternalResultsPath(
+  locale: AppLocale,
   state: ExternalMatchResultState,
   params: { error?: string; success?: string } = {},
 ): string {
@@ -102,7 +105,7 @@ function buildExternalResultsPath(
     searchParams.set("success", params.success);
   }
 
-  return `/admin/external-results?${searchParams.toString()}`;
+  return `${getLocalizedPath(locale, "/admin/external-results")}?${searchParams.toString()}`;
 }
 
 function getResultErrorCode(error: unknown): string {
@@ -295,11 +298,12 @@ function ResultCard({
   );
 }
 
-export default async function AdminExternalResultsPage({ searchParams }: AdminExternalResultsPageProps) {
+export default async function AdminExternalResultsPage({ searchParams, params }: AdminExternalResultsPageProps) {
+  const { locale } = await params;
   const session = await auth0.getSession();
 
   if (!session) {
-    redirect("/auth/login?returnTo=/admin/external-results");
+    redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/admin/external-results")}`);
   }
 
   const resolvedSearchParams = await searchParams;
@@ -310,7 +314,7 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
   try {
     accessToken = (await auth0.getAccessToken()).token;
   } catch {
-    redirect("/auth/login?returnTo=/admin/external-results");
+    redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/admin/external-results")}`);
   }
 
   const tournamentSlug = await resolveTournamentSlug();
@@ -347,7 +351,7 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
     const state = resolveResultStateFilter(String(formData.get("state") ?? ""));
 
     if (!externalMatchResultId) {
-      redirect(buildExternalResultsPath(state, { error: "invalid_input" }));
+      redirect(buildExternalResultsPath(locale as AppLocale, state, { error: "invalid_input" }));
     }
 
     let actionToken: string;
@@ -355,17 +359,17 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
     try {
       actionToken = (await auth0.getAccessToken()).token;
     } catch {
-      redirect("/auth/login?returnTo=/admin/external-results");
+      redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/admin/external-results")}`);
     }
 
     try {
       await confirmExternalMatchResult(actionToken, externalMatchResultId);
     } catch (error) {
-      redirect(buildExternalResultsPath(state, { error: getResultErrorCode(error) }));
+      redirect(buildExternalResultsPath(locale as AppLocale, state, { error: getResultErrorCode(error) }));
     }
 
-    revalidatePath("/admin/external-results");
-    redirect(buildExternalResultsPath(state, { success: "confirmed" }));
+    revalidatePath(getLocalizedPath(locale as AppLocale, "/admin/external-results"));
+    redirect(buildExternalResultsPath(locale as AppLocale, state, { success: "confirmed" }));
   }
 
   async function discardExternalResult(formData: FormData) {
@@ -375,7 +379,7 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
     const state = resolveResultStateFilter(String(formData.get("state") ?? ""));
 
     if (!externalMatchResultId) {
-      redirect(buildExternalResultsPath(state, { error: "invalid_input" }));
+      redirect(buildExternalResultsPath(locale as AppLocale, state, { error: "invalid_input" }));
     }
 
     let actionToken: string;
@@ -383,17 +387,17 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
     try {
       actionToken = (await auth0.getAccessToken()).token;
     } catch {
-      redirect("/auth/login?returnTo=/admin/external-results");
+      redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/admin/external-results")}`);
     }
 
     try {
       await discardExternalMatchResult(actionToken, externalMatchResultId);
     } catch (error) {
-      redirect(buildExternalResultsPath(state, { error: getResultErrorCode(error) }));
+      redirect(buildExternalResultsPath(locale as AppLocale, state, { error: getResultErrorCode(error) }));
     }
 
-    revalidatePath("/admin/external-results");
-    redirect(buildExternalResultsPath(state, { success: "discarded" }));
+    revalidatePath(getLocalizedPath(locale as AppLocale, "/admin/external-results"));
+    redirect(buildExternalResultsPath(locale as AppLocale, state, { success: "discarded" }));
   }
 
   async function importTournamentAction() {
@@ -404,7 +408,7 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
     try {
       actionToken = (await auth0.getAccessToken()).token;
     } catch {
-      redirect("/auth/login?returnTo=/admin/external-results");
+      redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/admin/external-results")}`);
     }
 
     // Get tournament ID from slug for admin write operations (backend requires tournamentId, not slug)
@@ -424,11 +428,11 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
       await importTournament(actionToken, tournamentId);
     } catch (error) {
       console.error("Import tournament failed:", error);
-      redirect(buildExternalResultsPath(EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { error: "bad_request" }));
+      redirect(buildExternalResultsPath(locale as AppLocale, EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { error: "bad_request" }));
     }
 
-    revalidatePath("/admin/external-results");
-    redirect(buildExternalResultsPath(EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { success: "imported" }));
+    revalidatePath(getLocalizedPath(locale as AppLocale, "/admin/external-results"));
+    redirect(buildExternalResultsPath(locale as AppLocale, EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { success: "imported" }));
   }
 
   async function syncResultsAction() {
@@ -439,7 +443,7 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
     try {
       actionToken = (await auth0.getAccessToken()).token;
     } catch {
-      redirect("/auth/login?returnTo=/admin/external-results");
+      redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/admin/external-results")}`);
     }
 
     // Get tournament ID from slug for admin write operations (backend requires tournamentId, not slug)
@@ -459,11 +463,11 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
       await syncResults(actionToken, tournamentId);
     } catch (error) {
       console.error("Sync results failed:", error);
-      redirect(buildExternalResultsPath(EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { error: "bad_request" }));
+      redirect(buildExternalResultsPath(locale as AppLocale, EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { error: "bad_request" }));
     }
 
-    revalidatePath("/admin/external-results");
-    redirect(buildExternalResultsPath(EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { success: "synced" }));
+    revalidatePath(getLocalizedPath(locale as AppLocale, "/admin/external-results"));
+    redirect(buildExternalResultsPath(locale as AppLocale, EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION, { success: "synced" }));
   }
 
   const latestImportSyncRun = getLatestSyncRunByType(syncRuns, "IMPORT");
@@ -695,7 +699,7 @@ export default async function AdminExternalResultsPage({ searchParams }: AdminEx
               return (
                 <Link
                   key={state}
-                  href={buildExternalResultsPath(state)}
+                  href={buildExternalResultsPath(locale as AppLocale, state)}
                   className={
                     isActive
                       ? "rounded-full border border-cyan-300/50 bg-cyan-300/15 px-4 py-2 text-sm font-semibold text-cyan-100"

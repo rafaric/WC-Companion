@@ -24,16 +24,28 @@ function resolveMetadataBase(): URL {
 
 export const metadataBase = resolveMetadataBase();
 
+function resolveLocaleAlternate(locale: string | undefined): string {
+  switch (locale) {
+    case "es":
+      return "es_AR";
+    case "en":
+    default:
+      return "en_US";
+  }
+}
+
 export function buildPageMetadata(input: {
   category?: string;
   description: string;
   image?: string;
   index?: boolean;
   keywords?: readonly string[];
+  locale?: string;
   path: string;
   title: string;
 }): Metadata {
   const image = input.image ?? "/assets/hero.png";
+  const locale = input.locale ?? "en";
   const robots: NonNullable<Metadata["robots"]> =
     input.index === false
       ? { index: false, follow: false, googleBot: { index: false, follow: false } }
@@ -47,12 +59,16 @@ export function buildPageMetadata(input: {
     category: input.category ?? "sports",
     referrer: "origin-when-cross-origin",
     alternates: {
-      canonical: input.path,
+      canonical: `/${locale}${input.path}`,
+      languages: {
+        en: `/en${input.path}`,
+        es: `/es${input.path}`,
+      },
     },
     openGraph: {
       type: "website",
-      locale: "en_US",
-      url: input.path,
+      locale: resolveLocaleAlternate(locale),
+      url: `/${locale}${input.path}`,
       title: input.title,
       description: input.description,
       siteName: SITE_NAME,

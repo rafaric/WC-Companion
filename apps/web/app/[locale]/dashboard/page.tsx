@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
 import { auth0 } from "@/lib/auth0";
 import {
@@ -18,22 +19,31 @@ import {
   type MyGroupView,
   type RankingEntry,
 } from "@/lib/api";
-import { buildPageMetadata } from "@/lib/metadata";
 import { isProfileComplete } from "@/lib/profile";
 import { cn } from "@/lib/cn";
 import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
 import { getFriendlyDisplayName } from "@/lib/user-display";
 import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
-import { RecentlyScoredResults, type RecentlyScoredResultItem } from "./recently-scored-results";
-import { MatchPredictionAccordion } from "./match-prediction-accordion";
+import { RecentlyScoredResults, type RecentlyScoredResultItem, type RecentlyScoredResultsStrings } from "./recently-scored-results";
+import { MatchPredictionAccordion, type DashboardStrings } from "./match-prediction-accordion";
 import { CopyInviteCodeButton } from "../groups/copy-invite-code-button";
+import { getTranslations } from "next-intl/server";
+import { getLocale } from "next-intl/server";
+import { getLocalizedPath } from "@/lib/locale-nav";
+import { buildPageMetadata } from "@/lib/metadata";
+import type { AppLocale } from "@/lib/locale-nav";
 
-export const metadata = buildPageMetadata({
-  title: "Dashboard",
-  description: "Review active World Cup fixtures, save predictions, and track your latest tournament results.",
-  index: false,
-  path: "/dashboard",
-});
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations("metadata.dashboard");
+  return buildPageMetadata({
+    description: t("description"),
+    index: false,
+    locale,
+    path: "/dashboard",
+    title: t("title"),
+  });
+}
 
 type DashboardSearchParams = {
   error?: string;
@@ -41,19 +51,12 @@ type DashboardSearchParams = {
 
 interface DashboardPageProps {
   searchParams?: Promise<DashboardSearchParams>;
+  params: Promise<{ locale: string }>;
 }
 
 interface MatchPredictionCard extends MatchView {
   prediction: PredictionView | null;
 }
-
-const ERROR_MESSAGES: Record<string, string> = {
-  invalid_input: "Enter whole numbers between 0 and 20 for both scores.",
-  match_closed: "This match is no longer open for predictions.",
-  match_not_found: "We could not find that match. Refresh and try again.",
-  session_expired: "Your session expired. Sign in again to save predictions.",
-  update_failed: "We could not save your prediction right now. Try again.",
-};
 
 const MATCH_OUTCOME = {
   AWAY_WIN: "away-win",
@@ -83,12 +86,12 @@ interface ScoringExplanation {
   detail: string;
 }
 
-function getGroupRoleLabel(role: MyGroupView["role"]): string {
-  return role === "OWNER" ? "Owner" : "Member";
+function getGroupRoleLabel(role: MyGroupView["role"], t: Awaited<ReturnType<typeof getTranslations<"dashboard">>>): string {
+  return role === "OWNER" ? t("groupSection.owner") : t("groupSection.member");
 }
 
-function formatMemberCount(memberCount: number): string {
-  return `${memberCount} ${memberCount === 1 ? "member" : "members"}`;
+function formatMemberCount(memberCount: number, t: Awaited<ReturnType<typeof getTranslations<"dashboard">>>): string {
+  return t("groupSection.members", { count: memberCount });
 }
 
 function selectFeaturedGroup(groups: MyGroupView[]): MyGroupView | null {
@@ -105,7 +108,7 @@ function selectFeaturedGroup(groups: MyGroupView[]): MyGroupView | null {
   })[0] ?? null;
 }
 
-function buildDashboardPath(params: { error?: string } = {}): string {
+function buildDashboardPath(locale: string, params: { error?: string } = {}): string {
   const searchParams = new URLSearchParams();
 
   if (params.error) {
@@ -114,7 +117,7 @@ function buildDashboardPath(params: { error?: string } = {}): string {
 
   const queryString = searchParams.toString();
 
-  return queryString ? `/dashboard?${queryString}` : "/dashboard";
+  return queryString ? getLocalizedPath(locale as AppLocale, `/dashboard?${queryString}`) : getLocalizedPath(locale as AppLocale, "/dashboard");
 }
 
 function parseScoreValue(value: string): number | null {
@@ -140,8 +143,8 @@ function mergePredictions(matches: MatchView[], predictions: PredictionView[]): 
   }));
 }
 
-function formatPointsLabel(points: number): string {
-  return points === 1 ? "1 point" : `${points} points`;
+function formatPointsLabel(points: number, t: Awaited<ReturnType<typeof getTranslations<"dashboard">>>): string {
+  return points === 1 ? t("scoringExplanations.point", { count: points }) : t("scoringExplanations.points", { count: points });
 }
 
 function resolveOutcome(score: ScoreLine): MatchOutcome {
@@ -156,14 +159,14 @@ function resolveOutcome(score: ScoreLine): MatchOutcome {
   return MATCH_OUTCOME.DRAW;
 }
 
-function formatOutcomeLabel(outcome: MatchOutcome): string {
+function formatOutcomeLabel(outcome: MatchOutcome, t: Awaited<ReturnType<typeof getTranslations<"dashboard">>>): string {
   switch (outcome) {
     case MATCH_OUTCOME.HOME_WIN:
-      return "home win";
+      return t("scoringExplanations.homeWin");
     case MATCH_OUTCOME.AWAY_WIN:
-      return "away win";
+      return t("scoringExplanations.awayWin");
     case MATCH_OUTCOME.DRAW:
-      return "draw";
+      return t("scoringExplanations.draw");
   }
 }
 
@@ -185,7 +188,7 @@ function getPredictionScoreLine(prediction: PredictionView): ScoreLine {
   };
 }
 
-function getScoringExplanation(match: MatchPredictionCard): ScoringExplanation | null {
+function getScoringExplanation(match: MatchPredictionCard, t: Awaited<ReturnType<typeof getTranslations<"dashboard">>>): ScoringExplanation | null {
   if (!match.prediction) {
     return null;
   }
@@ -193,8 +196,8 @@ function getScoringExplanation(match: MatchPredictionCard): ScoringExplanation |
   if (match.prediction.scoringStatus !== PREDICTION_SCORING_STATUS.SCORED) {
     return {
       kind: SCORING_EXPLANATION_KIND.NOT_SCORED,
-      title: "Waiting for scoring",
-      detail: "Your prediction exists, but this match has not been scored yet.",
+      title: t("scoringExplanations.waitingForScoring"),
+      detail: t("scoringExplanations.waitingForScoringDetail"),
     };
   }
 
@@ -203,8 +206,8 @@ function getScoringExplanation(match: MatchPredictionCard): ScoringExplanation |
   if (!actualScore) {
     return {
       kind: SCORING_EXPLANATION_KIND.NOT_SCORED,
-      title: "Final score unavailable",
-      detail: "We have the match marked as final, but the score is not available yet.",
+      title: t("scoringExplanations.finalScoreUnavailable"),
+      detail: t("scoringExplanations.finalScoreUnavailableDetail"),
     };
   }
 
@@ -215,8 +218,8 @@ function getScoringExplanation(match: MatchPredictionCard): ScoringExplanation |
   if (exactScore) {
     return {
       kind: SCORING_EXPLANATION_KIND.EXACT_SCORE,
-      title: "Exact score",
-      detail: `You nailed the final score: ${formatPointsLabel(match.prediction.pointsAwarded)} awarded.`,
+      title: t("scoringExplanations.exactScore"),
+      detail: t("scoringExplanations.exactScoreDetail", { points: match.prediction.pointsAwarded }),
     };
   }
 
@@ -226,15 +229,21 @@ function getScoringExplanation(match: MatchPredictionCard): ScoringExplanation |
   if (predictedOutcome === actualOutcome) {
     return {
       kind: SCORING_EXPLANATION_KIND.CORRECT_OUTCOME,
-      title: "Correct outcome",
-      detail: `You predicted a ${formatOutcomeLabel(predictedOutcome)}, and the match ended as a ${formatOutcomeLabel(actualOutcome)}.`,
+      title: t("scoringExplanations.correctOutcome"),
+      detail: t("scoringExplanations.correctOutcomeDetail", {
+        predictedOutcome: formatOutcomeLabel(predictedOutcome, t),
+        actualOutcome: formatOutcomeLabel(actualOutcome, t),
+      }),
     };
   }
 
   return {
     kind: SCORING_EXPLANATION_KIND.WRONG_OUTCOME,
-    title: "Wrong outcome",
-    detail: `You predicted a ${formatOutcomeLabel(predictedOutcome)}, but the match ended as a ${formatOutcomeLabel(actualOutcome)}.`,
+    title: t("scoringExplanations.wrongOutcome"),
+    detail: t("scoringExplanations.wrongOutcomeDetail", {
+      predictedOutcome: formatOutcomeLabel(predictedOutcome, t),
+      actualOutcome: formatOutcomeLabel(actualOutcome, t),
+    }),
   };
 }
 
@@ -250,7 +259,7 @@ function getUpcomingMatchCards(matchCards: MatchPredictionCard[]): MatchPredicti
   return matchCards.filter((match) => isMatchOpenForPrediction(match));
 }
 
-function getRecentlyScoredResultItems(matchCards: MatchPredictionCard[]): RecentlyScoredResultItem[] {
+function getRecentlyScoredResultItems(matchCards: MatchPredictionCard[], t: Awaited<ReturnType<typeof getTranslations<"dashboard">>>): RecentlyScoredResultItem[] {
   return matchCards
     .filter(
       (match) =>
@@ -263,7 +272,7 @@ function getRecentlyScoredResultItems(matchCards: MatchPredictionCard[]): Recent
     )
     .map((match) => {
       const prediction = match.prediction;
-      const scoringExplanation = getScoringExplanation(match);
+      const scoringExplanation = getScoringExplanation(match, t);
 
       if (!prediction || !prediction.scoredAt || match.homeScore === null || match.awayScore === null) {
         throw new Error("Invalid recently scored match state");
@@ -283,8 +292,8 @@ function getRecentlyScoredResultItems(matchCards: MatchPredictionCard[]): Recent
         pointsAwarded: prediction.pointsAwarded,
         scoredAt: prediction.scoredAt,
         explanationKind: scoringExplanation?.kind ?? SCORING_EXPLANATION_KIND.NOT_SCORED,
-        explanationTitle: scoringExplanation?.title ?? "Waiting for scoring",
-        explanationDetail: scoringExplanation?.detail ?? "Your prediction exists, but this match has not been scored yet.",
+        explanationTitle: scoringExplanation?.title ?? t("scoringExplanations.waitingForScoring"),
+        explanationDetail: scoringExplanation?.detail ?? t("scoringExplanations.waitingForScoringDetail"),
       };
     })
     .sort((left, right) => new Date(right.scoredAt).getTime() - new Date(left.scoredAt).getTime());
@@ -292,33 +301,36 @@ function getRecentlyScoredResultItems(matchCards: MatchPredictionCard[]): Recent
 
 function getPredictionSaveErrorCode(error: unknown): string {
   if (!(error instanceof ApiError)) {
-    return "update_failed";
+    return "updateFailed";
   }
 
   if (error.status === 401 || error.status === 403) {
-    return "session_expired";
+    return "sessionExpired";
   }
 
   if (error.status === 404) {
-    return "match_not_found";
+    return "matchNotFound";
   }
 
   if (error.status === 400 && error.responseBody.toLowerCase().includes("no longer open")) {
-    return "match_closed";
+    return "matchClosed";
   }
 
   if (error.status === 400) {
-    return "invalid_input";
+    return "invalidInput";
   }
 
-  return "update_failed";
+  return "updateFailed";
 }
 
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+export default async function DashboardPage({ searchParams, params }: DashboardPageProps) {
+  const { locale } = await params;
+  const t = await getTranslations("dashboard");
+
   const session = await auth0.getSession();
 
   if (!session) {
-    redirect("/auth/login?returnTo=/dashboard");
+    redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/dashboard")}`);
   }
 
   // Resolve selected tournament from cookie (null → API uses ACTIVE fallback)
@@ -331,7 +343,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   try {
     accessToken = (await auth0.getAccessToken()).token;
   } catch {
-    redirect("/auth/login?returnTo=/dashboard");
+    redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/dashboard")}`);
   }
 
   const [currentUserProfile, matches, predictions, globalRanking, myGroups] = await Promise.all([
@@ -346,7 +358,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const displayName = getFriendlyDisplayName(session.user, currentUserProfile);
   const matchCards = mergePredictions(matches, predictions);
   const upcomingMatchCards = getUpcomingMatchCards(matchCards);
-  const recentlyScoredResultItems = getRecentlyScoredResultItems(matchCards);
+  const recentlyScoredResultItems = getRecentlyScoredResultItems(matchCards, t);
   const currentUserRankingEntry = findRankingEntryByUserId(globalRanking, currentUserProfile?.id);
   const rankingPreview = getRankingPreview(globalRanking, 3);
   const featuredGroup = selectFeaturedGroup(myGroups);
@@ -366,7 +378,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       awayScore < 0 ||
       awayScore > 20
     ) {
-      redirect(buildDashboardPath({ error: "invalid_input" }));
+      redirect(buildDashboardPath(locale, { error: "invalidInput" }));
     }
 
     let actionToken: string;
@@ -374,7 +386,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     try {
       actionToken = (await auth0.getAccessToken()).token;
     } catch {
-      redirect("/auth/login?returnTo=/dashboard");
+      redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/dashboard")}`);
     }
 
     try {
@@ -383,10 +395,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         awayScore,
       });
     } catch (error) {
-      redirect(buildDashboardPath({ error: getPredictionSaveErrorCode(error) }));
+      redirect(buildDashboardPath(locale, { error: getPredictionSaveErrorCode(error) }));
     }
 
-    revalidatePath("/dashboard");
+    revalidatePath(getLocalizedPath(locale as AppLocale, "/dashboard"));
   }
 
   return (
@@ -394,19 +406,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <section className="space-y-6 py-2 sm:py-4">
           <div className="space-y-3">
             <p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
-              World Cup predictions
+              {t("eyebrow.worldCupPredictions")}
             </p>
             <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
-              Make every World Cup fixture count.
+              {t("title.makeEveryWorldCup")}
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-              Expand one match at a time, save exact scores, and keep your tournament picks easy to scan.
+              {t("subtitle.expandOneMatch")}
             </p>
           </div>
 
           {resolvedSearchParams?.error ? (
             <div role="alert" aria-live="assertive" className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
-              {ERROR_MESSAGES[resolvedSearchParams.error] ?? "Something went wrong. Please try again."}
+              {t(`errorMessages.${resolvedSearchParams.error}`)}
             </div>
           ) : null}
 
@@ -415,23 +427,23 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-2">
                   <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">
-                    {myGroups.length > 1 ? "Your groups" : "Your group"}
+                    {myGroups.length > 1 ? t("groupSection.yourGroups") : t("groupSection.yourGroup")}
                   </p>
                   <div className="flex w-full grow flex-col">
                     <div className="flex flex-wrap items-center gap-3">
                       <h2 className="text-lg font-semibold text-white">{featuredGroup.name}</h2>
                       <span className="rounded-full border border-cyan-300/20 bg-slate-950/40 px-3 py-1 text-xs text-cyan-100/80">
-                        {getGroupRoleLabel(featuredGroup.role)}
+                        {getGroupRoleLabel(featuredGroup.role, t)}
                       </span>
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-2 text-xs text-cyan-100/80">
                       <span className="rounded-full border border-cyan-300/20 bg-slate-950/40 px-3 py-1">
-                        {formatMemberCount(featuredGroup.memberCount)}
+                        {formatMemberCount(featuredGroup.memberCount, t)}
                       </span>
                       {additionalGroupsCount > 0 ? (
                         <span className="rounded-full border border-cyan-300/20 bg-slate-950/40 px-3 py-1">
-                          +{additionalGroupsCount} more group{additionalGroupsCount === 1 ? "" : "s"}
+                          {t("groupSection.additionalGroups", { count: additionalGroupsCount })}
                         </span>
                       ) : null}
                     </div>
@@ -440,14 +452,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
                 <div className="flex flex-col gap-2 sm:items-end">
                   <Link
-                    href={`/groups/${featuredGroup.id}`}
+                    href={getLocalizedPath(locale as AppLocale, `/groups/${featuredGroup.id}`)}
                     className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 px-4 py-2 text-center text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 sm:w-auto"
                   >
-                    Open featured group
+                    {t("groupSection.openFeaturedGroup")}
                   </Link>
                   {myGroups.length > 1 ? (
-                    <Link href="/groups" className="text-center text-sm font-medium text-cyan-200 transition hover:text-white">
-                      View all groups
+                    <Link href={getLocalizedPath(locale as AppLocale, "/groups")} className="text-center text-sm font-medium text-cyan-200 transition hover:text-white">
+                      {t("groupSection.viewAllGroups")}
                     </Link>
                   ) : null}
                 </div>
@@ -455,7 +467,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
               <div className="mt-4 grid gap-1 sm:grid-cols-[1fr_auto] sm:items-center">
                 <p className="px-2 text-sm leading-6 text-cyan-100/70">
-                  Share this code with friends so they can join this group:
+                  {t("groupSection.shareCode")}
                 </p>
                 <CopyInviteCodeButton inviteCode={featuredGroup.inviteCode} showCode />
               </div>
@@ -464,27 +476,43 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
           {!profileComplete ? (
             <div className="rounded-3xl border border-amber-400/20 bg-amber-400/10 p-5 text-amber-100">
-              <p className="text-sm font-semibold">Complete your profile to submit predictions.</p>
+              <p className="text-sm font-semibold">{t("profileIncomplete.title")}</p>
               <p className="mt-2 text-sm leading-6 text-amber-100/80">
-                Country and favorite team are required before we unlock the form.
+                {t("profileIncomplete.body")}
               </p>
               <Link
-                href="/onboarding"
+                href={getLocalizedPath(locale as AppLocale, "/onboarding")}
                 className="mt-4 inline-flex rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-110"
               >
-                Finish profile
+                {t("profileIncomplete.finishProfile")}
               </Link>
             </div>
           ) : null}
 
-          <RecentlyScoredResults items={recentlyScoredResultItems} />
+          <RecentlyScoredResults
+            items={recentlyScoredResultItems}
+            i18n={{
+              locale,
+              recentlyScored: t("dashboardStrings.recentlyScored"),
+              newResultsFromYourPredictions: t("dashboardStrings.newResultsFromYourPredictions"),
+              theseAreFinishedMatches: t("dashboardStrings.theseAreFinishedMatches"),
+              clear: t("dashboardStrings.clear"),
+              final: t("dashboardStrings.final"),
+              yourPick: t("dashboardStrings.yourPick"),
+              points: t("dashboardStrings.points"),
+              whyThisScore: t("dashboardStrings.whyThisScore"),
+              stageUnavailable: t("dashboardStrings.stageUnavailable"),
+              point: t("scoringExplanations.point", { count: 1 }),
+              pointsLabel: t("scoringExplanations.points", { count: 999 }),
+            }}
+          />
 
           <div className="space-y-4">
             <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/30">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">World Cup predictions</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("predictionSection.worldCupPredictionsLabel")}</p>
                 <p className="mt-1 text-sm text-slate-300">
-                  Compact rows show each fixture and pick status. Open a match to update the full prediction.
+                  {t("predictionSection.compactRowsShow")}
                 </p>
               </div>
             </div>
@@ -493,23 +521,65 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               matches={upcomingMatchCards}
               profileComplete={profileComplete}
               submitPredictionAction={submitPrediction}
+              i18n={{
+                locale,
+                noUpcomingMatches: t("dashboardStrings.noUpcomingMatches"),
+                loadingLocalDates: t("dashboardStrings.loadingLocalDates"),
+                previousDate: t("dashboardStrings.previousDate"),
+                nextDate: t("dashboardStrings.nextDate"),
+                vs: t("dashboardStrings.vs"),
+                exactScore: t("scoringExplanations.exactScore"),
+                finalResult: t("dashboardStrings.finalResult"),
+                yourPick: t("dashboardStrings.yourPick"),
+                pointsEarned: t("dashboardStrings.pointsEarned"),
+                scoredAt: t("dashboardStrings.scoredAt"),
+                whyThisScore: t("dashboardStrings.whyThisScore"),
+                noPredictionSubmitted: t("dashboardStrings.noPredictionSubmitted"),
+                yourPrediction: t("dashboardStrings.yourPrediction"),
+                setExactWorldCupScore: t("dashboardStrings.setExactWorldCupScore"),
+                savePrediction: t("dashboardStrings.savePrediction"),
+                matchFinalLocked: t("dashboardStrings.matchFinalLocked"),
+                matchNoLongerOpen: t("dashboardStrings.matchNoLongerOpen"),
+                completeProfileToUnlock: t("dashboardStrings.completeProfileToUnlock"),
+                pending: t("dashboardStrings.pending"),
+                resultPending: t("dashboardStrings.resultPending"),
+                unknown: t("dashboardStrings.unknown"),
+                waitingForFinalResult: t("dashboardStrings.waitingForFinalResult"),
+                noPredictionSubmittedLabel: t("dashboardStrings.noPredictionSubmittedLabel"),
+                predictionWaitingToBeScored: t("dashboardStrings.predictionWaitingToBeScored"),
+                youEarned: t("dashboardStrings.youEarned", { points: "{points}" }),
+                point: t("scoringExplanations.point", { count: 1 }),
+                points: t("scoringExplanations.points", { count: 999 }),
+                homeWin: t("scoringExplanations.homeWin"),
+                awayWin: t("scoringExplanations.awayWin"),
+                draw: t("scoringExplanations.draw"),
+                waitingForScoring: t("scoringExplanations.waitingForScoring"),
+                waitingForScoringDetail: t("scoringExplanations.waitingForScoringDetail"),
+                finalScoreUnavailable: t("scoringExplanations.finalScoreUnavailable"),
+                finalScoreUnavailableDetail: t("scoringExplanations.finalScoreUnavailableDetail"),
+                correctOutcome: t("scoringExplanations.correctOutcome"),
+                wrongOutcome: t("scoringExplanations.wrongOutcome"),
+                exactScoreDetail: t("scoringExplanations.exactScoreDetail", { points: "{points}" }),
+                correctOutcomeDetail: t("scoringExplanations.correctOutcomeDetail", { predictedOutcome: "{predictedOutcome}", actualOutcome: "{actualOutcome}" }),
+                wrongOutcomeDetail: t("scoringExplanations.wrongOutcomeDetail", { predictedOutcome: "{predictedOutcome}", actualOutcome: "{actualOutcome}" }),
+              }}
             />
           </div>
 
           <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/30">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Global ranking</p>
-                <h2 className="mt-1 text-base font-semibold text-white">Your overall standing</h2>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("rankingSection.globalRanking")}</p>
+                <h2 className="mt-1 text-base font-semibold text-white">{t("rankingSection.yourOverallStanding")}</h2>
                 <p className="mt-1 text-sm leading-6 text-slate-400">
-                  See how your points compare across all players, beyond your private groups.
+                  {t("rankingSection.seeHowYourPoints")}
                 </p>
               </div>
               <Link
-                href="/rankings"
+                href={getLocalizedPath(locale as AppLocale, "/rankings")}
                 className="whitespace-nowrap rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800"
               >
-                View all
+                {t("rankingSection.viewAll")}
               </Link>
             </div>
 
@@ -521,26 +591,26 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       <span className="text-2xl font-black text-cyan-200">#{currentUserRankingEntry.position}</span>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Current position</p>
+                      <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">{t("rankingSection.currentPosition")}</p>
                       <p className="mt-1 truncate text-sm font-semibold text-white">{displayName}</p>
-                      <p className="text-xs text-cyan-100/70">Your place in the global board</p>
+                      <p className="text-xs text-cyan-100/70">{t("rankingSection.yourPlaceInGlobalBoard")}</p>
                     </div>
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Points</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">{t("rankingSection.points")}</p>
                     <p className="mt-1 text-3xl font-black tabular-nums text-white">{currentUserRankingEntry.totalPoints}</p>
-                    <p className="text-xs font-semibold text-cyan-100/70">pts</p>
+                    <p className="text-xs font-semibold text-cyan-100/70">{t("rankingSection.pts")}</p>
                   </div>
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 text-center">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Exact picks</p>
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{t("rankingSection.exactPicks")}</p>
                     <p className="mt-1 text-xl font-black text-white">{currentUserRankingEntry.exactPredictions}</p>
                   </div>
                   <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 text-center">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Predictions</p>
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{t("rankingSection.predictions")}</p>
                     <p className="mt-1 text-xl font-black text-white">{currentUserRankingEntry.predictionsCount}</p>
                   </div>
                 </div>
@@ -548,8 +618,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             ) : (
               <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">
                 {profileComplete
-                  ? "Score your first matched prediction to appear in the ranking."
-                  : "Complete your profile and score a match to join the ranking."}
+                  ? t("rankingSection.scoreFirstPrediction")
+                  : t("rankingSection.completeProfileAndScore")}
               </div>
             )}
 
@@ -573,12 +643,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                           </p>
                           {isCurrentUser ? (
                             <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
-                              You
+                              {t("rankingSection.you")}
                             </span>
                           ) : null}
                         </div>
                         <p className="text-xs text-slate-500">
-                          {entry.exactPredictions} exact · {entry.predictionsCount} predictions
+                          {t("rankingSection.exactPicksLabel", { count: entry.exactPredictions, total: entry.predictionsCount })}
                         </p>
                       </div>
                       <p className="text-lg font-black text-cyan-300">{entry.totalPoints} pts</p>
@@ -588,7 +658,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               </ul>
             ) : (
               <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">
-                No global ranking yet. Once scored predictions land, the board will appear here.
+                {t("rankingSection.noGlobalRankingYet")}
               </div>
             )}
           </section>

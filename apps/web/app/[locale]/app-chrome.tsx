@@ -4,12 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
 
 import type { CurrentUserProfile, TeamView } from "@/lib/api";
 import { FlagIcon } from "@/components/FlagIcon";
 import { getFlagEmoji } from "@/lib/flags";
 import { getFriendlyDisplayName, getFriendlyEmailLabel, type SessionDisplayUser } from "@/lib/user-display";
 import { ProfileEditModal } from "./profile-edit-modal";
+import { getLocalizedPath, stripLocalePrefix, type AppLocale } from "@/lib/locale-nav";
 
 interface AppChromeProps {
   availableTeams: TeamView[];
@@ -24,7 +26,7 @@ interface AppChromeProps {
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKey: string;
 }
 
 const AUTHENTICATED_PATH_PREFIXES = ["/admin", "/dashboard", "/groups", "/rankings", "/share"] as const;
@@ -33,32 +35,10 @@ function isAuthenticatedPath(pathname: string): boolean {
   return AUTHENTICATED_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
-function getSectionLabel(pathname: string): string {
-  if (pathname.startsWith("/groups/")) {
-    return "Group ranking";
-  }
-
-  if (pathname.startsWith("/groups")) {
-    return "Private groups";
-  }
-
-  if (pathname.startsWith("/share")) {
-    return "Share cards";
-  }
-
-  if (pathname.startsWith("/rankings")) {
-    return "Global ranking";
-  }
-
-  if (pathname.startsWith("/admin")) {
-    return "Admin review";
-  }
-
-  return "Predictions dashboard";
-}
-
 export function AppChrome({ availableTeams, canAccessExternalResults, children, currentUserProfile, favoriteTeam, sessionUser, tournamentSelector }: AppChromeProps) {
   const pathname = usePathname();
+  const locale = useLocale();
+  const t = useTranslations("chrome");
   const menuId = useId();
   const firstMenuLinkRef = useRef<HTMLAnchorElement | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -92,25 +72,27 @@ export function AppChrome({ availableTeams, canAccessExternalResults, children, 
     return () => window.removeEventListener("keydown", handleEscape);
   }, [menuOpen]);
 
-  if (!pathname || !isAuthenticatedPath(pathname) || sessionUser === null) {
+  const strippedPathname = pathname ? stripLocalePrefix(pathname) : null;
+
+  if (!strippedPathname || !isAuthenticatedPath(strippedPathname) || sessionUser === null) {
     return <>{children}</>;
   }
 
   const navItems: NavItem[] = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/groups", label: "Groups" },
-    { href: "/share", label: "Share cards" },
-    { href: "/rankings", label: "Rankings" },
+    { href: `/${locale}/dashboard`, labelKey: "nav.dashboard" },
+    { href: `/${locale}/groups`, labelKey: "nav.groups" },
+    { href: `/${locale}/share`, labelKey: "nav.share" },
+    { href: `/${locale}/rankings`, labelKey: "nav.rankings" },
   ];
 
   if (canAccessExternalResults) {
-    navItems.push({ href: "/admin/external-results", label: "External results" });
+    navItems.push({ href: `/${locale}/admin/external-results`, labelKey: "nav.admin" });
   }
 
   const displayName = getFriendlyDisplayName(sessionUser, currentUserProfile);
   const emailLabel = getFriendlyEmailLabel(sessionUser, currentUserProfile);
   const countryFlag = getFlagEmoji(currentUserProfile?.country ?? null);
-  const favoriteTeamLabel = favoriteTeam?.shortName ?? "Team";
+  const favoriteTeamLabel = favoriteTeam?.shortName ?? null;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-50">
@@ -119,10 +101,22 @@ export function AppChrome({ availableTeams, canAccessExternalResults, children, 
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8">
         <header className="fixed inset-x-4 top-4 z-40 mx-auto max-w-6xl rounded-full border border-slate-800/80 bg-slate-900/85 px-4 py-3 shadow-2xl shadow-slate-950/30 backdrop-blur sm:inset-x-6 lg:inset-x-8">
           <div className="flex items-center justify-between gap-4 md:gap-3">
-            <Link href="/dashboard" className="inline-flex shrink-0 items-center gap-3 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400">
+            <Link href={`/${locale}/dashboard`} className="inline-flex shrink-0 items-center gap-3 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400">
               <Image src="/assets/LogoLong.png" alt="WorldPredict logo" width={144} height={40} priority className="h-8 w-auto object-contain pb-1" />
               <div className="min-w-0 md:hidden">
-                <p className="truncate text-xs text-slate-400">{getSectionLabel(pathname)}</p>
+                <p className="truncate text-xs text-slate-400">
+                  {strippedPathname.startsWith("/groups/")
+                    ? t("sectionLabels.groupRanking")
+                    : strippedPathname.startsWith("/groups")
+                      ? t("sectionLabels.privateGroups")
+                      : strippedPathname.startsWith("/share")
+                        ? t("sectionLabels.shareCards")
+                        : strippedPathname.startsWith("/rankings")
+                          ? t("sectionLabels.globalRanking")
+                          : strippedPathname.startsWith("/admin")
+                            ? t("sectionLabels.adminReview")
+                            : t("sectionLabels.predictionsDashboard")}
+                </p>
               </div>
             </Link>
 
@@ -131,7 +125,7 @@ export function AppChrome({ availableTeams, canAccessExternalResults, children, 
                 {tournamentSelector && <div className="shrink-0">{tournamentSelector}</div>}
                 <div className="flex min-w-0 items-center justify-end gap-2 overflow-x-auto scrollbar-none">
                   {navItems.map((item) => {
-                    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    const isActive = strippedPathname === item.href.replace(`/${locale}`, "") || strippedPathname.startsWith(`${item.href.replace(`/${locale}`, "")}/`);
 
                     return (
                       <Link
@@ -144,7 +138,7 @@ export function AppChrome({ availableTeams, canAccessExternalResults, children, 
                             : "text-slate-200 hover:bg-slate-800/80 hover:text-white"
                         }`}
                       >
-                        {item.label}
+                        {t(item.labelKey)}
                       </Link>
                     );
                   })}
@@ -163,7 +157,7 @@ export function AppChrome({ availableTeams, canAccessExternalResults, children, 
                   href="/auth/logout"
                   className="shrink-0 whitespace-nowrap rounded-full border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 lg:px-4"
                 >
-                  Log out
+                  {t("nav.logout")}
                 </Link>
               </div>
             </div>
@@ -172,7 +166,7 @@ export function AppChrome({ availableTeams, canAccessExternalResults, children, 
               {menuOpen ? (
                 <button
                   type="button"
-                  aria-label="Close navigation menu"
+                  aria-label={t("nav.closeMenu")}
                   onClick={() => {
                     setMenuOpen(false);
                     menuButtonRef.current?.focus();
@@ -187,13 +181,13 @@ export function AppChrome({ availableTeams, canAccessExternalResults, children, 
                 aria-controls={menuId}
                 aria-expanded={menuOpen}
                 aria-haspopup="dialog"
-                aria-label={menuOpen ? "Close primary navigation" : "Open primary navigation"}
+                aria-label={menuOpen ? t("nav.closeMenu") : t("nav.openMenu")}
                 onClick={() => setMenuOpen((current) => !current)}
                 className="inline-flex items-center gap-3 rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-600 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
               >
                 <span className="hidden text-right sm:block">
                   <span className="block text-xs font-medium text-white">{displayName}</span>
-                  <span className="block text-[11px] text-slate-400">Menu</span>
+                  <span className="block text-[11px] text-slate-400">{t("nav.menu")}</span>
                 </span>
                 <span aria-hidden="true" className="text-lg leading-none">☰</span>
               </button>
@@ -238,7 +232,7 @@ export function AppChrome({ availableTeams, canAccessExternalResults, children, 
 
                   <nav aria-label="Primary" className="mt-3 grid gap-2">
                     {navItems.map((item, index) => {
-                      const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                      const isActive = strippedPathname === item.href.replace(`/${locale}`, "") || strippedPathname.startsWith(`${item.href.replace(`/${locale}`, "")}/`);
 
                       return (
                         <Link
@@ -252,16 +246,16 @@ export function AppChrome({ availableTeams, canAccessExternalResults, children, 
                               : "bg-slate-950/60 text-slate-100 hover:bg-slate-800"
                           }`}
                         >
-                          {item.label}
+                          {t(item.labelKey)}
                         </Link>
                       );
                     })}
 
                     <Link
-                      href="/auth/logout"
+href="/auth/logout"
                       className="rounded-2xl bg-slate-950/60 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
                     >
-                      Log out
+                      {t("nav.logout")}
                     </Link>
                   </nav>
                 </div>

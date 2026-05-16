@@ -7,6 +7,7 @@ import { buildPageMetadata } from "@/lib/metadata";
 import { getFriendlyDisplayName } from "@/lib/user-display";
 import { CopyInviteCodeButton } from "../copy-invite-code-button";
 import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
+import { getLocalizedPath, type AppLocale } from "@/lib/locale-nav";
 
 export const metadata = buildPageMetadata({
   title: "Group ranking",
@@ -16,7 +17,7 @@ export const metadata = buildPageMetadata({
 });
 
 interface GroupDetailPageProps {
-  params: Promise<{ groupId: string }>;
+  params: Promise<{ groupId: string; locale: string }>;
 }
 
 interface RankingStatsProps {
@@ -225,20 +226,20 @@ function RankingRow({
 }
 
 export default async function GroupDetailPage({ params }: GroupDetailPageProps) {
+  const { groupId, locale } = await params;
+
   const session = await auth0.getSession();
 
   if (!session) {
-    redirect("/auth/login?returnTo=/groups");
+    redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, `/groups/${groupId}`)}`);
   }
-
-  const { groupId } = await params;
 
   let accessToken: string;
 
   try {
     accessToken = (await auth0.getAccessToken()).token;
   } catch {
-    redirect("/auth/login?returnTo=/groups");
+    redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, `/groups/${groupId}`)}`);
   }
 
   const tournamentSlug = await resolveTournamentSlug();
