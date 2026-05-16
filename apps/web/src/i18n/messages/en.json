@@ -1,0 +1,335 @@
+{
+  "chrome": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "groups": "Groups",
+      "share": "Share cards",
+      "rankings": "Rankings",
+      "admin": "External results",
+      "logout": "Log out",
+      "menu": "Menu",
+      "closeMenu": "Close navigation menu",
+      "openMenu": "Open primary navigation"
+    },
+    "sectionLabels": {
+      "groupRanking": "Group ranking",
+      "privateGroups": "Private groups",
+      "shareCards": "Share cards",
+      "globalRanking": "Global ranking",
+      "adminReview": "Admin review",
+      "predictionsDashboard": "Predictions dashboard"
+    },
+    "profile": {
+      "editProfile": "Edit profile"
+    }
+  },
+  "landing": {
+    "eyebrow": {
+      "activeTournament": "No active tournament yet"
+    },
+    "hero": {
+      "title": "World Cup predictions feel better when {rivalry} the rivalry is personal.",
+      "titleRivalry": "the rivalry is personal.",
+      "subtitle": "WorldPredict keeps the tournament focused on quick match picks, private groups, and live rankings that make every confirmed World Cup result matter."
+    },
+    "cta": {
+      "openDashboard": "Open dashboard",
+      "completeProfile": "Complete profile",
+      "logInToPredict": "Log in to predict",
+      "myGroups": "My groups",
+      "secureSignIn": "Secure sign in",
+      "logOut": "Log out",
+      "editProfile": "Edit profile"
+    },
+    "aside": {
+      "matchToWatch": "Match to watch",
+      "noMatchesScheduled": "No matches scheduled",
+      "kickoff": "Kickoff {date}",
+      "noUpcomingMatches": "The backend has not published upcoming matches yet.",
+      "yourAccount": "Your account",
+      "readyWhenYouAre": "Ready when you are",
+      "signInPrompt": "Sign in to save predictions, join private groups, and follow the ranking as results are confirmed.",
+      "logIn": "Log in"
+    },
+    "stats": {
+      "activeTournament": "Active tournament",
+      "offline": "Offline",
+      "noTournamentData": "Backend data unavailable",
+      "globalLeader": "Global leader",
+      "noRankingsYet": "No rankings yet",
+      "beFirstToScore": "Be the first to score",
+      "rankedPlayers": "Ranked players",
+      "waitingForScores": "Waiting for scores",
+      "exactPicks": "Top exact picks: {count}",
+      "points": "{count} points"
+    },
+    "header": {
+      "brandName": "WorldPredict",
+      "tagline": "Social football prediction",
+      "authenticatedLabel": "Authenticated"
+    }
+  },
+  "dashboard": {
+    "eyebrow": {
+      "worldCupPredictions": "World Cup predictions"
+    },
+    "title": {
+      "makeEveryWorldCup": "Make every World Cup fixture count."
+    },
+    "subtitle": {
+      "expandOneMatch": "Expand one match at a time, save exact scores, and keep your tournament picks easy to scan."
+    },
+    "errorMessages": {
+      "invalidInput": "Enter whole numbers between 0 and 20 for both scores.",
+      "matchClosed": "This match is no longer open for predictions.",
+      "matchNotFound": "We could not find that match. Refresh and try again.",
+      "sessionExpired": "Your session expired. Sign in again to save predictions.",
+      "updateFailed": "We could not save your prediction right now. Try again."
+    },
+    "profileIncomplete": {
+      "title": "Complete your profile to submit predictions.",
+      "body": "Country and favorite team are required before we unlock the form.",
+      "finishProfile": "Finish profile"
+    },
+    "groupSection": {
+      "yourGroups": "Your groups",
+      "yourGroup": "Your group",
+      "owner": "Owner",
+      "member": "Member",
+      "members": "{count} member | {count} members",
+      "additionalGroups": "+{count} more group | +{count} more groups",
+      "openFeaturedGroup": "Open featured group",
+      "viewAllGroups": "View all groups",
+      "shareCode": "Share this code with friends so they can join this group:"
+    },
+    "rankingSection": {
+      "globalRanking": "Global ranking",
+      "yourOverallStanding": "Your overall standing",
+      "seeHowYourPoints": "See how your points compare across all players, beyond your private groups.",
+      "viewAll": "View all",
+      "currentPosition": "Current position",
+      "yourPlaceInGlobalBoard": "Your place in the global board",
+      "points": "Points",
+      "pts": "pts",
+      "exactPicks": "Exact picks",
+      "predictions": "Predictions",
+      "scoreFirstPrediction": "Score your first matched prediction to appear in the ranking.",
+      "completeProfileAndScore": "Complete your profile and score a match to join the ranking.",
+      "noGlobalRankingYet": "No global ranking yet. Once scored predictions land, the board will appear here.",
+      "exactPicksLabel": "{count} exact · {total} predictions",
+      "you": "You"
+    },
+    "predictionSection": {
+      "worldCupPredictionsLabel": "World Cup predictions",
+      "compactRowsShow": "Compact rows show each fixture and pick status. Open a match to update the full prediction."
+    },
+    "scoringExplanations": {
+      "waitingForScoring": "Waiting for scoring",
+      "waitingForScoringDetail": "Your prediction exists, but this match has not been scored yet.",
+      "finalScoreUnavailable": "Final score unavailable",
+      "finalScoreUnavailableDetail": "We have the match marked as final, but the score is not available yet.",
+      "exactScore": "Exact score",
+      "exactScoreDetail": "You nailed the final score: {points} awarded.",
+      "correctOutcome": "Correct outcome",
+      "correctOutcomeDetail": "You predicted a {predictedOutcome}, and the match ended as {actualOutcome}.",
+      "wrongOutcome": "Wrong outcome",
+      "wrongOutcomeDetail": "You predicted a {predictedOutcome}, but the match ended as {actualOutcome}.",
+      "homeWin": "home win",
+      "awayWin": "away win",
+      "draw": "draw",
+      "point": "{count} point",
+      "points": "{count} points"
+    },
+    "dashboardStrings": {
+      "noUpcomingMatches": "No upcoming World Cup matches open for prediction right now. New scored matches will appear above when results land.",
+      "loadingLocalDates": "Loading local match dates...",
+      "previousDate": "Previous date",
+      "nextDate": "Next date",
+      "vs": "vs",
+      "finalResult": "Final result",
+      "yourPick": "Your pick",
+      "pointsEarned": "Points earned",
+      "scoredAt": "Scored at",
+      "whyThisScore": "Why this score?",
+      "noPredictionSubmitted": "You did not submit a prediction for this match, so no points were awarded.",
+      "yourPrediction": "Your prediction",
+      "setExactWorldCupScore": "Set the exact World Cup score.",
+      "savePrediction": "Save prediction",
+      "matchFinalLocked": "This match is final, so predictions are locked.",
+      "matchNoLongerOpen": "This match is no longer open for predictions.",
+      "completeProfileToUnlock": "Complete your profile to unlock the prediction form for this match.",
+      "pending": "Pending",
+      "resultPending": "Result pending",
+      "unknown": "Unknown",
+      "waitingForFinalResult": "Waiting for final result",
+      "noPredictionSubmittedLabel": "No prediction submitted",
+      "predictionWaitingToBeScored": "Prediction waiting to be scored",
+      "youEarned": "You earned {points}",
+      "recentlyScored": "Recently scored",
+      "newResultsFromYourPredictions": "New results from your predictions",
+      "theseAreFinishedMatches": "These are finished matches you predicted since you last cleared this section.",
+      "clear": "Clear",
+      "final": "Final",
+      "points": "Points",
+      "stageUnavailable": "Stage unavailable"
+    }
+  },
+  "share": {
+    "eyebrow": {
+      "shareableSnapshots": "Shareable snapshots"
+    },
+    "title": {
+      "previewTheCard": "Preview the card before you share it."
+    },
+    "description": {
+      "previewDescription": "Preview your prediction, group standing, or performance summary with the current visual card treatment before you copy or share it."
+    },
+    "successMessages": {
+      "prediction": "Prediction preview ready.",
+      "performanceSummary": "Performance summary ready.",
+      "groupRanking": "Group standing ready."
+    },
+    "errorMessages": {
+      "invalidInput": "Choose a valid prediction or group before generating a share card.",
+      "sessionExpired": "Your session expired. Sign in again to generate share cards.",
+      "predictionNotFound": "We could not find that saved prediction.",
+      "performanceNotReady": "Your performance summary is not ready yet.",
+      "groupForbidden": "You need access to that group before sharing its standing.",
+      "groupNotReady": "We could not find a ranking snapshot for that group yet.",
+      "createFailed": "We could not generate the share card right now. Try again."
+    },
+    "predictionForm": {
+      "prediction": "Prediction",
+      "shareYourPrediction": "Share your prediction",
+      "pickOneSaved": "Pick one of your saved predictions and turn it into a clean share card.",
+      "savedPrediction": "Saved prediction",
+      "noPredictionsAvailable": "No predictions available",
+      "choosePrediction": "Choose a prediction",
+      "usesYourSavedData": "Uses your saved prediction data and the current visual card background.",
+      "previewPrediction": "Preview prediction"
+    },
+    "performanceForm": {
+      "performanceSummary": "Performance summary",
+      "shareYourTournamentProgress": "Share your tournament progress",
+      "showYourPoints": "Show your points, exact picks, and current position in one card.",
+      "previewSummary": "Preview summary"
+    },
+    "groupForm": {
+      "groupStanding": "Group standing",
+      "shareGroupStanding": "Share group standing",
+      "chooseGroup": "Choose one of your groups and turn the current table into a clean share card.",
+      "myGroups": "My groups",
+      "noGroupsAvailable": "No groups available",
+      "chooseGroupOption": "Choose a group",
+      "showGroupInfo": "Show your group name, current place, points, and predictions in one card.",
+      "generateGroupCard": "Generate group card"
+    },
+    "templates": {
+      "shareMyPrediction": "Share my prediction",
+      "predictedBy": "Predicted by",
+      "selectedMatch": "Selected match",
+      "homeTeam": "Home team",
+      "awayTeam": "Away team",
+      "predictedScore": "Predicted score",
+      "matchContext": "Match context",
+      "previewCardBeforeSharing": "Preview the card before sharing.",
+      "shareWithYourCrew": "Share with your crew",
+      "points": "Points",
+      "status": "Status",
+      "mySquadPerformance": "My squad performance",
+      "countryLabelDefault": "World Cup contender",
+      "totalPoints": "Total points",
+      "exactPicks": "Exact picks",
+      "rank": "Rank",
+      "savedPredictions": "Saved predictions",
+      "subtleCelebration": "Subtle celebration",
+      "topOfLeaderboard": "Currently in the top {position} of {total}.",
+      "progressNotReady": "Your tournament progress will show up here once your ranking is ready.",
+      "shareWithYourSquad": "Share with your squad",
+      "groupStanding": "Group standing",
+      "chooseAGroup": "Choose a group",
+      "shareYourSquadTable": "Share your squad table",
+      "currentPlace": "Current place",
+      "squadSnapshot": "Squad snapshot",
+      "groupLiveMessage": "Your group is live with {points} points and {count} predictions on the board.",
+      "pickGroupToPreview": "Pick one of your groups to preview the current table before sharing it."
+    },
+    "fallback": {
+      "pickPredictionToEnable": "Pick a saved prediction to enable copy/share.",
+      "generateCardToEnable": "Generate the group card to enable copy/share."
+    }
+  },
+  "onboarding": {
+    "eyebrow": {
+      "profileSetup": "Profile setup"
+    },
+    "title": {
+      "finishYourAccountDetails": "Finish your account details"
+    },
+    "subtitle": {
+      "personalizeCompetition": "We use country and favorite team to personalize your competition view."
+    },
+    "signedInAs": "Signed in as {name}",
+    "errorMessages": {
+      "invalidInput": "Please choose a country, team, and language.",
+      "updateFailed": "We could not save your profile right now. Try again."
+    },
+    "form": {
+      "country": "Country",
+      "selectCountry": "Select a country",
+      "preferredLanguage": "Preferred language",
+      "favoriteTeam": "Favorite team",
+      "noTeamsAvailable": "No teams available yet",
+      "selectTeam": "Select a team",
+      "waitingForMatches": "Waiting for active matches to publish teams.",
+      "lastStepBeforePredicting": "This is the last step before predicting.",
+      "saveProfile": "Save profile"
+    },
+    "header": {
+      "brandName": "WorldPredict",
+      "completeProfile": "Complete your profile",
+      "backHome": "Back home"
+    }
+  },
+  "dashboardStrings": {
+    "noUpcomingMatches": "No upcoming World Cup matches open for prediction right now. New scored matches will appear above when results land.",
+    "loadingLocalDates": "Loading local match dates...",
+    "previousDate": "Previous date",
+    "nextDate": "Next date",
+    "vs": "vs",
+    "exactScore": "Exact score",
+    "finalResult": "Final result",
+    "yourPick": "Your pick",
+    "pointsEarned": "Points earned",
+    "scoredAt": "Scored at",
+    "whyThisScore": "Why this score?",
+    "noPredictionSubmitted": "You did not submit a prediction for this match, so no points were awarded.",
+    "yourPrediction": "Your prediction",
+    "setExactWorldCupScore": "Set the exact World Cup score.",
+    "savePrediction": "Save prediction",
+    "matchFinalLocked": "This match is final, so predictions are locked.",
+    "matchNoLongerOpen": "This match is no longer open for predictions.",
+    "completeProfileToUnlock": "Complete your profile to unlock the prediction form for this match.",
+    "pending": "Pending",
+    "resultPending": "Result pending",
+    "unknown": "Unknown",
+    "waitingForFinalResult": "Waiting for final result",
+    "noPredictionSubmittedLabel": "No prediction submitted",
+    "predictionWaitingToBeScored": "Prediction waiting to be scored",
+    "youEarned": "You earned {points}"
+  },
+  "metadata": {
+    "dashboard": {
+      "title": "Dashboard",
+      "description": "Review active World Cup fixtures, save predictions, and track your latest tournament results."
+    },
+    "share": {
+      "title": "Share cards",
+      "description": "Preview and share your football prediction snapshots, performance summaries, and private group standings."
+    },
+    "onboarding": {
+      "title": "Complete profile",
+      "description": "Choose your country, language, and favorite team before joining the football prediction competition."
+    }
+  }
+}

@@ -1,0 +1,335 @@
+{
+  "chrome": {
+    "nav": {
+      "dashboard": "Panel",
+      "groups": "Grupos",
+      "share": "Tarjetas para compartir",
+      "rankings": "Clasificaciones",
+      "admin": "Resultados externos",
+      "logout": "Cerrar sesión",
+      "menu": "Menú",
+      "closeMenu": "Cerrar navegación",
+      "openMenu": "Abrir navegación principal"
+    },
+    "sectionLabels": {
+      "groupRanking": "Clasificación del grupo",
+      "privateGroups": "Grupos privados",
+      "shareCards": "Tarjetas para compartir",
+      "globalRanking": "Clasificación global",
+      "adminReview": "Revisión de admin",
+      "predictionsDashboard": "Panel de predicciones"
+    },
+    "profile": {
+      "editProfile": "Editar perfil"
+    }
+  },
+  "landing": {
+    "eyebrow": {
+      "activeTournament": "Sin torneo activo"
+    },
+    "hero": {
+      "title": "Las predicciones del Mundial se disfrutan más cuando {rivalry} la rivalidad es personal.",
+      "titleRivalry": "la rivalidad es personal.",
+      "subtitle": "WorldPredict mantiene el torneo enfocado en predicciones rápidas, grupos privados y clasificaciones en vivo que hacen que cada resultado confirmado del Mundial importe."
+    },
+    "cta": {
+      "openDashboard": "Abrir panel",
+      "completeProfile": "Completar perfil",
+      "logInToPredict": "Iniciar sesión para predecir",
+      "myGroups": "Mis grupos",
+      "secureSignIn": "Acceso seguro",
+      "logOut": "Cerrar sesión",
+      "editProfile": "Editar perfil"
+    },
+    "aside": {
+      "matchToWatch": "Partido a seguir",
+      "noMatchesScheduled": "Sin partidos programados",
+      "kickoff": "Inicio {date}",
+      "noUpcomingMatches": "El backend aún no publicó partidos próximos.",
+      "yourAccount": "Tu cuenta",
+      "readyWhenYouAre": "Listo cuando tú lo estés",
+      "signInPrompt": "Iniciá sesión para guardar predicciones, unirte a grupos privados y seguir la clasificación mientras se confirman los resultados.",
+      "logIn": "Iniciar sesión"
+    },
+    "stats": {
+      "activeTournament": "Torneo activo",
+      "offline": "Fuera de línea",
+      "noTournamentData": "Datos del torneo no disponibles",
+      "globalLeader": "Líder global",
+      "noRankingsYet": "Sin clasificaciones aún",
+      "beFirstToScore": "Sé el primero en puntuar",
+      "rankedPlayers": "Jugadores rankeados",
+      "waitingForScores": "Esperando resultados",
+      "exactPicks": "Aciertos exactos: {count}",
+      "points": "{count} puntos"
+    },
+    "header": {
+      "brandName": "WorldPredict",
+      "tagline": "Predicciones de fútbol social",
+      "authenticatedLabel": "Autenticado"
+    }
+  },
+  "dashboard": {
+    "eyebrow": {
+      "worldCupPredictions": "Predicciones del Mundial"
+    },
+    "title": {
+      "makeEveryWorldCup": "Hacé que cada partido del Mundial cuente."
+    },
+    "subtitle": {
+      "expandOneMatch": "Expandí un partido a la vez, guardá scorests exactos y mantené tus predicciones del torneo fáciles de ver."
+    },
+    "errorMessages": {
+      "invalidInput": "Ingresá números enteros entre 0 y 20 para ambos resultados.",
+      "matchClosed": "Este partido ya no acepta predicciones.",
+      "matchNotFound": "No encontramos ese partido. Recargá e intentá de nuevo.",
+      "sessionExpired": "Tu sesión expiró. Iniciá sesión de nuevo para guardar predicciones.",
+      "updateFailed": "No pudimos guardar tu predicción ahora. Intentá de nuevo."
+    },
+    "profileIncomplete": {
+      "title": "Completá tu perfil para enviar predicciones.",
+      "body": "Se requieren país y equipo favorito antes de habilitar el formulario.",
+      "finishProfile": "Completar perfil"
+    },
+    "groupSection": {
+      "yourGroups": "Tus grupos",
+      "yourGroup": "Tu grupo",
+      "owner": "Creador",
+      "member": "Miembro",
+      "members": "{count} miembro | {count} miembros",
+      "additionalGroups": "+{count} grupo más | +{count} grupos más",
+      "openFeaturedGroup": "Abrir grupo destacado",
+      "viewAllGroups": "Ver todos los grupos",
+      "shareCode": "Compartí este código con amigos para que se unan a este grupo:"
+    },
+    "rankingSection": {
+      "globalRanking": "Clasificación global",
+      "yourOverallStanding": "Tu posición general",
+      "seeHowYourPoints": "Ved cómo tus puntos se comparan con los de todos los jugadores, más allá de tus grupos privados.",
+      "viewAll": "Ver todos",
+      "currentPosition": "Posición actual",
+      "yourPlaceInGlobalBoard": "Tu lugar en la tabla global",
+      "points": "Puntos",
+      "pts": "pts",
+      "exactPicks": "Aciertos exactos",
+      "predictions": "Predicciones",
+      "scoreFirstPrediction": "Acertá tu primera predicción para aparecer en la clasificación.",
+      "completeProfileAndScore": "Completá tu perfil y acertá un partido para unirte a la clasificación.",
+      "noGlobalRankingYet": "Sin clasificación global aún. Cuando haya predicciones puntuadas, la tabla aparecerá aquí.",
+      "exactPicksLabel": "{count} exactas · {total} predicciones",
+      "you": "Vos"
+    },
+    "predictionSection": {
+      "worldCupPredictionsLabel": "Predicciones del Mundial",
+      "compactRowsShow": "Las filas compactas muestran cada partido y estado de elección. Abrí un partido para actualizar la predicción completa."
+    },
+    "scoringExplanations": {
+      "waitingForScoring": "Esperando puntuación",
+      "waitingForScoringDetail": "Tu predicción existe, pero este partido aún no fue puntuado.",
+      "finalScoreUnavailable": "Resultado final no disponible",
+      "finalScoreUnavailableDetail": "Tenemos el partido marcado como finalizado, pero el resultado no está disponible aún.",
+      "exactScore": "Score exacto",
+      "exactScoreDetail": "Acertaste el resultado final: {points} puntos otorgados.",
+      "correctOutcome": "Resultado correcto",
+      "correctOutcomeDetail": "Predijiste {predictedOutcome}, y el partido terminó como {actualOutcome}.",
+      "wrongOutcome": "Resultado equivocado",
+      "wrongOutcomeDetail": "Predijiste {predictedOutcome}, pero el partido terminó como {actualOutcome}.",
+      "homeWin": "victoria local",
+      "awayWin": "victoria visitante",
+      "draw": "empate",
+      "point": "{count} punto",
+      "points": "{count} puntos"
+    },
+    "dashboardStrings": {
+      "noUpcomingMatches": "No hay partidos del Mundial abiertos para predecir ahora. Los nuevos resultados puntuados aparecerán arriba cuando lleguen.",
+      "loadingLocalDates": "Cargando fechas locales...",
+      "previousDate": "Fecha anterior",
+      "nextDate": "Fecha siguiente",
+      "vs": "vs",
+      "finalResult": "Resultado final",
+      "yourPick": "Tu elección",
+      "pointsEarned": "Puntos ganados",
+      "scoredAt": "Puntuado el",
+      "whyThisScore": "¿Por qué este puntaje?",
+      "noPredictionSubmitted": "No enviaste una predicción para este partido, así que no se otorgaron puntos.",
+      "yourPrediction": "Tu predicción",
+      "setExactWorldCupScore": "Poné el resultado exacto del Mundial.",
+      "savePrediction": "Guardar predicción",
+      "matchFinalLocked": "Este partido está finalizado, así que las predicciones están bloqueadas.",
+      "matchNoLongerOpen": "Este partido ya no está abierto para predicciones.",
+      "completeProfileToUnlock": "Completá tu perfil para desbloquear el formulario de predicción.",
+      "pending": "Pendiente",
+      "resultPending": "Resultado pendiente",
+      "unknown": "Desconocido",
+      "waitingForFinalResult": "Esperando resultado final",
+      "noPredictionSubmittedLabel": "Sin predicción enviada",
+      "predictionWaitingToBeScored": "Predicción esperando ser puntuada",
+      "youEarned": "Ganaste {points}",
+      "recentlyScored": "Recién puntuados",
+      "newResultsFromYourPredictions": "Nuevos resultados de tus predicciones",
+      "theseAreFinishedMatches": "Estos son partidos finalizados que predijiste desde la última vez que borraste esta sección.",
+      "clear": "Borrar",
+      "final": "Final",
+      "points": "Puntos",
+      "stageUnavailable": "Etapa no disponible"
+    }
+  },
+  "share": {
+    "eyebrow": {
+      "shareableSnapshots": "Capturas para compartir"
+    },
+    "title": {
+      "previewTheCard": "Previsualizá la tarjeta antes de compartirla."
+    },
+    "description": {
+      "previewDescription": "Previsualizá tu predicción, posición del grupo o resumen de rendimiento con el tratamiento visual actual antes de copiar o compartir."
+    },
+    "successMessages": {
+      "prediction": "Vista previa de predicción lista.",
+      "performanceSummary": "Resumen de rendimiento listo.",
+      "groupRanking": "Posición del grupo lista."
+    },
+    "errorMessages": {
+      "invalidInput": "Elegí una predicción o grupo válido antes de generar una tarjeta.",
+      "sessionExpired": "Tu sesión expiró. Iniciá sesión de nuevo para generar tarjetas.",
+      "predictionNotFound": "No encontramos esa predicción guardada.",
+      "performanceNotReady": "Tu resumen de rendimiento aún no está listo.",
+      "groupForbidden": "Necesitás acceso a ese grupo antes de compartir su posición.",
+      "groupNotReady": "No encontramos una captura de clasificación para ese grupo aún.",
+      "createFailed": "No pudimos generar la tarjeta ahora. Intentá de nuevo."
+    },
+    "predictionForm": {
+      "prediction": "Predicción",
+      "shareYourPrediction": "Compartí tu predicción",
+      "pickOneSaved": "Elegí una de tus predicciones guardadas y convertila en una tarjeta limpia.",
+      "savedPrediction": "Predicción guardada",
+      "noPredictionsAvailable": "Sin predicciones disponibles",
+      "choosePrediction": "Elegí una predicción",
+      "usesYourSavedData": "Usa tus predicciones guardadas y el fondo visual actual.",
+      "previewPrediction": "Vista previa de predicción"
+    },
+    "performanceForm": {
+      "performanceSummary": "Resumen de rendimiento",
+      "shareYourTournamentProgress": "Compartí tu progreso en el torneo",
+      "showYourPoints": "Mostrá tus puntos, aciertos exactos y posición actual en una tarjeta.",
+      "previewSummary": "Vista previa del resumen"
+    },
+    "groupForm": {
+      "groupStanding": "Posición del grupo",
+      "shareGroupStanding": "Compartí la posición del grupo",
+      "chooseGroup": "Elegí uno de tus grupos y convertí la tabla actual en una tarjeta limpia.",
+      "myGroups": "Mis grupos",
+      "noGroupsAvailable": "Sin grupos disponibles",
+      "chooseGroupOption": "Elegí un grupo",
+      "showGroupInfo": "Mostrá el nombre del grupo, tu lugar, puntos y predicciones en una tarjeta.",
+      "generateGroupCard": "Generar tarjeta del grupo"
+    },
+    "templates": {
+      "shareMyPrediction": "Compartir mi predicción",
+      "predictedBy": "Predicho por",
+      "selectedMatch": "Partido seleccionado",
+      "homeTeam": "Equipo local",
+      "awayTeam": "Equipo visitante",
+      "predictedScore": "Score predicho",
+      "matchContext": "Contexto del partido",
+      "previewCardBeforeSharing": "Previsualizá la tarjeta antes de compartirla.",
+      "shareWithYourCrew": "Compartí con tu grupo",
+      "points": "Puntos",
+      "status": "Estado",
+      "mySquadPerformance": "Rendimiento de mi equipo",
+      "countryLabelDefault": "Contendor del Mundial",
+      "totalPoints": "Puntos totales",
+      "exactPicks": "Aciertos exactos",
+      "rank": "Posición",
+      "savedPredictions": "Predicciones guardadas",
+      "subtleCelebration": "Celebración sutil",
+      "topOfLeaderboard": "Actualmente en el top {position} de {total}.",
+      "progressNotReady": "Tu progreso del torneo aparecerá aquí cuando tu clasificación esté lista.",
+      "shareWithYourSquad": "Compartí con tu equipo",
+      "groupStanding": "Posición del grupo",
+      "chooseAGroup": "Elegí un grupo",
+      "shareYourSquadTable": "Compartí la tabla de tu equipo",
+      "currentPlace": "Lugar actual",
+      "squadSnapshot": "Captura del equipo",
+      "groupLiveMessage": "Tu grupo está activo con {points} puntos y {count} predicciones en la tabla.",
+      "pickGroupToPreview": "Elegí uno de tus grupos para previsualizar la tabla actual antes de compartirla."
+    },
+    "fallback": {
+      "pickPredictionToEnable": "Elegí una predicción guardada para habilitar copiar/compartir.",
+      "generateCardToEnable": "Generá la tarjeta del grupo para habilitar copiar/compartir."
+    }
+  },
+  "onboarding": {
+    "eyebrow": {
+      "profileSetup": "Configuración del perfil"
+    },
+    "title": {
+      "finishYourAccountDetails": "Completá los datos de tu cuenta"
+    },
+    "subtitle": {
+      "personalizeCompetition": "Usamos país y equipo favorito para personalizar tu vista de la competencia."
+    },
+    "signedInAs": "Iniciaste sesión como {name}",
+    "errorMessages": {
+      "invalidInput": "Por favor elegí un país, equipo e idioma.",
+      "updateFailed": "No pudimos guardar tu perfil ahora. Intentá de nuevo."
+    },
+    "form": {
+      "country": "País",
+      "selectCountry": "Seleccioná un país",
+      "preferredLanguage": "Idioma preferido",
+      "favoriteTeam": "Equipo favorito",
+      "noTeamsAvailable": "Aún no hay equipos disponibles",
+      "selectTeam": "Seleccioná un equipo",
+      "waitingForMatches": "Esperando partidos activos para publicar equipos.",
+      "lastStepBeforePredicting": "Este es el último paso antes de predecir.",
+      "saveProfile": "Guardar perfil"
+    },
+    "header": {
+      "brandName": "WorldPredict",
+      "completeProfile": "Completá tu perfil",
+      "backHome": "Volver al inicio"
+    }
+  },
+  "dashboardStrings": {
+    "noUpcomingMatches": "No hay partidos del Mundial abiertos para predecir ahora. Los nuevos resultados puntuados aparecerán arriba cuando lleguen.",
+    "loadingLocalDates": "Cargando fechas locales...",
+    "previousDate": "Fecha anterior",
+    "nextDate": "Fecha siguiente",
+    "vs": "vs",
+    "exactScore": "Score exacto",
+    "finalResult": "Resultado final",
+    "yourPick": "Tu elección",
+    "pointsEarned": "Puntos ganados",
+    "scoredAt": "Puntuado el",
+    "whyThisScore": "¿Por qué este puntaje?",
+    "noPredictionSubmitted": "No enviaste una predicción para este partido, así que no se otorgaron puntos.",
+    "yourPrediction": "Tu predicción",
+    "setExactWorldCupScore": "Poné el resultado exacto del Mundial.",
+    "savePrediction": "Guardar predicción",
+    "matchFinalLocked": "Este partido está finalizado, así que las predicciones están bloqueadas.",
+    "matchNoLongerOpen": "Este partido ya no está abierto para predicciones.",
+    "completeProfileToUnlock": "Completá tu perfil para desbloquear el formulario de predicción.",
+    "pending": "Pendiente",
+    "resultPending": "Resultado pendiente",
+    "unknown": "Desconocido",
+    "waitingForFinalResult": "Esperando resultado final",
+    "noPredictionSubmittedLabel": "Sin predicción enviada",
+    "predictionWaitingToBeScored": "Predicción esperando ser puntuada",
+    "youEarned": "Ganaste {points}"
+  },
+  "metadata": {
+    "dashboard": {
+      "title": "Panel",
+      "description": "Revisá los partidos activos del Mundial, guardá predicciones y seguí tus últimos resultados del torneo."
+    },
+    "share": {
+      "title": "Tarjetas para compartir",
+      "description": "Previsualizá y compartí capturas de tus predicciones de fútbol, resúmenes de rendimiento y posiciones de grupos privados."
+    },
+    "onboarding": {
+      "title": "Completar perfil",
+      "description": "Elegí tu país, idioma y equipo favorito antes de unirte a la competencia de predicciones del Mundial."
+    }
+  }
+}
