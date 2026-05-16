@@ -3,10 +3,12 @@
 import { useRef, useEffect, useState, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { useLocale, useTranslations } from "next-intl";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { CurrentUserProfile, TeamView } from "@/lib/api";
 import { PROFILE_COUNTRY_OPTIONS, PROFILE_LANGUAGE_OPTIONS } from "@/lib/profile";
 import { parseTournamentSlug, TOURNAMENT_COOKIE_NAME } from "@/lib/tournament-context";
+import { getLocalizedPath, stripLocalePrefix, type AppLocale } from "@/lib/locale-nav";
 import { updateProfile } from "./actions/update-profile";
 
 interface ProfileEditModalProps {
@@ -93,7 +95,10 @@ export function ProfileEditModal({
   isOpen,
   onClose,
 }: ProfileEditModalProps) {
-  const locale = useLocale() as "en" | "es";
+  const locale = useLocale() as AppLocale;
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const t = useTranslations("profileEdit");
   const [state, formAction] = useActionState(
     async (prevState: { error: string } | undefined, formData: FormData) =>
@@ -199,6 +204,7 @@ export function ProfileEditModal({
 
   // Close modal on successful submission - track submission start and check for success
   const [submitted, setSubmitted] = useState(false);
+  const [submittedLocale, setSubmittedLocale] = useState<AppLocale | null>(null);
   const mustPickNewTeam = !savedFavoriteTeamIsAvailable && currentUserProfile.favoriteTeamId !== null;
 
   useEffect(() => {
@@ -206,10 +212,21 @@ export function ProfileEditModal({
       // Success - state is undefined after successful server action
       onClose();
       setSubmitted(false);
-    }
-  }, [submitted, state, onClose]);
 
-  function handleSubmit() {
+      if (submittedLocale && submittedLocale !== locale) {
+        const currentPath = stripLocalePrefix(pathname) as `/${string}`;
+        const queryString = searchParams.toString();
+        const localizedPath = getLocalizedPath(submittedLocale, currentPath);
+        router.replace(queryString ? `${localizedPath}?${queryString}` : localizedPath);
+        router.refresh();
+      }
+    }
+  }, [locale, onClose, pathname, router, searchParams, state, submitted, submittedLocale]);
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    const formData = new FormData(event.currentTarget);
+    const preferredLanguage = String(formData.get("preferredLanguage") ?? "");
+    setSubmittedLocale(preferredLanguage === "en" || preferredLanguage === "es" ? preferredLanguage : null);
     setSubmitted(true);
   }
 
