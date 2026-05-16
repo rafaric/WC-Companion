@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { auth0 } from "@/lib/auth0";
 import {
@@ -23,12 +24,7 @@ import { buildPageMetadata } from "@/lib/metadata";
 import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
 import { getLocalizedPath, type AppLocale } from "@/lib/locale-nav";
 
-export const metadata = buildPageMetadata({
-  title: "External results admin",
-  description: "Review staged football results from external providers before confirming or discarding them.",
-  index: false,
-  path: "/admin/external-results",
-});
+type AdminExternalResultsTranslator = Awaited<ReturnType<typeof getTranslations>>;
 
 type AdminExternalResultsSearchParams = {
   error?: string;
@@ -41,22 +37,17 @@ interface AdminExternalResultsPageProps {
   params: Promise<{ locale: string }>;
 }
 
-const RESULT_ERROR_MESSAGES: Record<string, string> = {
-  access_denied: "You need the matches:finalize permission to review or confirm staged results.",
-  already_processed: "This staged result was already confirmed or discarded.",
-  bad_request: "We could not process that staged result.",
-  invalid_input: "Missing staged result identifier.",
-  not_found: "We could not find that staged result.",
-  session_expired: "Your session expired or is missing the required admin permission.",
-  unlinked_match: "This staged result is not linked to an internal match yet.",
-};
-
-const RESULT_SUCCESS_MESSAGES: Record<string, string> = {
-  confirmed: "Staged result confirmed and the linked match was finalized.",
-  discarded: "Staged result discarded without touching the linked match.",
-  imported: "Mock tournament import completed.",
-  synced: "Mock results sync completed.",
-};
+export async function generateMetadata({ params }: AdminExternalResultsPageProps) {
+  const { locale } = await params;
+  const t = await getTranslations("admin.externalResults");
+  return buildPageMetadata({
+    title: t("metadata.title"),
+    description: t("metadata.description"),
+    index: false,
+    locale,
+    path: "/admin/external-results",
+  });
+}
 
 const EXTERNAL_MATCH_RESULT_FILTERS = [
   EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION,
@@ -64,19 +55,51 @@ const EXTERNAL_MATCH_RESULT_FILTERS = [
   EXTERNAL_MATCH_RESULT_STATES.DISCARDED,
 ] as const;
 
-function formatDateTime(value: string | Date | null): string {
+function formatDateTime(value: string | Date | null, locale: string): string {
   if (!value) {
     return "—";
   }
-
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
 }
 
-function formatStateLabel(state: string): string {
-  return state.split("_").join(" ").toLowerCase();
+function formatStateLabel(state: string, t: AdminExternalResultsTranslator): string {
+  switch (state) {
+    case EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION:
+      return t("stateLabels.pendingConfirmation");
+    case EXTERNAL_MATCH_RESULT_STATES.CONFIRMED:
+      return t("stateLabels.confirmed");
+    case EXTERNAL_MATCH_RESULT_STATES.DISCARDED:
+      return t("stateLabels.discarded");
+    default:
+      return state.split("_").join(" ").toLowerCase();
+  }
+}
+
+function formatSyncTypeLabel(syncType: string, t: AdminExternalResultsTranslator): string {
+  switch (syncType) {
+    case "IMPORT":
+      return t("syncTypeLabels.import");
+    case "RESULTS":
+      return t("syncTypeLabels.results");
+    default:
+      return syncType.toLowerCase();
+  }
+}
+
+function formatSyncStatusLabel(status: string, t: AdminExternalResultsTranslator): string {
+  switch (status) {
+    case "SUCCESS":
+      return t("syncStatusLabels.success");
+    case "FAILED":
+      return t("syncStatusLabels.failed");
+    case "RUNNING":
+      return t("syncStatusLabels.running");
+    default:
+      return status.toLowerCase();
+  }
 }
 
 function resolveResultStateFilter(value: string | undefined): ExternalMatchResultState {
@@ -138,28 +161,24 @@ function getResultErrorCode(error: unknown): string {
   return "bad_request";
 }
 
-function getListLoadErrorMessage(error: unknown): string {
+function getListLoadErrorMessage(error: unknown, t: AdminExternalResultsTranslator): string {
   if (!(error instanceof ApiError)) {
-    return "We could not load staged results right now.";
+    return t("errors.listLoadFailed");
   }
-
   if (error.status === 401 || error.status === 403) {
-    return RESULT_ERROR_MESSAGES.access_denied;
+    return t("errors.accessDenied");
   }
-
-  return "We could not load staged results right now.";
+  return t("errors.listLoadFailed");
 }
 
-function getDiagnosticStatusLabel(diagnostic: ExternalMatchMappingDiagnosticView): string {
+function getDiagnosticStatusLabel(diagnostic: ExternalMatchMappingDiagnosticView, t: AdminExternalResultsTranslator): string {
   if (!diagnostic.hasExternalReference) {
-    return "Missing external ref";
+    return t("diagnosticCard.missing");
   }
-
   if (!diagnostic.latestExternalResult) {
-    return "No external result yet";
+    return t("diagnosticCard.noExternalResultYet");
   }
-
-  return formatStateLabel(diagnostic.latestExternalResult.state);
+  return formatStateLabel(diagnostic.latestExternalResult.state, t);
 }
 
 function getDiagnosticStatusClassName(diagnostic: ExternalMatchMappingDiagnosticView): string {
@@ -199,16 +218,56 @@ function getLatestSyncRunByType(syncRuns: ExternalSyncRunView[], syncType: strin
   return syncRuns.find((syncRun) => syncRun.syncType === syncType) ?? null;
 }
 
+function getSearchErrorMessage(code: string | undefined, t: AdminExternalResultsTranslator): string {
+  switch (code) {
+    case "access_denied":
+      return t("errors.accessDenied");
+    case "already_processed":
+      return t("errors.alreadyProcessed");
+    case "bad_request":
+      return t("errors.badRequest");
+    case "invalid_input":
+      return t("errors.invalidInput");
+    case "not_found":
+      return t("errors.notFound");
+    case "session_expired":
+      return t("errors.sessionExpired");
+    case "unlinked_match":
+      return t("errors.unlinkedMatch");
+    default:
+      return t("errors.badRequest");
+  }
+}
+
+function getSearchSuccessMessage(code: string | undefined, t: AdminExternalResultsTranslator): string {
+  switch (code) {
+    case "confirmed":
+      return t("success.confirmed");
+    case "discarded":
+      return t("success.discarded");
+    case "imported":
+      return t("success.imported");
+    case "synced":
+      return t("success.synced");
+    default:
+      return t("success.confirmed");
+  }
+}
+
 function ResultCard({
   result,
   onConfirm,
   onDiscard,
   currentState,
+  t,
+  locale,
 }: {
   result: ExternalMatchResultView;
   onConfirm: (formData: FormData) => Promise<void>;
   onDiscard: (formData: FormData) => Promise<void>;
   currentState: ExternalMatchResultState;
+  t: AdminExternalResultsTranslator;
+  locale: string;
 }) {
   const isPending = result.state === EXTERNAL_MATCH_RESULT_STATES.PENDING_CONFIRMATION;
 
@@ -217,55 +276,55 @@ function ResultCard({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Provider</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("resultCard.provider")}</p>
             <p className="mt-1 text-sm font-semibold text-white">{result.providerKey}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">External match ID</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("resultCard.externalMatchId")}</p>
             <p className="mt-1 text-sm font-semibold text-white">{result.externalMatchId}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Internal match</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("resultCard.internalMatch")}</p>
             {result.match ? (
               <div className="mt-1 space-y-1 text-sm text-slate-200">
-                <p className="font-semibold text-white">{result.match.homeTeamName} vs {result.match.awayTeamName}</p>
-                <p>{result.match.stage ?? "Stage unavailable"}{result.match.groupName ? ` • ${result.match.groupName}` : ""}</p>
+                <p className="font-semibold text-white">{t("matchup", { homeTeam: result.match.homeTeamName, awayTeam: result.match.awayTeamName })}</p>
+                <p>{result.match.stage ?? t("resultCard.stageUnavailable")}{result.match.groupName ? ` • ${result.match.groupName}` : ""}</p>
                 <p>
-                  {result.match.matchId} • {result.match.status} • {formatDateTime(result.match.kickoffAt)}
+                  {result.match.matchId} • {result.match.status} • {formatDateTime(result.match.kickoffAt, locale)}
                 </p>
               </div>
             ) : (
-              <p className="mt-1 text-sm text-amber-200">Not linked yet — confirm only after the internal match exists.</p>
+              <p className="mt-1 text-sm text-amber-200">{t("resultCard.notLinked")}</p>
             )}
           </div>
         </div>
 
         <div className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 sm:grid-cols-2 lg:min-w-72">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Proposed score</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("resultCard.proposedScore")}</p>
             <p className="mt-1 text-2xl font-black text-white">
               {result.homeScore} - {result.awayScore}
             </p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">State</p>
-            <p className="mt-1 text-sm font-semibold text-emerald-300">{formatStateLabel(result.state)}</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("resultCard.state")}</p>
+            <p className="mt-1 text-sm font-semibold text-emerald-300">{formatStateLabel(result.state, t)}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Played at</p>
-            <p className="mt-1 text-sm text-slate-200">{formatDateTime(result.playedAt)}</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("resultCard.playedAt")}</p>
+            <p className="mt-1 text-sm text-slate-200">{formatDateTime(result.playedAt, locale)}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Staged at</p>
-            <p className="mt-1 text-sm text-slate-200">{formatDateTime(result.stagedAt)}</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("resultCard.stagedAt")}</p>
+            <p className="mt-1 text-sm text-slate-200">{formatDateTime(result.stagedAt, locale)}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Confirmed at</p>
-            <p className="mt-1 text-sm text-slate-200">{formatDateTime(result.confirmedAt)}</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("resultCard.confirmedAt")}</p>
+            <p className="mt-1 text-sm text-slate-200">{formatDateTime(result.confirmedAt, locale)}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Discarded at</p>
-            <p className="mt-1 text-sm text-slate-200">{formatDateTime(result.discardedAt)}</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("resultCard.discardedAt")}</p>
+            <p className="mt-1 text-sm text-slate-200">{formatDateTime(result.discardedAt, locale)}</p>
           </div>
         </div>
       </div>
@@ -279,7 +338,7 @@ function ResultCard({
               type="submit"
               className="rounded-full border border-rose-400/30 bg-rose-400/10 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-300/60 hover:bg-rose-400/20"
             >
-              Discard result
+              {t("resultCard.discardResult")}
             </button>
           </form>
           <form action={onConfirm}>
@@ -289,7 +348,7 @@ function ResultCard({
               type="submit"
               className="rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-110"
             >
-              Confirm result
+              {t("resultCard.confirmResult")}
             </button>
           </form>
         </div>
@@ -300,6 +359,7 @@ function ResultCard({
 
 export default async function AdminExternalResultsPage({ searchParams, params }: AdminExternalResultsPageProps) {
   const { locale } = await params;
+  const t = await getTranslations("admin.externalResults");
   const session = await auth0.getSession();
 
   if (!session) {
@@ -329,19 +389,19 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
   try {
     stagedResults = await getExternalMatchResults(accessToken, currentState, tournamentSlug);
   } catch (error) {
-    loadErrorMessage = getListLoadErrorMessage(error);
+    loadErrorMessage = getListLoadErrorMessage(error, t);
   }
 
   try {
     matchDiagnostics = await getExternalMatchMappingDiagnostics(accessToken, tournamentSlug);
   } catch (error) {
-    diagnosticsLoadErrorMessage = getListLoadErrorMessage(error);
+    diagnosticsLoadErrorMessage = getListLoadErrorMessage(error, t);
   }
 
   try {
     syncRuns = await getExternalSyncRuns(accessToken, tournamentSlug);
   } catch (error) {
-    syncRunsLoadErrorMessage = getListLoadErrorMessage(error);
+    syncRunsLoadErrorMessage = getListLoadErrorMessage(error, t);
   }
 
   async function confirmExternalResult(formData: FormData) {
@@ -478,25 +538,23 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
       <section className="space-y-6 py-2 sm:py-4">
           <div className="space-y-3">
             <p className="inline-flex rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-200">
-              Admin-only review queue
+              {t("adminOnlyBadge")}
             </p>
-            <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">Confirm staged external results.</h1>
+            <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">{t("pageTitle")}</h1>
             <p className="max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-              This screen requires the <span className="font-semibold text-amber-200">matches:finalize</span> permission.
-              Review provider-staged scores carefully before confirming or discarding them, because confirmation finalizes
-              the linked internal match and updates the ranking tables.
+              {t("permissionNotice", { permission: "matches:finalize" })}
             </p>
           </div>
 
           {resolvedSearchParams?.error ? (
             <div role="alert" aria-live="assertive" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
-              {RESULT_ERROR_MESSAGES[resolvedSearchParams.error] ?? RESULT_ERROR_MESSAGES.bad_request}
+              {getSearchErrorMessage(resolvedSearchParams.error, t)}
             </div>
           ) : null}
 
           {resolvedSearchParams?.success ? (
             <div role="status" aria-live="polite" className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
-              {RESULT_SUCCESS_MESSAGES[resolvedSearchParams.success] ?? RESULT_SUCCESS_MESSAGES.confirmed}
+              {getSearchSuccessMessage(resolvedSearchParams.success, t)}
             </div>
           ) : null}
 
@@ -507,14 +565,14 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
           ) : null}
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-            <p className="mb-4 text-sm font-medium text-slate-300">Admin sync actions (mock provider)</p>
+            <p className="mb-4 text-sm font-medium text-slate-300">{t("actions.syncSectionBadge")}</p>
             <div className="flex flex-wrap gap-3">
               <form action={importTournamentAction} className="inline">
                 <button
                   type="submit"
                   className="rounded-full border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-700"
                 >
-                  Import tournament
+                  {t("actions.importTournament")}
                 </button>
               </form>
               <form action={syncResultsAction} className="inline">
@@ -522,7 +580,7 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
                   type="submit"
                   className="rounded-full border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-700"
                 >
-                  Sync results
+                  {t("actions.syncResults")}
                 </button>
               </form>
             </div>
@@ -531,15 +589,14 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
           <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Sports data sync</p>
-                <h2 className="mt-1 text-lg font-semibold text-white">Recent provider runs</h2>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("syncSection.badge")}</p>
+                <h2 className="mt-1 text-lg font-semibold text-white">{t("syncSection.title")}</h2>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-                  Check the latest import/results runs before debugging staged results. If a run failed or never completed,
-                  the review queue can look empty even when matches exist.
+                  {t("syncSection.subtitle")}
                 </p>
               </div>
               <p className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs font-semibold text-slate-300">
-                {syncRuns.length} runs
+                {t("syncSection.runs", { count: syncRuns.length })}
               </p>
             </div>
 
@@ -551,44 +608,44 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
 
             <div className="mt-5 grid gap-3 lg:grid-cols-2">
               {[
-                { label: "import", syncRun: latestImportSyncRun },
-                { label: "results", syncRun: latestResultsSyncRun },
+                { label: formatSyncTypeLabel("IMPORT", t), syncRun: latestImportSyncRun },
+                { label: formatSyncTypeLabel("RESULTS", t), syncRun: latestResultsSyncRun },
               ].map(({ label, syncRun }) => (
                 <div key={label} className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
                   {syncRun ? (
                     <div className="space-y-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{syncRun.syncType.toLowerCase()}</p>
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{formatSyncTypeLabel(syncRun.syncType, t)}</p>
                           <p className="mt-1 break-all text-sm font-semibold text-white">{syncRun.syncRunId}</p>
                         </div>
                         <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${getSyncRunStatusClassName(syncRun.status)}`}>
-                          {syncRun.status.toLowerCase()}
+                          {formatSyncStatusLabel(syncRun.status, t)}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                         <div>
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Imported</p>
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{t("syncRunCard.imported")}</p>
                           <p className="mt-1 font-bold text-white">{syncRun.importedCount}</p>
                         </div>
                         <div>
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Updated</p>
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{t("syncRunCard.updated")}</p>
                           <p className="mt-1 font-bold text-white">{syncRun.updatedCount}</p>
                         </div>
                         <div>
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Staged</p>
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{t("syncRunCard.staged")}</p>
                           <p className="mt-1 font-bold text-white">{syncRun.stagedCount}</p>
                         </div>
                         <div>
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Skipped</p>
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{t("syncRunCard.skipped")}</p>
                           <p className="mt-1 font-bold text-white">{syncRun.skippedCount}</p>
                         </div>
                       </div>
 
                       <div className="grid gap-3 text-xs text-slate-400 sm:grid-cols-2">
-                        <p>Started: {formatDateTime(syncRun.startedAt)}</p>
-                        <p>Completed: {formatDateTime(syncRun.completedAt)}</p>
+                        <p>{t("syncRunCard.started")}: {formatDateTime(syncRun.startedAt, locale)}</p>
+                        <p>{t("syncRunCard.completed")}: {formatDateTime(syncRun.completedAt, locale)}</p>
                       </div>
 
                       {syncRun.errorMessage ? (
@@ -598,7 +655,7 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
                       ) : null}
                     </div>
                   ) : (
-                    <div className="text-sm leading-6 text-slate-300">No {label} sync run recorded yet.</div>
+                    <div className="text-sm leading-6 text-slate-300">{t("syncRunCard.noSyncYet", { type: label })}</div>
                   )}
                 </div>
               ))}
@@ -606,17 +663,17 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
 
             {syncRuns.length > 2 ? (
               <div className="mt-4 space-y-2">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Recent history</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("syncRunCard.recentHistory")}</p>
                 {syncRuns.slice(2).map((syncRun) => (
                   <div key={syncRun.syncRunId} className="flex flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <p className="font-semibold text-white">
-                        {syncRun.syncType.toLowerCase()} · {syncRun.status.toLowerCase()}
+                        {formatSyncTypeLabel(syncRun.syncType, t)} · {formatSyncStatusLabel(syncRun.status, t)}
                       </p>
                       <p className="truncate text-xs text-slate-500">{syncRun.syncRunId}</p>
                     </div>
                     <p className="text-xs text-slate-400">
-                      {formatDateTime(syncRun.startedAt)} · imported {syncRun.importedCount} · updated {syncRun.updatedCount} · staged {syncRun.stagedCount}
+                      {formatDateTime(syncRun.startedAt, locale)} · {t("syncRunCard.imported")} {syncRun.importedCount} · {t("syncRunCard.updated")} {syncRun.updatedCount} · {t("syncRunCard.staged")} {syncRun.stagedCount}
                     </p>
                   </div>
                 ))}
@@ -627,15 +684,14 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
           <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">External mapping diagnostic</p>
-                <h2 className="mt-1 text-lg font-semibold text-white">Matches visible to users</h2>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("diagnosticsSection.badge")}</p>
+                <h2 className="mt-1 text-lg font-semibold text-white">{t("diagnosticsSection.title")}</h2>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-                  This shows every active-tournament match and whether the provider mapping/result exists. If a dashboard
-                  match is missing here as a pending result, look at its external ref and latest result state first.
+                  {t("diagnosticsSection.subtitle")}
                 </p>
               </div>
               <p className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs font-semibold text-slate-300">
-                {matchDiagnostics.length} matches
+                {t("diagnosticsSection.matches", { count: matchDiagnostics.length })}
               </p>
             </div>
 
@@ -652,33 +708,33 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0 space-y-1">
                         <p className="text-sm font-semibold text-white">
-                          {diagnostic.homeTeamName} vs {diagnostic.awayTeamName}
+                          {t("matchup", { homeTeam: diagnostic.homeTeamName, awayTeam: diagnostic.awayTeamName })}
                         </p>
                         <p className="text-xs text-slate-500">
-                          {diagnostic.stage ?? "Stage unavailable"}
-                          {diagnostic.groupName ? ` · ${diagnostic.groupName}` : ""} · {formatDateTime(diagnostic.kickoffAt)}
+                          {diagnostic.stage ?? t("resultCard.stageUnavailable")}
+                          {diagnostic.groupName ? ` · ${diagnostic.groupName}` : ""} · {formatDateTime(diagnostic.kickoffAt, locale)}
                         </p>
-                        <p className="break-all text-xs text-slate-500">Internal: {diagnostic.matchId}</p>
+                        <p className="break-all text-xs text-slate-500">{t("diagnosticCard.internalMatchId")}: {diagnostic.matchId}</p>
                       </div>
 
                       <div className="grid gap-3 text-sm sm:grid-cols-3 lg:min-w-[520px]">
                         <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-3">
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">External ref</p>
-                          <p className="mt-1 break-all font-semibold text-white">{diagnostic.externalMatchId ?? "Missing"}</p>
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{t("diagnosticCard.externalRef")}</p>
+                          <p className="mt-1 break-all font-semibold text-white">{diagnostic.externalMatchId ?? t("diagnosticCard.missing")}</p>
                         </div>
                         <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-3">
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Latest result</p>
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{t("diagnosticCard.latestResult")}</p>
                           {diagnostic.latestExternalResult ? (
                             <p className="mt-1 font-semibold text-white">
                               {diagnostic.latestExternalResult.homeScore} - {diagnostic.latestExternalResult.awayScore}
                             </p>
                           ) : (
-                            <p className="mt-1 font-semibold text-slate-400">Missing</p>
+                            <p className="mt-1 font-semibold text-slate-400">{t("diagnosticCard.missing")}</p>
                           )}
                         </div>
                         <div className={`rounded-2xl border p-3 ${getDiagnosticStatusClassName(diagnostic)}`}>
-                          <p className="text-[11px] uppercase tracking-[0.2em] opacity-70">Provider status</p>
-                          <p className="mt-1 font-semibold">{getDiagnosticStatusLabel(diagnostic)}</p>
+                          <p className="text-[11px] uppercase tracking-[0.2em] opacity-70">{t("diagnosticCard.providerStatus")}</p>
+                          <p className="mt-1 font-semibold">{getDiagnosticStatusLabel(diagnostic, t)}</p>
                         </div>
                       </div>
                     </div>
@@ -687,7 +743,7 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
               </div>
             ) : diagnosticsLoadErrorMessage ? null : (
               <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-300">
-                No active-tournament matches found for diagnostics.
+                {t("diagnosticsSection.emptyState")}
               </div>
             )}
           </section>
@@ -706,7 +762,7 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
                       : "rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800"
                   }
                 >
-                  {formatStateLabel(state)}
+                  {formatStateLabel(state, t)}
                 </Link>
               );
             })}
@@ -721,12 +777,14 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
                   result={result}
                   onConfirm={confirmExternalResult}
                   onDiscard={discardExternalResult}
+                  t={t}
+                  locale={locale}
                 />
               ))}
             </div>
           ) : (
             <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-8 text-sm text-slate-300 shadow-xl shadow-slate-950/30">
-              No {formatStateLabel(currentState)} staged results right now.
+              {t("emptyState.noResults", { state: formatStateLabel(currentState, t) })}
             </div>
           )}
       </section>

@@ -494,5 +494,101 @@
     "cancel": "Cancel",
     "saving": "Saving...",
     "saveChanges": "Save changes"
+  },
+  "admin": {
+    "externalResults": {
+      "metadata": {
+        "title": "External results admin",
+        "description": "Review staged football results from external providers before confirming or discarding them."
+      },
+      "adminOnlyBadge": "Admin-only review queue",
+      "matchup": "{homeTeam} vs {awayTeam}",
+      "pageTitle": "Confirm staged external results.",
+      "permissionNotice": "This screen requires the {permission} permission. Review provider-staged scores carefully before confirming or discarding them, because confirmation finalizes the linked internal match and updates the ranking tables.",
+      "errors": {
+        "accessDenied": "You need the matches:finalize permission to review or confirm staged results.",
+        "alreadyProcessed": "This staged result was already confirmed or discarded.",
+        "badRequest": "We could not process that staged result.",
+        "invalidInput": "Missing staged result identifier.",
+        "notFound": "We could not find that staged result.",
+        "sessionExpired": "Your session expired or is missing the required admin permission.",
+        "unlinkedMatch": "This staged result is not linked to an internal match yet.",
+        "listLoadFailed": "We could not load staged results right now."
+      },
+      "success": {
+        "confirmed": "Staged result confirmed and the linked match was finalized.",
+        "discarded": "Staged result discarded without touching the linked match.",
+        "imported": "Mock tournament import completed.",
+        "synced": "Mock results sync completed."
+      },
+      "actions": {
+        "syncSectionBadge": "Provider maintenance actions",
+        "importTournament": "Import tournament",
+        "syncResults": "Sync results"
+      },
+      "syncSection": {
+        "badge": "Sports data sync",
+        "title": "Recent provider runs",
+        "subtitle": "Check the latest import/results runs before debugging staged results. If a run failed or never completed, the review queue can look empty even when matches exist.",
+        "runs": "{count, plural, one {# run} other {# runs}}"
+      },
+      "syncRunCard": {
+        "imported": "Imported",
+        "updated": "Updated",
+        "staged": "Staged",
+        "skipped": "Skipped",
+        "started": "Started",
+        "completed": "Completed",
+        "recentHistory": "Recent history",
+        "noSyncYet": "No {type} sync run recorded yet."
+      },
+      "stateLabels": {
+        "pendingConfirmation": "Pending confirmation",
+        "confirmed": "Confirmed",
+        "discarded": "Discarded"
+      },
+      "syncTypeLabels": {
+        "import": "Import",
+        "results": "Results"
+      },
+      "syncStatusLabels": {
+        "success": "Success",
+        "failed": "Failed",
+        "running": "Running"
+      },
+      "diagnosticsSection": {
+        "badge": "External mapping diagnostic",
+        "title": "Matches visible to users",
+        "subtitle": "This shows every active-tournament match and whether the provider mapping/result exists. If a dashboard match is missing here as a pending result, look at its external ref and latest result state first.",
+        "matches": "{count, plural, one {# match} other {# matches}}",
+        "emptyState": "No active-tournament matches found for diagnostics."
+      },
+      "diagnosticCard": {
+        "externalRef": "External ref",
+        "latestResult": "Latest result",
+        "providerStatus": "Provider status",
+        "internalMatchId": "Internal",
+        "missing": "Missing",
+        "noExternalResultYet": "No external result yet"
+      },
+      "resultCard": {
+        "provider": "Provider",
+        "externalMatchId": "External match ID",
+        "internalMatch": "Internal match",
+        "proposedScore": "Proposed score",
+        "state": "State",
+        "playedAt": "Played at",
+        "stagedAt": "Staged at",
+        "confirmedAt": "Confirmed at",
+        "discardedAt": "Discarded at",
+        "discardResult": "Discard result",
+        "confirmResult": "Confirm result",
+        "notLinked": "Not linked yet — confirm only after the internal match exists.",
+        "stageUnavailable": "Stage unavailable"
+      },
+      "emptyState": {
+        "noResults": "No {state} staged results right now."
+      }
+    }
   }
 }
