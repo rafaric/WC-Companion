@@ -72,12 +72,11 @@ export function AppChrome({ availableTeams, canAccessExternalResults, children, 
     return () => window.removeEventListener("keydown", handleEscape);
   }, [menuOpen]);
 
-  if (!pathname || !isAuthenticatedPath(pathname) || sessionUser === null) {
+  const strippedPathname = pathname ? stripLocalePrefix(pathname) : null;
+
+  if (!strippedPathname || !isAuthenticatedPath(strippedPathname) || sessionUser === null) {
     return <>{children}</>;
   }
-
-  // Strip locale prefix for path comparisons
-  const strippedPathname = stripLocalePrefix(pathname);
 
   const navItems: NavItem[] = [
     { href: `/${locale}/dashboard`, labelKey: "nav.dashboard" },

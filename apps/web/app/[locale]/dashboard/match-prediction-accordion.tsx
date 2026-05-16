@@ -12,6 +12,7 @@ interface MatchPredictionCard extends MatchView {
 }
 
 export interface DashboardStrings {
+  locale: string;
   noUpcomingMatches: string;
   loadingLocalDates: string;
   previousDate: string;
@@ -37,16 +38,20 @@ export interface DashboardStrings {
   noPredictionSubmittedLabel: string;
   predictionWaitingToBeScored: string;
   youEarned: string;
-  formatPointsLabel: (points: number) => string;
-  formatStatusLabel: (status: string) => string;
-  formatOutcomeLabel: (outcome: "home-win" | "away-win" | "draw") => string;
-  formatScoredAt: (value: string | null) => string;
+  point: string;
+  points: string;
+  homeWin: string;
+  awayWin: string;
+  draw: string;
   waitingForScoring: string;
   waitingForScoringDetail: string;
   finalScoreUnavailable: string;
   finalScoreUnavailableDetail: string;
   correctOutcome: string;
   wrongOutcome: string;
+  exactScoreDetail: string;
+  correctOutcomeDetail: string;
+  wrongOutcomeDetail: string;
 }
 
 interface MatchPredictionAccordionProps {
@@ -93,11 +98,45 @@ interface ScoringExplanation {
   detail: string;
 }
 
-function formatKickoff(kickoffAt: string): string {
-  return new Intl.DateTimeFormat("en", {
+function formatKickoff(kickoffAt: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(kickoffAt));
+}
+
+function formatTemplate(template: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.split(`{${key}}`).join(String(value)),
+    template,
+  );
+}
+
+function formatPointsLabel(points: number, i18n: DashboardStrings): string {
+  const template = points === 1 ? i18n.point : i18n.points;
+  return formatTemplate(template, { count: points });
+}
+
+function formatOutcomeLabel(outcome: "home-win" | "away-win" | "draw", i18n: DashboardStrings): string {
+  switch (outcome) {
+    case "home-win":
+      return i18n.homeWin;
+    case "away-win":
+      return i18n.awayWin;
+    case "draw":
+      return i18n.draw;
+  }
+}
+
+function formatStatusLabel(status: string, i18n: DashboardStrings): string {
+  if (!status) return i18n.unknown;
+  const normalized = status.split("_").join(" ").toLowerCase();
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function formatScoredAt(value: string | null, i18n: DashboardStrings): string {
+  if (!value) return i18n.waitingForScoringDetail;
+  return new Intl.DateTimeFormat(i18n.locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
 function resolveOutcome(score: ScoreLine): MatchOutcome {
@@ -161,7 +200,7 @@ function getScoringExplanation(match: MatchPredictionCard, i18n: DashboardString
     return {
       kind: SCORING_EXPLANATION_KIND.EXACT_SCORE,
       title: i18n.exactScore,
-      detail: `You nailed the final score: ${i18n.formatPointsLabel(match.prediction.pointsAwarded)} awarded.`,
+      detail: formatTemplate(i18n.exactScoreDetail, { points: formatPointsLabel(match.prediction.pointsAwarded, i18n) }),
     };
   }
 
@@ -172,14 +211,20 @@ function getScoringExplanation(match: MatchPredictionCard, i18n: DashboardString
     return {
       kind: SCORING_EXPLANATION_KIND.CORRECT_OUTCOME,
       title: i18n.correctOutcome,
-      detail: `You predicted a ${i18n.formatOutcomeLabel(predictedOutcome)}, and the match ended as a ${i18n.formatOutcomeLabel(actualOutcome)}.`,
+      detail: formatTemplate(i18n.correctOutcomeDetail, {
+        predictedOutcome: formatOutcomeLabel(predictedOutcome, i18n),
+        actualOutcome: formatOutcomeLabel(actualOutcome, i18n),
+      }),
     };
   }
 
   return {
     kind: SCORING_EXPLANATION_KIND.WRONG_OUTCOME,
     title: i18n.wrongOutcome,
-    detail: `You predicted a ${i18n.formatOutcomeLabel(predictedOutcome)}, but the match ended as ${i18n.formatOutcomeLabel(actualOutcome)}.`,
+    detail: formatTemplate(i18n.wrongOutcomeDetail, {
+      predictedOutcome: formatOutcomeLabel(predictedOutcome, i18n),
+      actualOutcome: formatOutcomeLabel(actualOutcome, i18n),
+    }),
   };
 }
 
@@ -214,7 +259,7 @@ function getPredictionOutcomeLabel(match: MatchPredictionCard, i18n: DashboardSt
   }
 
   if (match.prediction.scoringStatus === CLIENT_PREDICTION_SCORING_STATUS.SCORED) {
-    return i18n.youEarned.replace("{points}", i18n.formatPointsLabel(match.prediction.pointsAwarded));
+    return formatTemplate(i18n.youEarned, { points: formatPointsLabel(match.prediction.pointsAwarded, i18n) });
   }
 
   return i18n.predictionWaitingToBeScored;
@@ -237,7 +282,7 @@ function getLocalDateKey(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function groupMatchesByDate(matches: MatchPredictionCard[]): MatchGroup[] {
+function groupMatchesByDate(matches: MatchPredictionCard[], locale: string): MatchGroup[] {
   const groups: Map<string, MatchGroup> = new Map();
 
   for (const match of matches) {
@@ -247,7 +292,7 @@ function groupMatchesByDate(matches: MatchPredictionCard[]): MatchGroup[] {
     let group = groups.get(dateKey);
 
     if (!group) {
-      const dateLabel = new Intl.DateTimeFormat("en", {
+      const dateLabel = new Intl.DateTimeFormat(locale, {
         weekday: "long",
         month: "long",
         day: "numeric",
@@ -275,7 +320,7 @@ export function MatchPredictionAccordion({
   const [animationDirection, setAnimationDirection] = useState(0);
   const shouldReduceMotion = useReducedMotion();
 
-  const matchGroups = hasHydrated ? groupMatchesByDate(matches) : [];
+  const matchGroups = hasHydrated ? groupMatchesByDate(matches, i18n.locale) : [];
 
   useEffect(() => {
     setHasHydrated(true);
@@ -452,7 +497,7 @@ export function MatchPredictionAccordion({
                       </span>
                       <span className="mt-1 block truncate text-xs text-slate-500">
                         {match.stage}
-                        {match.groupName ? ` · ${match.groupName}` : ""} · {formatKickoff(match.kickoffAt)}
+                        {match.groupName ? ` · ${match.groupName}` : ""} · {formatKickoff(match.kickoffAt, i18n.locale)}
                       </span>
                     </span>
 
@@ -470,7 +515,7 @@ export function MatchPredictionAccordion({
                     <div className="border-t border-slate-800 p-4 pt-5 sm:p-5">
                       <div className="flex flex-wrap items-center gap-2 text-xs">
                         <span className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 font-semibold text-slate-300">
-                          {i18n.formatStatusLabel(match.status)}
+                          {formatStatusLabel(match.status, i18n)}
                         </span>
                         {matchFinished ? (
                           <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 font-semibold text-emerald-300">
@@ -508,13 +553,13 @@ export function MatchPredictionAccordion({
                                 <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-3">
                                   <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">{i18n.pointsEarned}</p>
                                   <p className="mt-1 text-lg font-bold text-white">
-                                    {i18n.formatPointsLabel(match.prediction.pointsAwarded)}
+                                    {formatPointsLabel(match.prediction.pointsAwarded, i18n)}
                                   </p>
                                 </div>
                                 <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-3 sm:col-span-2">
                                   <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">{i18n.scoredAt}</p>
                                   <p className="mt-1 text-sm font-semibold text-white">
-                                    {i18n.formatScoredAt(match.prediction.scoredAt)}
+                                    {formatScoredAt(match.prediction.scoredAt, i18n)}
                                   </p>
                                 </div>
                                 {scoringExplanation ? (

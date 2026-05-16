@@ -13,39 +13,42 @@ import {
   type RankingEntry,
   type Tournament,
 } from "@/lib/api";
-import { buildPageMetadata, metadataBase, SITE_DESCRIPTION, SITE_NAME } from "@/lib/metadata";
+import { buildPageMetadata } from "@/lib/metadata";
 import { formatCountryLabel, getTeamLabel, isProfileComplete } from "@/lib/profile";
 import { getFriendlyDisplayName, getFriendlyEmailLabel } from "@/lib/user-display";
 import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
 import { FlagIcon } from "@/components/FlagIcon";
 import Image from "next/image";
-import { redirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { getLocalizedPath, type AppLocale } from "@/lib/locale-nav";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations("metadata.landing");
+  return buildPageMetadata({
+    description: t("description"),
+    locale,
+    path: "/",
+    title: t("title"),
+  });
+}
 
 export default async function LocaleHomePage() {
   const locale = await getLocale();
   const t = await getTranslations("landing");
 
-  const session = await auth0.getSession();
-
-  if (!session) {
-    redirect(`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/dashboard")}`);
-  }
+  // Render the public localized landing for ALL users (authenticated and unauthenticated).
+  // Unauthenticated users see the marketing experience; authenticated users see the app home.
 
   const tournamentSlug = await resolveTournamentSlug();
 
-  const [activeTournament, matches, ranking] = await Promise.all([
-    getActiveTournament(tournamentSlug).catch(() => null),
-    getActiveTournamentMatches(tournamentSlug).catch(() => []),
-    getGlobalRanking(tournamentSlug).catch(() => [] as RankingEntry[]),
-  ]);
+  const session = await auth0.getSession();
+  const user = session?.user ?? null;
 
-  const user = session.user;
   let currentUserProfile = null;
   let currentUserProfileError = false;
 
-  if (session) {
+  if (user) {
     try {
       const { token } = await auth0.getAccessToken();
       currentUserProfile = await getCurrentUserProfile(token);
@@ -56,11 +59,18 @@ export default async function LocaleHomePage() {
 
   const displayName = user ? getFriendlyDisplayName(user, currentUserProfile) : null;
   const accountLabel = user ? getFriendlyDisplayName(user, currentUserProfile) : displayName;
+  const emailLabel = user ? getFriendlyEmailLabel(user, currentUserProfile) : null;
   const profileComplete = currentUserProfile ? isProfileComplete(currentUserProfile) : false;
-  const primaryCtaHref = user ? (profileComplete ? getLocalizedPath(locale as AppLocale, "/dashboard") : getLocalizedPath(locale as AppLocale, "/onboarding")) : "/auth/login";
+  const primaryCtaHref = user ? (profileComplete ? getLocalizedPath(locale as AppLocale, "/dashboard") : getLocalizedPath(locale as AppLocale, "/onboarding")) : `/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/")}`;
   const primaryCtaLabel = user ? (profileComplete ? t("cta.openDashboard") : t("cta.completeProfile")) : t("cta.logInToPredict");
-  const secondaryCtaHref = user ? getLocalizedPath(locale as AppLocale, "/groups") : "/auth/login";
+  const secondaryCtaHref = user ? getLocalizedPath(locale as AppLocale, "/groups") : `/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/")}`;
   const secondaryCtaLabel = user ? t("cta.myGroups") : t("cta.secureSignIn");
+
+  const [activeTournament, matches, ranking] = await Promise.all([
+    getActiveTournament(tournamentSlug).catch(() => null),
+    getActiveTournamentMatches(tournamentSlug).catch(() => []),
+    getGlobalRanking(tournamentSlug).catch(() => [] as RankingEntry[]),
+  ]);
 
   const previewMatch = matches.find((m) => m.status === MATCH_STATUS.UPCOMING) ?? matches[0] ?? null;
 
@@ -73,16 +83,15 @@ export default async function LocaleHomePage() {
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
         <header className="flex items-center justify-between gap-3 rounded-full border border-slate-800/80 bg-slate-900/60 px-4 py-3 backdrop-blur">
           <div className="min-w-0">
-            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300">
-              <Image src="/icon.svg" alt="WorldPredict logo" width={24} height={24} />
-              {t("header.brandName")}
+            <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300">
+              <Image src="/assets/LogoLong.png" alt="WorldPredict logo" width={144} height={40} priority className="h-8 w-auto object-contain pb-1" />
             </p>
             <p className="text-xs text-slate-400">{t("header.tagline")}</p>
           </div>
           {user ? (
             <div className="min-w-0 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-right text-xs text-emerald-300">
               <p className="truncate font-medium text-emerald-200">{accountLabel}</p>
-              <p className="truncate text-[11px] text-emerald-400/80">{currentUserProfile?.email ?? t("header.authenticatedLabel")}</p>
+              <p className="truncate text-[11px] text-emerald-400/80">{emailLabel ?? t("header.authenticatedLabel")}</p>
             </div>
           ) : (
             <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">
@@ -99,7 +108,7 @@ export default async function LocaleHomePage() {
               </p>
               <div className="space-y-4">
                 <h1 className="max-w-3xl text-3xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">
-                  {t.rich("hero.title", { rivalry: (chunk) => <span className="text-cyan-300">{chunk}</span> })}
+                  {t("hero.title")} <span className="text-cyan-300">{t("hero.titleRivalry")}</span>
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
                   {t("hero.subtitle")}
@@ -183,7 +192,7 @@ export default async function LocaleHomePage() {
                 <div className="mt-4 space-y-4">
                   <div>
                     <p className="font-semibold text-white">{accountLabel}</p>
-                    <p className="text-sm text-slate-400">{currentUserProfile?.email ?? t("header.authenticatedLabel")}</p>
+                    <p className="text-sm text-slate-400">{emailLabel ?? t("header.authenticatedLabel")}</p>
                   </div>
 
                   <div className="flex flex-wrap gap-3">
@@ -203,7 +212,10 @@ export default async function LocaleHomePage() {
                   <p className="text-sm leading-6 text-slate-400">
                     {t("aside.signInPrompt")}
                   </p>
-                  <Link href="/auth/login" className="inline-flex text-sm font-medium text-cyan-300">
+                  <Link
+                    href={`/auth/login?returnTo=${getLocalizedPath(locale as AppLocale, "/")}`}
+                    className="inline-flex text-sm font-medium text-cyan-300"
+                  >
                     {t("aside.logIn")}
                   </Link>
                 </div>

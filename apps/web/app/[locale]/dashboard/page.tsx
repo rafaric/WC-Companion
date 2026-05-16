@@ -492,6 +492,7 @@ export default async function DashboardPage({ searchParams, params }: DashboardP
           <RecentlyScoredResults
             items={recentlyScoredResultItems}
             i18n={{
+              locale,
               recentlyScored: t("dashboardStrings.recentlyScored"),
               newResultsFromYourPredictions: t("dashboardStrings.newResultsFromYourPredictions"),
               theseAreFinishedMatches: t("dashboardStrings.theseAreFinishedMatches"),
@@ -501,10 +502,8 @@ export default async function DashboardPage({ searchParams, params }: DashboardP
               points: t("dashboardStrings.points"),
               whyThisScore: t("dashboardStrings.whyThisScore"),
               stageUnavailable: t("dashboardStrings.stageUnavailable"),
-              formatPointsLabel: (points: number) =>
-                points === 1 ? t("scoringExplanations.point", { count: points }) : t("scoringExplanations.points", { count: points }),
-              formatDateTime: (value: string) =>
-                new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)),
+              point: t("scoringExplanations.point", { count: 1 }),
+              pointsLabel: t("scoringExplanations.points", { count: 999 }),
             }}
           />
 
@@ -523,6 +522,7 @@ export default async function DashboardPage({ searchParams, params }: DashboardP
               profileComplete={profileComplete}
               submitPredictionAction={submitPrediction}
               i18n={{
+                locale,
                 noUpcomingMatches: t("dashboardStrings.noUpcomingMatches"),
                 loadingLocalDates: t("dashboardStrings.loadingLocalDates"),
                 previousDate: t("dashboardStrings.previousDate"),
@@ -547,28 +547,21 @@ export default async function DashboardPage({ searchParams, params }: DashboardP
                 waitingForFinalResult: t("dashboardStrings.waitingForFinalResult"),
                 noPredictionSubmittedLabel: t("dashboardStrings.noPredictionSubmittedLabel"),
                 predictionWaitingToBeScored: t("dashboardStrings.predictionWaitingToBeScored"),
-                youEarned: t("dashboardStrings.youEarned"),
-                formatPointsLabel: (points: number) =>
-                  points === 1 ? t("scoringExplanations.point", { count: points }) : t("scoringExplanations.points", { count: points }),
-                formatStatusLabel: (status: string) => {
-                  if (!status) return t("dashboardStrings.unknown");
-                  const normalized = status.split("_").join(" ").toLowerCase();
-                  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-                },
-                formatOutcomeLabel: (outcome: "home-win" | "away-win" | "draw") => {
-                  const keyMap = { "home-win": "homeWin", "away-win": "awayWin", draw: "draw" } as const;
-                  return t(`scoringExplanations.${keyMap[outcome]}` as "scoringExplanations.homeWin");
-                },
-                formatScoredAt: (value: string | null) => {
-                  if (!value) return t("scoringExplanations.waitingForScoringDetail");
-                  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-                },
+                youEarned: t("dashboardStrings.youEarned", { points: "{points}" }),
+                point: t("scoringExplanations.point", { count: 1 }),
+                points: t("scoringExplanations.points", { count: 999 }),
+                homeWin: t("scoringExplanations.homeWin"),
+                awayWin: t("scoringExplanations.awayWin"),
+                draw: t("scoringExplanations.draw"),
                 waitingForScoring: t("scoringExplanations.waitingForScoring"),
                 waitingForScoringDetail: t("scoringExplanations.waitingForScoringDetail"),
                 finalScoreUnavailable: t("scoringExplanations.finalScoreUnavailable"),
                 finalScoreUnavailableDetail: t("scoringExplanations.finalScoreUnavailableDetail"),
                 correctOutcome: t("scoringExplanations.correctOutcome"),
                 wrongOutcome: t("scoringExplanations.wrongOutcome"),
+                exactScoreDetail: t("scoringExplanations.exactScoreDetail", { points: "{points}" }),
+                correctOutcomeDetail: t("scoringExplanations.correctOutcomeDetail", { predictedOutcome: "{predictedOutcome}", actualOutcome: "{actualOutcome}" }),
+                wrongOutcomeDetail: t("scoringExplanations.wrongOutcomeDetail", { predictedOutcome: "{predictedOutcome}", actualOutcome: "{actualOutcome}" }),
               }}
             />
           </div>

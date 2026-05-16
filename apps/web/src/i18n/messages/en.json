@@ -28,7 +28,7 @@
       "activeTournament": "No active tournament yet"
     },
     "hero": {
-      "title": "World Cup predictions feel better when {rivalry} the rivalry is personal.",
+      "title": "World Cup predictions feel better when",
       "titleRivalry": "the rivalry is personal.",
       "subtitle": "WorldPredict keeps the tournament focused on quick match picks, private groups, and live rankings that make every confirmed World Cup result matter."
     },
@@ -330,6 +330,10 @@
     "onboarding": {
       "title": "Complete profile",
       "description": "Choose your country, language, and favorite team before joining the football prediction competition."
+    },
+    "landing": {
+      "title": "WorldPredict — Social Football Prediction",
+      "description": "A social football prediction platform where fans compete with friends, track rankings, and share results without betting mechanics."
     }
   }
 }

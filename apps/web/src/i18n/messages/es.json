@@ -28,7 +28,7 @@
       "activeTournament": "Sin torneo activo"
     },
     "hero": {
-      "title": "Las predicciones del Mundial se disfrutan más cuando {rivalry} la rivalidad es personal.",
+      "title": "Las predicciones del Mundial se disfrutan más cuando",
       "titleRivalry": "la rivalidad es personal.",
       "subtitle": "WorldPredict mantiene el torneo enfocado en predicciones rápidas, grupos privados y clasificaciones en vivo que hacen que cada resultado confirmado del Mundial importe."
     },
@@ -105,7 +105,7 @@
     "rankingSection": {
       "globalRanking": "Clasificación global",
       "yourOverallStanding": "Tu posición general",
-      "seeHowYourPoints": "Ved cómo tus puntos se comparan con los de todos los jugadores, más allá de tus grupos privados.",
+      "seeHowYourPoints": "Ve cómo tus puntos se comparan con los de todos los jugadores, más allá de tus grupos privados.",
       "viewAll": "Ver todos",
       "currentPosition": "Posición actual",
       "yourPlaceInGlobalBoard": "Tu lugar en la tabla global",
@@ -330,6 +330,10 @@
     "onboarding": {
       "title": "Completar perfil",
       "description": "Elegí tu país, idioma y equipo favorito antes de unirte a la competencia de predicciones del Mundial."
+    },
+    "landing": {
+      "title": "WorldPredict — Predicciones de Fútbol Social",
+      "description": "Una plataforma de predicciones de fútbol social donde los aficionados compiten con amigos, seguí rankings y compartí resultados sin mecánica de apuestas."
     }
   }
 }

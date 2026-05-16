@@ -33,13 +33,21 @@ export async function middleware(request: NextRequest) {
     return intlResponse;
   }
 
-  // For locale-prefixed routes, also pass to Auth0 for session handling
-  return auth0.middleware(request);
+  // For locale-prefixed routes, also pass to Auth0 for session handling.
+  // IMPORTANT: preserve headers/cookies that next-intl adds to carry the resolved locale.
+  const authResponse = await auth0.middleware(request);
+
+  intlResponse.headers.forEach((value, key) => {
+    authResponse.headers.set(key, value);
+  });
+
+  return authResponse;
 }
 
 export const config = {
   matcher: [
-    // Exclude static assets, API routes, Auth0 routes, and Next.js internals from locale handling
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|robots.txt|sitemap.xml|api|auth).*)",
+    // Run middleware for app routes and Auth0 routes, but skip Next internals, API routes,
+    // and any request that already targets a static asset / public file (has a file extension).
+    "/((?!api|_next|.*\\..*).*)",
   ],
 };
