@@ -35,8 +35,8 @@ export interface RecentlyScoredResultsStrings {
   points: string;
   whyThisScore: string;
   stageUnavailable: string;
-  point: string;
-  pointsLabel: string;
+  pointUnit: string;
+  pointsUnit: string;
 }
 
 interface RecentlyScoredResultsProps {
@@ -101,16 +101,9 @@ function getExplanationClassName(kind: string): string {
   }
 }
 
-function formatTemplate(template: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce(
-    (result, [key, value]) => result.split(`{${key}}`).join(String(value)),
-    template,
-  );
-}
-
 function formatPointsLabel(points: number, i18n: RecentlyScoredResultsStrings): string {
-  const template = points === 1 ? i18n.point : i18n.pointsLabel;
-  return formatTemplate(template, { count: points });
+  const unit = points === 1 ? i18n.pointUnit : i18n.pointsUnit;
+  return `${points} ${unit}`;
 }
 
 function formatDateTime(value: string, locale: string): string {
