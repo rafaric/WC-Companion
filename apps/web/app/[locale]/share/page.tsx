@@ -21,12 +21,11 @@ import {
   type RankingEntry,
 } from "@/lib/api";
 import { formatCountryLabel, getTeamLabel } from "@/lib/profile";
-import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
+import { findRankingEntryByUserId } from "@/lib/rankings";
 import { getFriendlyDisplayName } from "@/lib/user-display";
 import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
 import { FlagIcon } from "@/components/FlagIcon";
 import { getTranslations } from "next-intl/server";
-import { getLocale } from "next-intl/server";
 import { getLocalizedPath, type AppLocale } from "@/lib/locale-nav";
 import { buildPageMetadata } from "@/lib/metadata";
 
@@ -80,7 +79,6 @@ interface PerformanceSummaryShareTemplateProps {
   leaderboardCount: number;
   captureTargetId?: string;
   shareActions?: ReactNode;
-  locale: string;
   t: Awaited<ReturnType<typeof getTranslations<"share">>>;
 }
 
@@ -90,7 +88,6 @@ interface GroupShareTemplateProps {
   previewId?: string;
   captureTargetId?: string;
   shareActions?: ReactNode;
-  locale: string;
   t: Awaited<ReturnType<typeof getTranslations<"share">>>;
 }
 
@@ -341,7 +338,6 @@ function PerformanceSummaryShareTemplate({
   leaderboardCount,
   captureTargetId,
   shareActions,
-  locale,
   t,
 }: PerformanceSummaryShareTemplateProps) {
   return (
@@ -407,7 +403,7 @@ function PerformanceSummaryShareTemplate({
   );
 }
 
-function GroupShareTemplate({ group, rankingEntry, previewId, captureTargetId, shareActions, locale, t }: GroupShareTemplateProps) {
+function GroupShareTemplate({ group, rankingEntry, previewId, captureTargetId, shareActions, t }: GroupShareTemplateProps) {
   return (
     <article id={previewId} className="relative scroll-mt-24 overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-slate-950 p-5 shadow-2xl shadow-cyan-950/30">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.2),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.16),transparent_32%)]" />
@@ -554,7 +550,6 @@ export default async function SharePage({ searchParams, params }: SharePageProps
 
   const displayName = getFriendlyDisplayName(session.user, currentUserProfile);
   const currentUserRankingEntry = findRankingEntryByUserId(globalRanking, currentUserProfile?.id);
-  const rankingPreview = getRankingPreview(globalRanking);
   const predictionOptions = mergePredictions(matches, predictions);
   const selectedPrediction = resolvedSearchParams?.matchId
     ? predictionOptions.find((option) => option.prediction.matchId === resolvedSearchParams.matchId) ?? null
@@ -565,6 +560,7 @@ export default async function SharePage({ searchParams, params }: SharePageProps
     selectedGroupId && resolvedSearchParams?.success === SHARE_SUCCESS.GROUP_RANKING
       ? await getGroupRanking(accessToken, selectedGroupId).catch(() => [] as RankingEntry[])
       : [];
+  const selectedGroupRankingEntry = findRankingEntryByUserId(selectedGroupRanking, currentUserProfile?.id);
   const shareOrigin = await getRequestOrigin();
   const shareUsername = displayName;
 
@@ -574,8 +570,8 @@ export default async function SharePage({ searchParams, params }: SharePageProps
   const performanceSummaryShareContent = currentUserRankingEntry
     ? buildPerformanceSummaryShareContent(shareOrigin, locale, shareUsername, currentUserRankingEntry, t)
     : null;
-  const groupRankingShareContent = selectedGroup && selectedGroupRanking[0]
-    ? buildGroupRankingShareContent(shareOrigin, locale, shareUsername, selectedGroup.name, selectedGroupRanking[0], selectedGroup.id, t)
+  const groupRankingShareContent = selectedGroup && selectedGroupRankingEntry
+    ? buildGroupRankingShareContent(shareOrigin, locale, shareUsername, selectedGroup.name, selectedGroupRankingEntry, selectedGroup.id, t)
     : null;
 
   async function submitPredictionPreview(formData: FormData) {
@@ -774,7 +770,7 @@ export default async function SharePage({ searchParams, params }: SharePageProps
               rankingEntry={currentUserRankingEntry}
               displayName={displayName}
               countryLabel={currentUserProfile ? formatCountryLabel(currentUserProfile.country) : null}
-              leaderboardCount={rankingPreview.length > 0 ? rankingPreview.length : globalRanking.length}
+              leaderboardCount={globalRanking.length}
               captureTargetId={currentUserRankingEntry ? `performance-share-card-${currentUserRankingEntry.userId}` : undefined}
               shareActions={
                 performanceSummaryShareContent ? (
@@ -786,7 +782,6 @@ export default async function SharePage({ searchParams, params }: SharePageProps
                   />
                 ) : null
               }
-              locale={locale}
               t={t}
             />
           </div>
@@ -838,22 +833,21 @@ export default async function SharePage({ searchParams, params }: SharePageProps
 
             <GroupShareTemplate
               group={selectedGroup}
-              rankingEntry={selectedGroupRanking[0] ?? null}
+              rankingEntry={selectedGroupRankingEntry}
               previewId="group-preview"
-              captureTargetId={selectedGroupRanking[0] ? `group-share-card-${selectedGroupRanking[0].userId}-${selectedGroup?.id ?? selectedGroupId ?? "group"}` : undefined}
+              captureTargetId={selectedGroupRankingEntry ? `group-share-card-${selectedGroupRankingEntry.userId}-${selectedGroup?.id ?? selectedGroupId ?? "group"}` : undefined}
               shareActions={
                 groupRankingShareContent ? (
                   <ShareActions
                     title={groupRankingShareContent.title}
                     text={groupRankingShareContent.text}
                     url={groupRankingShareContent.url}
-                    captureTargetId={selectedGroupRanking[0] ? `group-share-card-${selectedGroupRanking[0].userId}-${selectedGroup?.id ?? selectedGroupId ?? "group"}` : undefined}
+                    captureTargetId={selectedGroupRankingEntry ? `group-share-card-${selectedGroupRankingEntry.userId}-${selectedGroup?.id ?? selectedGroupId ?? "group"}` : undefined}
                   />
                 ) : selectedGroup ? (
                   <p className="text-center text-xs leading-5 text-slate-400">{t("fallback.generateCardToEnable")}</p>
                 ) : null
               }
-              locale={locale}
               t={t}
             />
           </div>

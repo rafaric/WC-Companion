@@ -138,7 +138,9 @@
       "awayWin": "away win",
       "draw": "draw",
       "point": "{count} point",
-      "points": "{count} points"
+      "points": "{count} points",
+      "pointUnit": "point",
+      "pointsUnit": "points"
     },
     "dashboardStrings": {
       "noUpcomingMatches": "No upcoming World Cup matches open for prediction right now. New scored matches will appear above when results land.",
@@ -172,6 +174,18 @@
       "final": "Final",
       "points": "Points",
       "stageUnavailable": "Stage unavailable"
+    },
+    "scoringRules": {
+      "eyebrow": "Scoring system",
+      "title": "How points work",
+      "description": "Your ranking updates when final results are confirmed. Exact scores matter most, but correctly reading the match outcome still earns points.",
+      "viewRanking": "View ranking",
+      "exactScoreTitle": "Exact score",
+      "exactScoreDetail": "Predict both teams' final scores correctly to earn 3 points.",
+      "correctOutcomeTitle": "Correct outcome",
+      "correctOutcomeDetail": "Pick the right winner, or the draw, but miss the exact score to earn 1 point.",
+      "wrongOutcomeTitle": "Wrong outcome",
+      "wrongOutcomeDetail": "Miss the winner or draw and you earn 0 points for that match."
     }
   },
   "share": {

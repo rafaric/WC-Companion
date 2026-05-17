@@ -5,20 +5,26 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import type { MatchView, PredictionView } from "@/lib/api";
+import {
+  formatPointsLabel,
+  formatTemplate,
+  getScoringExplanation,
+  getScoringExplanationClassName,
+  type ScoringExplanationStrings,
+} from "@/lib/scoring-explanations";
 import { FlagIcon } from "@/components/FlagIcon";
 
 interface MatchPredictionCard extends MatchView {
   prediction: PredictionView | null;
 }
 
-export interface DashboardStrings {
+export interface DashboardStrings extends ScoringExplanationStrings {
   locale: string;
   noUpcomingMatches: string;
   loadingLocalDates: string;
   previousDate: string;
   nextDate: string;
   vs: string;
-  exactScore: string;
   finalResult: string;
   yourPick: string;
   pointsEarned: string;
@@ -38,20 +44,6 @@ export interface DashboardStrings {
   noPredictionSubmittedLabel: string;
   predictionWaitingToBeScored: string;
   youEarned: string;
-  point: string;
-  points: string;
-  homeWin: string;
-  awayWin: string;
-  draw: string;
-  waitingForScoring: string;
-  waitingForScoringDetail: string;
-  finalScoreUnavailable: string;
-  finalScoreUnavailableDetail: string;
-  correctOutcome: string;
-  wrongOutcome: string;
-  exactScoreDetail: string;
-  correctOutcomeDetail: string;
-  wrongOutcomeDetail: string;
 }
 
 interface MatchPredictionAccordionProps {
@@ -61,71 +53,11 @@ interface MatchPredictionAccordionProps {
   i18n: DashboardStrings;
 }
 
-const MATCH_OUTCOME = {
-  AWAY_WIN: "away-win",
-  DRAW: "draw",
-  HOME_WIN: "home-win",
-} as const;
-
-type MatchOutcome = (typeof MATCH_OUTCOME)[keyof typeof MATCH_OUTCOME];
-
-const CLIENT_MATCH_STATUS = {
-  FINISHED: "FINISHED",
-  UPCOMING: "UPCOMING",
-} as const;
-
-const CLIENT_PREDICTION_SCORING_STATUS = {
-  SCORED: "SCORED",
-} as const;
-
-const SCORING_EXPLANATION_KIND = {
-  CORRECT_OUTCOME: "correct-outcome",
-  EXACT_SCORE: "exact-score",
-  NOT_SCORED: "not-scored",
-  WRONG_OUTCOME: "wrong-outcome",
-} as const;
-
-type ScoringExplanationKind = (typeof SCORING_EXPLANATION_KIND)[keyof typeof SCORING_EXPLANATION_KIND];
-
-interface ScoreLine {
-  homeScore: number;
-  awayScore: number;
-}
-
-interface ScoringExplanation {
-  kind: ScoringExplanationKind;
-  title: string;
-  detail: string;
-}
-
 function formatKickoff(kickoffAt: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(kickoffAt));
-}
-
-function formatTemplate(template: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce(
-    (result, [key, value]) => result.split(`{${key}}`).join(String(value)),
-    template,
-  );
-}
-
-function formatPointsLabel(points: number, i18n: DashboardStrings): string {
-  const template = points === 1 ? i18n.point : i18n.points;
-  return formatTemplate(template, { count: points });
-}
-
-function formatOutcomeLabel(outcome: "home-win" | "away-win" | "draw", i18n: DashboardStrings): string {
-  switch (outcome) {
-    case "home-win":
-      return i18n.homeWin;
-    case "away-win":
-      return i18n.awayWin;
-    case "draw":
-      return i18n.draw;
-  }
 }
 
 function formatStatusLabel(status: string, i18n: DashboardStrings): string {
@@ -139,114 +71,12 @@ function formatScoredAt(value: string | null, i18n: DashboardStrings): string {
   return new Intl.DateTimeFormat(i18n.locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
-function resolveOutcome(score: ScoreLine): MatchOutcome {
-  if (score.homeScore > score.awayScore) {
-    return MATCH_OUTCOME.HOME_WIN;
-  }
-
-  if (score.homeScore < score.awayScore) {
-    return MATCH_OUTCOME.AWAY_WIN;
-  }
-
-  return MATCH_OUTCOME.DRAW;
-}
-
-function getActualScoreLine(match: MatchView): ScoreLine | null {
-  if (match.homeScore === null || match.awayScore === null) {
-    return null;
-  }
-
-  return {
-    homeScore: match.homeScore,
-    awayScore: match.awayScore,
-  };
-}
-
-function getPredictionScoreLine(prediction: PredictionView): ScoreLine {
-  return {
-    homeScore: prediction.homeScore,
-    awayScore: prediction.awayScore,
-  };
-}
-
-function getScoringExplanation(match: MatchPredictionCard, i18n: DashboardStrings): ScoringExplanation | null {
-  if (!match.prediction) {
-    return null;
-  }
-
-  if (match.prediction.scoringStatus !== CLIENT_PREDICTION_SCORING_STATUS.SCORED) {
-    return {
-      kind: SCORING_EXPLANATION_KIND.NOT_SCORED,
-      title: i18n.waitingForScoring,
-      detail: i18n.waitingForScoringDetail,
-    };
-  }
-
-  const actualScore = getActualScoreLine(match);
-
-  if (!actualScore) {
-    return {
-      kind: SCORING_EXPLANATION_KIND.NOT_SCORED,
-      title: i18n.finalScoreUnavailable,
-      detail: i18n.finalScoreUnavailableDetail,
-    };
-  }
-
-  const predictionScore = getPredictionScoreLine(match.prediction);
-  const exactScore =
-    predictionScore.homeScore === actualScore.homeScore && predictionScore.awayScore === actualScore.awayScore;
-
-  if (exactScore) {
-    return {
-      kind: SCORING_EXPLANATION_KIND.EXACT_SCORE,
-      title: i18n.exactScore,
-      detail: formatTemplate(i18n.exactScoreDetail, { points: formatPointsLabel(match.prediction.pointsAwarded, i18n) }),
-    };
-  }
-
-  const predictedOutcome = resolveOutcome(predictionScore);
-  const actualOutcome = resolveOutcome(actualScore);
-
-  if (predictedOutcome === actualOutcome) {
-    return {
-      kind: SCORING_EXPLANATION_KIND.CORRECT_OUTCOME,
-      title: i18n.correctOutcome,
-      detail: formatTemplate(i18n.correctOutcomeDetail, {
-        predictedOutcome: formatOutcomeLabel(predictedOutcome, i18n),
-        actualOutcome: formatOutcomeLabel(actualOutcome, i18n),
-      }),
-    };
-  }
-
-  return {
-    kind: SCORING_EXPLANATION_KIND.WRONG_OUTCOME,
-    title: i18n.wrongOutcome,
-    detail: formatTemplate(i18n.wrongOutcomeDetail, {
-      predictedOutcome: formatOutcomeLabel(predictedOutcome, i18n),
-      actualOutcome: formatOutcomeLabel(actualOutcome, i18n),
-    }),
-  };
-}
-
-function getScoringExplanationClassName(kind: ScoringExplanationKind): string {
-  switch (kind) {
-    case SCORING_EXPLANATION_KIND.EXACT_SCORE:
-      return "border-cyan-300/30 bg-cyan-300/10 text-cyan-100";
-    case SCORING_EXPLANATION_KIND.CORRECT_OUTCOME:
-      return "border-emerald-300/30 bg-emerald-300/10 text-emerald-100";
-    case SCORING_EXPLANATION_KIND.WRONG_OUTCOME:
-      return "border-rose-300/30 bg-rose-300/10 text-rose-100";
-    case SCORING_EXPLANATION_KIND.NOT_SCORED:
-      return "border-amber-300/30 bg-amber-300/10 text-amber-100";
-  }
-}
-
 function isMatchOpenForPrediction(match: MatchView): boolean {
-  return match.status === CLIENT_MATCH_STATUS.UPCOMING && Date.now() < new Date(match.kickoffAt).getTime();
+  return match.status === "UPCOMING" && Date.now() < new Date(match.kickoffAt).getTime();
 }
 
 function isMatchFinished(match: MatchView): boolean {
-  return match.status === CLIENT_MATCH_STATUS.FINISHED || match.finalizedAt !== null;
+  return match.status === "FINISHED" || match.finalizedAt !== null;
 }
 
 function getPredictionOutcomeLabel(match: MatchPredictionCard, i18n: DashboardStrings): string {
@@ -258,7 +88,7 @@ function getPredictionOutcomeLabel(match: MatchPredictionCard, i18n: DashboardSt
     return i18n.noPredictionSubmittedLabel;
   }
 
-  if (match.prediction.scoringStatus === CLIENT_PREDICTION_SCORING_STATUS.SCORED) {
+  if (match.prediction.scoringStatus === "SCORED") {
     return formatTemplate(i18n.youEarned, { points: formatPointsLabel(match.prediction.pointsAwarded, i18n) });
   }
 

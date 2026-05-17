@@ -129,7 +129,7 @@
       "finalScoreUnavailable": "Resultado final no disponible",
       "finalScoreUnavailableDetail": "Tenemos el partido marcado como finalizado, pero el resultado no está disponible aún.",
       "exactScore": "Score exacto",
-      "exactScoreDetail": "Acertaste el resultado final: {points} puntos otorgados.",
+      "exactScoreDetail": "Acertaste el resultado final: {points} otorgados.",
       "correctOutcome": "Resultado correcto",
       "correctOutcomeDetail": "Predijiste {predictedOutcome}, y el partido terminó como {actualOutcome}.",
       "wrongOutcome": "Resultado equivocado",
@@ -138,7 +138,9 @@
       "awayWin": "victoria visitante",
       "draw": "empate",
       "point": "{count} punto",
-      "points": "{count} puntos"
+      "points": "{count} puntos",
+      "pointUnit": "punto",
+      "pointsUnit": "puntos"
     },
     "dashboardStrings": {
       "noUpcomingMatches": "No hay partidos del Mundial abiertos para predecir ahora. Los nuevos resultados puntuados aparecerán arriba cuando lleguen.",
@@ -172,6 +174,18 @@
       "final": "Final",
       "points": "Puntos",
       "stageUnavailable": "Etapa no disponible"
+    },
+    "scoringRules": {
+      "eyebrow": "Sistema de puntos",
+      "title": "Cómo se suman los puntos",
+      "description": "Tu clasificación se actualiza cuando se confirman los resultados finales. El score exacto es lo que más suma, pero acertar el resultado del partido también da puntos.",
+      "viewRanking": "Ver clasificación",
+      "exactScoreTitle": "Score exacto",
+      "exactScoreDetail": "Acertá los goles finales de los dos equipos para ganar 3 puntos.",
+      "correctOutcomeTitle": "Resultado correcto",
+      "correctOutcomeDetail": "Elegí bien el ganador, o el empate, pero sin clavar el score exacto para ganar 1 punto.",
+      "wrongOutcomeTitle": "Resultado equivocado",
+      "wrongOutcomeDetail": "Si no acertás el ganador o el empate, sumás 0 puntos en ese partido."
     }
   },
   "share": {
