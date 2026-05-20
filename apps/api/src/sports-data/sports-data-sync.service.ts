@@ -1,9 +1,9 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { MatchStatus, TournamentStatus } from '@prisma/client';
 
-import { MatchesService, type FinalizeMatchSummary } from '../matches/matches.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { TournamentsService, type TournamentContextInput, type ResolvedTournamentContext } from '../tournaments/tournaments.service';
+import type { MatchesService, FinalizeMatchSummary } from '../matches/matches.service';
+import type { PrismaService } from '../prisma/prisma.service';
+import type { TournamentsService, TournamentContextInput, ResolvedTournamentContext } from '../tournaments/tournaments.service';
 import {
   EXTERNAL_MATCH_RESULT_STATES,
   type ExternalMatchResultState,
@@ -117,7 +117,7 @@ export interface ExternalSyncRunSummary {
  * Tournaments that are supported for provider sync operations.
  * Demo tournaments should not be synced with external providers.
  */
-const SUPPORTED_PROVIDER_TOURNAMENT_SLUGS = ['world-cup-2026'] as const;
+const SUPPORTED_PROVIDER_TOURNAMENT_SLUGS = ['world-cup-2026', 'liga-argentina-2026'] as const;
 
 @Injectable()
 export class SportsDataSyncService {
@@ -590,7 +590,13 @@ export class SportsDataSyncService {
   }
 
   private resolveProviderTournamentKey(tournament: { id: string; slug: string }): string {
-    return this.provider.providerKey === SPORTS_DATA_PROVIDER_KEYS.FOOTBALL_DATA ? tournament.slug : tournament.id;
+    if (
+      this.provider.providerKey === SPORTS_DATA_PROVIDER_KEYS.FOOTBALL_DATA ||
+      this.provider.providerKey === SPORTS_DATA_PROVIDER_KEYS.API_SPORTS
+    ) {
+      return tournament.slug;
+    }
+    return tournament.id;
   }
 
   private async startSyncRun(tournamentId: string, syncType: SportsDataSyncType) {
