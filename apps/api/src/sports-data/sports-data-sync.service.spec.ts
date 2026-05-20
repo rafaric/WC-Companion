@@ -1,8 +1,8 @@
 import { MatchStatus, TournamentStatus } from '@prisma/client';
 
-import { MatchesService, type FinalizeMatchSummary } from '../matches/matches.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { TournamentsService, type TournamentContextInput, type TournamentView } from '../tournaments/tournaments.service';
+import type { MatchesService, FinalizeMatchSummary } from '../matches/matches.service';
+import type { PrismaService } from '../prisma/prisma.service';
+import type { TournamentsService, TournamentContextInput, TournamentView } from '../tournaments/tournaments.service';
 import { MOCK_SPORTS_DATA_PROVIDER_SNAPSHOT, MockSportsDataProvider } from './mock-sports-data.provider';
 import { SportsDataSyncService } from './sports-data-sync.service';
 import type { SportsDataFinalResultDTO } from './sports-data.types';
@@ -679,6 +679,113 @@ describe('SportsDataSyncService', () => {
     expect(provider.listTeams).toHaveBeenCalledWith('world-cup-2026');
     expect(provider.listVenues).toHaveBeenCalledWith('world-cup-2026');
     expect(provider.listFixtures).toHaveBeenCalledWith('world-cup-2026');
+  });
+
+  it('resolves the tournament slug before invoking an api-sports provider', async () => {
+    const state = createInitialState({
+      tournaments: [
+        {
+          id: 'liga-db-id',
+          slug: 'liga-argentina-2026',
+          status: TournamentStatus.ACTIVE,
+        },
+      ],
+    });
+    const prisma = createPrismaMock(state);
+    const provider = {
+      providerKey: 'api-sports',
+      listTeams: jest.fn(async () => []),
+      listVenues: jest.fn(async () => []),
+      listFixtures: jest.fn(async () => []),
+      listFinalResults: jest.fn(async () => []),
+    };
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      provider as unknown as MockSportsDataProvider,
+      createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'liga-db-id')) as unknown as MatchesService,
+      createTournamentsServiceMock({ id: 'liga-db-id', slug: 'liga-argentina-2026' }) as unknown as TournamentsService,
+    );
+
+    await service.importTournament('liga-db-id');
+
+    expect(provider.listTeams).toHaveBeenCalledWith('liga-argentina-2026');
+    expect(provider.listVenues).toHaveBeenCalledWith('liga-argentina-2026');
+    expect(provider.listFixtures).toHaveBeenCalledWith('liga-argentina-2026');
+  });
+
+  it('allows liga-argentina-2026 for provider sync', async () => {
+    const state = createInitialState({
+      tournaments: [
+        {
+          id: 'liga-db-id',
+          slug: 'liga-argentina-2026',
+          status: TournamentStatus.ACTIVE,
+        },
+      ],
+    });
+    const prisma = createPrismaMock(state);
+    const provider = {
+      providerKey: 'api-sports',
+      listTeams: jest.fn(async () => []),
+      listVenues: jest.fn(async () => []),
+      listFixtures: jest.fn(async () => []),
+      listFinalResults: jest.fn(async () => []),
+    };
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      provider as unknown as MockSportsDataProvider,
+      createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'liga-db-id')) as unknown as MatchesService,
+      createTournamentsServiceMock({ id: 'liga-db-id', slug: 'liga-argentina-2026' }) as unknown as TournamentsService,
+    );
+
+    // Should not throw — liga-argentina-2026 is now in SUPPORTED_PROVIDER_TOURNAMENT_SLUGS
+    await expect(service.importTournament('liga-db-id')).resolves.toMatchObject({
+      status: 'SUCCESS',
+    });
+  });
+
+  it('still rejects unsupported tournaments for api-sports provider', async () => {
+    const state = createInitialState();
+    const prisma = createPrismaMock(state);
+    const provider = {
+      providerKey: 'api-sports',
+      listTeams: jest.fn(async () => []),
+      listVenues: jest.fn(async () => []),
+      listFixtures: jest.fn(async () => []),
+      listFinalResults: jest.fn(async () => []),
+    };
+
+    // Create a mock that returns a demo/unsupported tournament
+    const unsupportedTournamentsService = {
+      listTournaments: jest.fn(),
+      resolveTournamentContext: jest.fn(async () => ({
+        tournament: {
+          id: 'demo-tournament-id',
+          name: 'Demo Tournament',
+          slug: 'demo-tournament',
+          year: 2026,
+          status: TournamentStatus.ACTIVE,
+          startsAt: new Date('2026-01-01'),
+          endsAt: new Date('2026-12-31'),
+        },
+        source: 'explicit' as const,
+      })),
+      getStrictActiveTournament: jest.fn(),
+      getActiveTournament: jest.fn(),
+      getActiveTournamentMatches: jest.fn(),
+      getTournamentMatches: jest.fn(),
+    } as unknown as TournamentsService;
+
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      provider as unknown as MockSportsDataProvider,
+      createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'tournament-1')) as unknown as MatchesService,
+      unsupportedTournamentsService,
+    );
+
+    await expect(service.importTournament('demo-tournament-id')).rejects.toThrow(
+      'does not support provider sync operations',
+    );
   });
 
   it('records success with zero staged results when the provider has nothing to finalize', async () => {
