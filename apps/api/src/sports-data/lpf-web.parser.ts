@@ -48,9 +48,7 @@ function parseDateHeading(line: string): string | null {
 	// Matches: <optional dayname/noise> <daynum> <monthname> <year>.
 	// The fetched LPF text can contain mojibake/control artifacts before the day name,
 	// so anchor on the reliable trailing day/month/year segment.
-	const match = line.match(
-		/(\d{1,2})\s+([a-zA-ZáéíóúÁÉÍÓÚüÜñÑ]+)\s+(\d{4})$/,
-	);
+	const match = line.match(/(\d{1,2})\s+([a-zA-ZáéíóúÁÉÍÓÚüÜñÑ]+)\s+(\d{4})$/);
 	if (!match) return null;
 	const day = match[1]!;
 	const monthName = match[2]!;
@@ -75,7 +73,10 @@ function isSectionStop(line: string): boolean {
 function isMatchRow(line: string): boolean {
 	const trimmed = line.trim();
 	return STATUS_TOKENS.some(
-		(token) => trimmed === token || trimmed.startsWith(`${token}\t`) || trimmed.startsWith(`${token} `),
+		(token) =>
+			trimmed === token ||
+			trimmed.startsWith(`${token}\t`) ||
+			trimmed.startsWith(`${token} `),
 	);
 }
 
@@ -174,9 +175,9 @@ function extractFixtureSection(rawText: string): string {
 	}
 
 	const fixtureText = rawText.slice(fixtureIndex);
-	const stopMatches = SECTION_STOPS
-		.map((stop) => fixtureText.search(new RegExp(`(^|\\n)\\s*${stop}`, "i")))
-		.filter((index) => index > 0);
+	const stopMatches = SECTION_STOPS.map((stop) =>
+		fixtureText.search(new RegExp(`(^|\\n)\\s*${stop}`, "i")),
+	).filter((index) => index > 0);
 	const stopIndex = stopMatches.length > 0 ? Math.min(...stopMatches) : -1;
 
 	return stopIndex === -1 ? fixtureText : fixtureText.slice(0, stopIndex);
@@ -226,14 +227,22 @@ function parseOptaXmlFeed(raw: string): LpfWebParseResult | null {
 		const matchInfo = matchXml.match(/<MatchInfo\b[^>]*>/)?.[0] ?? "";
 		const period = getAttribute(matchInfo, "Period");
 		const kickoffAt = parseOptaXmlDate(getTagText(matchXml, "DateUtc"));
-		const homeTeam = matchXml.match(/<TeamData\b[^>]*Side="Home"[^>]*>/)?.[0] ?? null;
-		const awayTeam = matchXml.match(/<TeamData\b[^>]*Side="Away"[^>]*>/)?.[0] ?? null;
+		const homeTeam =
+			matchXml.match(/<TeamData\b[^>]*Side="Home"[^>]*>/)?.[0] ?? null;
+		const awayTeam =
+			matchXml.match(/<TeamData\b[^>]*Side="Away"[^>]*>/)?.[0] ?? null;
 		const homeTeamRef = homeTeam ? getAttribute(homeTeam, "TeamRef") : null;
 		const awayTeamRef = awayTeam ? getAttribute(awayTeam, "TeamRef") : null;
 		const homeTeamName = homeTeamRef ? teams.get(homeTeamRef)?.name : null;
 		const awayTeamName = awayTeamRef ? teams.get(awayTeamRef)?.name : null;
 
-		if (!kickoffAt || !homeTeam || !awayTeam || !homeTeamName || !awayTeamName) {
+		if (
+			!kickoffAt ||
+			!homeTeam ||
+			!awayTeam ||
+			!homeTeamName ||
+			!awayTeamName
+		) {
 			skippedCount++;
 			continue;
 		}
@@ -250,13 +259,16 @@ function parseOptaXmlFeed(raw: string): LpfWebParseResult | null {
 			continue;
 		}
 
-		const status = period === "FullTime" ? "TC" : period === "ShootOut" ? "TE+P" : "NS";
+		const status =
+			period === "FullTime" ? "TC" : period === "ShootOut" ? "TE+P" : "NS";
 		const venueName =
-			matchXml.match(/<Stat\s+Type="Venue">([^<]*)<\/Stat>/)?.[1]?.trim() ?? null;
+			matchXml.match(/<Stat\s+Type="Venue">([^<]*)<\/Stat>/)?.[1]?.trim() ??
+			null;
 
 		rows.push({
 			status,
-			isFinalEligible: status === "TC" && homeScore !== null && awayScore !== null,
+			isFinalEligible:
+				status === "TC" && homeScore !== null && awayScore !== null,
 			dateLabel: kickoffAt.toISOString().slice(0, 10),
 			kickoffAt,
 			homeTeamName,
@@ -287,7 +299,9 @@ export function parseLpfPage(raw: string): LpfWebParseResult {
 	let skippedCount = 0;
 	let currentDate: string | null = null;
 
-	const lines = normalizePageText(raw).split(/\r?\n/).map((l) => l.trim());
+	const lines = normalizePageText(raw)
+		.split(/\r?\n/)
+		.map((l) => l.trim());
 
 	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i]!;

@@ -83,4 +83,3 @@ export interface LpfWebParseResult {
 	/** Number of rows skipped due to unparseable format. */
 	skippedCount: number;
 }
-

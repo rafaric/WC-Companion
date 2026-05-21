@@ -41,7 +41,9 @@ export class LpfWebClient implements LpfWebClientLike {
 		const omoUser = this.options.omoUser?.trim();
 		const omoPassword = this.options.omoPassword?.trim();
 		if (!omoUser || !omoPassword) {
-			throw new Error("LPF web OMO credentials are required to fetch fixture feed");
+			throw new Error(
+				"LPF web OMO credentials are required to fetch fixture feed",
+			);
 		}
 
 		const url = new URL(`${this.baseUrl.replace(/\/$/, "")}/competition.php`);

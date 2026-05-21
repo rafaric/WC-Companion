@@ -27,7 +27,10 @@ const makeErrorMockFetch = (
 };
 
 describe("LpfWebClient", () => {
-	function createClient(fetchImpl: jest.MockedFunction<typeof fetch>, baseUrl?: string): LpfWebClient {
+	function createClient(
+		fetchImpl: jest.MockedFunction<typeof fetch>,
+		baseUrl?: string,
+	): LpfWebClient {
 		return new LpfWebClient({
 			baseUrl,
 			fetchImpl,
@@ -44,7 +47,9 @@ describe("LpfWebClient", () => {
 			await client.fetchPage(LIGA_CONFIG);
 
 			const [url, init] = fetchImpl.mock.calls[0]!;
-			expect(String(url)).toMatch(/^https:\/\/omo\.akamai\.opta\.net\/auth\/competition\.php/);
+			expect(String(url)).toMatch(
+				/^https:\/\/omo\.akamai\.opta\.net\/auth\/competition\.php/,
+			);
 			expect(String(url)).toContain("feed_type=f1");
 			expect(String(url)).toContain("competition=384");
 			expect(String(url)).toContain("season_id=2026");
