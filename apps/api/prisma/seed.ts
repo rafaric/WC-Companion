@@ -36,7 +36,12 @@ type SeedClient = PrismaClient | Prisma.TransactionClient;
  *    - Purpose: Real tournament data (future: provider sync target)
  *    - Fixtures: Empty initially (ready for provider import)
  *
- * The selector exposes both tournaments, but only the ACTIVE tournament
+ * 3. LIGA ARGENTINA TOURNAMENT (liga-argentina-2026)
+ *    - Status: DRAFT (selectable, but not the default fallback)
+ *    - Purpose: LPF website provider sync target
+ *    - Fixtures: Empty initially (ready for lpf-web provider import)
+ *
+ * The selector exposes all tournaments, but only the ACTIVE tournament
  * serves as the deterministic fallback. This ensures:
  * - Demo data remains available for preview without being the sync target
  * - Provider sync operations target the ACTIVE tournament
@@ -61,6 +66,15 @@ const PROVIDER_TOURNAMENT = {
   status: TournamentStatus.ACTIVE,
   startsAt: new Date(Date.UTC(2026, 5, 11)),
   endsAt: new Date(Date.UTC(2026, 5, 25)),
+} as const;
+
+const LIGA_ARGENTINA_TOURNAMENT = {
+  name: 'Liga Argentina 2026',
+  slug: 'liga-argentina-2026',
+  year: 2026,
+  status: TournamentStatus.DRAFT,
+  startsAt: new Date(Date.UTC(2026, 0, 22)),
+  endsAt: new Date(Date.UTC(2026, 11, 31)),
 } as const;
 
 const TEAM_SEEDS = [
@@ -173,7 +187,7 @@ const DEFAULT_SCORING_RULE = {
  */
 async function upsertTournament(
   client: SeedClient,
-  tournament: typeof DEMO_TOURNAMENT | typeof PROVIDER_TOURNAMENT,
+  tournament: typeof DEMO_TOURNAMENT | typeof PROVIDER_TOURNAMENT | typeof LIGA_ARGENTINA_TOURNAMENT,
 ) {
   return client.tournament.upsert({
     where: { slug: tournament.slug },
@@ -334,12 +348,16 @@ async function main() {
     const providerTournament = await upsertTournament(transaction, PROVIDER_TOURNAMENT);
     console.log(`✓ Seeded provider-backed tournament: ${providerTournament.name} (${providerTournament.status})`);
 
-    // Step 2: Seed the demo tournament (FINISHED - for selector testing)
+    // Step 2: Seed the Liga Argentina tournament (DRAFT - selectable sync target)
+    const ligaTournament = await upsertTournament(transaction, LIGA_ARGENTINA_TOURNAMENT);
+    console.log(`✓ Seeded Liga Argentina tournament: ${ligaTournament.name} (${ligaTournament.status})`);
+
+    // Step 3: Seed the demo tournament (FINISHED - for selector testing)
     const demoTournament = await upsertTournament(transaction, DEMO_TOURNAMENT);
     console.log(`✓ Seeded demo tournament: ${demoTournament.name} (${demoTournament.status})`);
 
-    // Step 3: Seed demo fixtures under demo tournament slug
-    // (Provider tournament starts empty, ready for future provider import)
+    // Step 4: Seed demo fixtures under demo tournament slug
+    // (Provider tournaments start empty, ready for provider import)
     const teams = [] as Awaited<ReturnType<typeof upsertTeam>>[];
 
     for (const team of TEAM_SEEDS) {
@@ -356,13 +374,14 @@ async function main() {
 
     console.log(`✓ Seeded ${teams.length} teams and ${MATCH_SEEDS.length} matches for demo tournament`);
 
-    // Step 4: Validate exactly one ACTIVE tournament exists
+    // Step 5: Validate exactly one ACTIVE tournament exists
     await validateSingleActiveTournament(transaction);
 
     console.log('\n=== Seed Summary ===');
     console.log(`Demo tournament: ${demoTournament.name} (${demoTournament.slug}) - ${demoTournament.status}`);
     console.log(`Provider tournament: ${providerTournament.name} (${providerTournament.slug}) - ${providerTournament.status}`);
-    console.log('\nThe selector will show both tournaments.');
+    console.log(`Liga Argentina tournament: ${ligaTournament.name} (${ligaTournament.slug}) - ${ligaTournament.status}`);
+    console.log('\nThe selector will show all seeded tournaments.');
     console.log('The ACTIVE tournament serves as the deterministic fallback.');
     console.log('Demo fixtures are preserved under the demo slug for preview.');
   });
