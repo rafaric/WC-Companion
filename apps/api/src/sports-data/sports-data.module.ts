@@ -65,14 +65,22 @@ import type { SportsDataProvider } from "./sports-data.types";
 				}
 
 				if (providerKey === SPORTS_DATA_PROVIDER_KEYS.LPF_WEB) {
-					const omoUser = configService.get<string>("LPF_WEB_OMO_USER");
-					const omoPassword = configService.get<string>("LPF_WEB_OMO_PASSWORD");
+					const omoUser = configService
+						.get<string>("LPF_WEB_OMO_USER")
+						?.trim();
+					const omoPassword = configService
+						.get<string>("LPF_WEB_OMO_PASSWORD")
+						?.trim();
 					return new LpfWebProvider(
 						new LpfWebClient({
 							baseUrl:
-								configService.get<string>("LPF_WEB_BASE_URL") ?? undefined,
-							omoUser: omoUser ?? undefined,
-							omoPassword: omoPassword ?? undefined,
+								configService.get<string>("LPF_WEB_BASE_URL") ??
+								undefined,
+							omoUser: omoUser || undefined,
+							omoPassword: omoPassword || undefined,
+							widgetJsUrl:
+								configService.get<string>("LPF_WEB_WIDGET_JS_URL") ??
+								undefined,
 						}),
 						LPF_WEB_TOURNAMENT_CONFIGS,
 					);

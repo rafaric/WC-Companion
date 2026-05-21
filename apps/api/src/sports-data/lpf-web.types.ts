@@ -23,10 +23,21 @@ export type LpfWebTournamentConfigMap = Readonly<
 export interface LpfWebClientOptions {
 	/** Optional OMO base URL override for testing or local config. */
 	baseUrl?: string;
-	/** Optional OMO username for the official widget feed. */
+	/**
+	 * Optional OMO username. When provided together with omoPassword, used directly
+	 * (env override). When absent, auto-discovered from the public Opta widget JS.
+	 */
 	omoUser?: string;
-	/** Optional OMO password for the official widget feed. */
+	/**
+	 * Optional OMO password. When provided together with omoUser, used directly
+	 * (env override). When absent, auto-discovered from the public Opta widget JS.
+	 */
 	omoPassword?: string;
+	/**
+	 * URL of the Opta widget JS that contains the public OMO credentials.
+	 * Override for testing or if the default public endpoint changes.
+	 */
+	widgetJsUrl?: string;
 	/** Optional injectable fetch for testing. */
 	fetchImpl?: typeof fetch;
 }
