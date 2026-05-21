@@ -16,6 +16,9 @@ import { ApiSportsClient } from "./api-sports.client";
 import { ApiSportsProvider } from "./api-sports.provider";
 import { API_SPORTS_TOURNAMENT_CONFIGS } from "./api-sports.config";
 import { MockSportsDataProvider } from "./mock-sports-data.provider";
+import { LpfWebClient } from "./lpf-web.client";
+import { LPF_WEB_TOURNAMENT_CONFIGS } from "./lpf-web.config";
+import { LpfWebProvider } from "./lpf-web.provider";
 import { SportsDataController } from "./sports-data.controller";
 import { SportsDataSyncService } from "./sports-data-sync.service";
 import type { SportsDataProvider } from "./sports-data.types";
@@ -58,6 +61,20 @@ import type { SportsDataProvider } from "./sports-data.types";
 								configService.get<string>("API_SPORTS_API_KEY") ?? undefined,
 						}),
 						API_SPORTS_TOURNAMENT_CONFIGS,
+					);
+				}
+
+				if (providerKey === SPORTS_DATA_PROVIDER_KEYS.LPF_WEB) {
+					const omoUser = configService.get<string>("LPF_WEB_OMO_USER");
+					const omoPassword = configService.get<string>("LPF_WEB_OMO_PASSWORD");
+					return new LpfWebProvider(
+						new LpfWebClient({
+							baseUrl:
+								configService.get<string>("LPF_WEB_BASE_URL") ?? undefined,
+							omoUser: omoUser ?? undefined,
+							omoPassword: omoPassword ?? undefined,
+						}),
+						LPF_WEB_TOURNAMENT_CONFIGS,
 					);
 				}
 
