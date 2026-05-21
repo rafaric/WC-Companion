@@ -537,6 +537,8 @@
       },
       "actions": {
         "syncSectionBadge": "Acciones de mantenimiento del proveedor",
+        "tournamentSelectorTitle": "Torneo a sincronizar",
+        "tournamentSelectorHint": "Elegí Liga Argentina antes de importar con el proveedor lpf-web; si queda Mundial 2026, el provider no tiene configuración para ese slug.",
         "importTournament": "Importar torneo",
         "syncResults": "Sincronizar resultados"
       },
