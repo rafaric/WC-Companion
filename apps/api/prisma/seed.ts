@@ -356,7 +356,12 @@ async function main() {
     const demoTournament = await upsertTournament(transaction, DEMO_TOURNAMENT);
     console.log(`✓ Seeded demo tournament: ${demoTournament.name} (${demoTournament.status})`);
 
-    // Step 4: Seed demo fixtures under demo tournament slug
+    // Step 4: Seed scoring rules for provider-backed tournaments.
+    // They start without fixtures, but result confirmation still needs an active scoring rule.
+    await upsertScoringRule(transaction, providerTournament.id);
+    await upsertScoringRule(transaction, ligaTournament.id);
+
+    // Step 5: Seed demo fixtures under demo tournament slug
     // (Provider tournaments start empty, ready for provider import)
     const teams = [] as Awaited<ReturnType<typeof upsertTeam>>[];
 
@@ -374,7 +379,7 @@ async function main() {
 
     console.log(`✓ Seeded ${teams.length} teams and ${MATCH_SEEDS.length} matches for demo tournament`);
 
-    // Step 5: Validate exactly one ACTIVE tournament exists
+    // Step 6: Validate exactly one ACTIVE tournament exists
     await validateSingleActiveTournament(transaction);
 
     console.log('\n=== Seed Summary ===');
