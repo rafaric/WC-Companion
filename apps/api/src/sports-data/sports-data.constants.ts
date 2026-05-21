@@ -2,6 +2,7 @@ export const SPORTS_DATA_PROVIDER_KEYS = {
 	MOCK: "mock",
 	FOOTBALL_DATA: "football-data",
 	API_SPORTS: "api-sports",
+	LPF_WEB: "lpf-web",
 } as const;
 
 export type SportsDataProviderKey =

@@ -592,7 +592,8 @@ export class SportsDataSyncService {
   private resolveProviderTournamentKey(tournament: { id: string; slug: string }): string {
     if (
       this.provider.providerKey === SPORTS_DATA_PROVIDER_KEYS.FOOTBALL_DATA ||
-      this.provider.providerKey === SPORTS_DATA_PROVIDER_KEYS.API_SPORTS
+      this.provider.providerKey === SPORTS_DATA_PROVIDER_KEYS.API_SPORTS ||
+      this.provider.providerKey === SPORTS_DATA_PROVIDER_KEYS.LPF_WEB
     ) {
       return tournament.slug;
     }
