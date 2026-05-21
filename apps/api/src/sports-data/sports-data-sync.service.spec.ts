@@ -713,6 +713,41 @@ describe('SportsDataSyncService', () => {
     expect(provider.listFixtures).toHaveBeenCalledWith('liga-argentina-2026');
   });
 
+  it('resolves the tournament slug before invoking an lpf-web provider', async () => {
+    const state = createInitialState({
+      tournaments: [
+        {
+          id: 'liga-db-id',
+          slug: 'liga-argentina-2026',
+          status: TournamentStatus.ACTIVE,
+        },
+      ],
+    });
+    const prisma = createPrismaMock(state);
+    const provider = {
+      providerKey: 'lpf-web',
+      listTeams: jest.fn(async () => []),
+      listVenues: jest.fn(async () => []),
+      listFixtures: jest.fn(async () => []),
+      listFinalResults: jest.fn(async () => []),
+    };
+    const service = new SportsDataSyncService(
+      prisma as unknown as PrismaService,
+      provider as unknown as MockSportsDataProvider,
+      createMatchesServiceMock(createFinalizeMatchSummary('match-1', 'liga-db-id')) as unknown as MatchesService,
+      createTournamentsServiceMock({ id: 'liga-db-id', slug: 'liga-argentina-2026' }) as unknown as TournamentsService,
+    );
+
+
+    await service.importTournament('liga-db-id');
+
+
+    expect(provider.listTeams).toHaveBeenCalledWith('liga-argentina-2026');
+    expect(provider.listVenues).toHaveBeenCalledWith('liga-argentina-2026');
+    expect(provider.listFixtures).toHaveBeenCalledWith('liga-argentina-2026');
+  });
+
+
   it('allows liga-argentina-2026 for provider sync', async () => {
     const state = createInitialState({
       tournaments: [
