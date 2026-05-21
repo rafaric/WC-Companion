@@ -34,7 +34,12 @@ const makeErrorMockFetch = (
  * for testing multi-step flows (e.g., widget JS discovery + fixture feed).
  */
 function makeChainedMockFetch(
-	steps: Array<{ urlPattern: string | RegExp; body: string; ok?: boolean; status?: number }>,
+	steps: Array<{
+		urlPattern: string | RegExp;
+		body: string;
+		ok?: boolean;
+		status?: number;
+	}>,
 ): jest.MockedFunction<typeof fetch> {
 	return jest.fn(async (url) => {
 		const urlStr = String(url);
@@ -54,7 +59,12 @@ function makeChainedMockFetch(
 describe("LpfWebClient", () => {
 	function createClientWithOverrides(
 		fetchImpl: jest.MockedFunction<typeof fetch>,
-		overrides: { baseUrl?: string; omoUser?: string; omoPassword?: string; widgetJsUrl?: string } = {},
+		overrides: {
+			baseUrl?: string;
+			omoUser?: string;
+			omoPassword?: string;
+			widgetJsUrl?: string;
+		} = {},
 	): LpfWebClient {
 		return new LpfWebClient({
 			baseUrl: "https://omo.akamai.opta.net/auth",
@@ -180,7 +190,11 @@ describe("LpfWebClient", () => {
 					return { ok: true, status: 200, text: async () => WIDGET_JS_SAMPLE };
 				}
 				fixtureCallCount++;
-				return { ok: true, status: 200, text: async () => "<SoccerDocument />" };
+				return {
+					ok: true,
+					status: 200,
+					text: async () => "<SoccerDocument />",
+				};
 			}) as unknown as jest.MockedFunction<typeof fetch>;
 
 			const client = new LpfWebClient({ fetchImpl: chainedFetch });
