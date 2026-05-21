@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
@@ -95,8 +95,12 @@ function getPredictionOutcomeLabel(match: MatchPredictionCard, i18n: DashboardSt
   return i18n.predictionWaitingToBeScored;
 }
 
+function isOpenForPrediction(match: MatchPredictionCard): boolean {
+  return match.status === "UPCOMING" && Date.now() < new Date(match.kickoffAt).getTime();
+}
+
 function getInitialExpandedMatchId(matches: MatchPredictionCard[]): string | null {
-  return matches.find((match) => match.prediction === null)?.id ?? null;
+  return matches.find((match) => isOpenForPrediction(match) && match.prediction === null)?.id ?? null;
 }
 
 interface MatchGroup {
@@ -148,6 +152,7 @@ export function MatchPredictionAccordion({
   const [hasHydrated, setHasHydrated] = useState(false);
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
   const [animationDirection, setAnimationDirection] = useState(0);
+  const initialOpenGroupSelectedRef = useRef(false);
   const shouldReduceMotion = useReducedMotion();
 
   const matchGroups = hasHydrated ? groupMatchesByDate(matches, i18n.locale) : [];
@@ -157,14 +162,25 @@ export function MatchPredictionAccordion({
   }, []);
 
   useEffect(() => {
-    if (!hasHydrated) {
+    if (!hasHydrated || matchGroups.length === 0) {
       return;
     }
 
     if (currentGroupIndex >= matchGroups.length) {
       setCurrentGroupIndex(Math.max(0, matchGroups.length - 1));
+      return;
     }
-  }, [hasHydrated, matchGroups.length, currentGroupIndex]);
+
+    if (!initialOpenGroupSelectedRef.current) {
+      initialOpenGroupSelectedRef.current = true;
+      const firstOpenGroupIndex = matchGroups.findIndex((group) =>
+        group.matches.some(isOpenForPrediction),
+      );
+      if (firstOpenGroupIndex > 0) {
+        setCurrentGroupIndex(firstOpenGroupIndex);
+      }
+    }
+  }, [hasHydrated, matchGroups, currentGroupIndex]);
 
   if (matches.length === 0) {
     return (

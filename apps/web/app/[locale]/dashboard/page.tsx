@@ -156,10 +156,12 @@ function isMatchFinished(match: MatchView): boolean {
 	return match.status === MATCH_STATUS.FINISHED || match.finalizedAt !== null;
 }
 
-function getUpcomingMatchCards(
+function getVisibleMatchCards(
 	matchCards: MatchPredictionCard[],
 ): MatchPredictionCard[] {
-	return matchCards.filter((match) => isMatchOpenForPrediction(match));
+	return matchCards.filter(
+		(match) => isMatchOpenForPrediction(match) || isMatchFinished(match),
+	);
 }
 
 function getDashboardScoringExplanationStrings(
@@ -319,7 +321,7 @@ export default async function DashboardPage({
 		: false;
 	const displayName = getFriendlyDisplayName(session.user, currentUserProfile);
 	const matchCards = mergePredictions(matches, predictions);
-	const upcomingMatchCards = getUpcomingMatchCards(matchCards);
+	const visibleMatchCards = getVisibleMatchCards(matchCards);
 	const scoringExplanationStrings = getDashboardScoringExplanationStrings(t);
 	const recentlyScoredResultItems = getRecentlyScoredResultItems(
 		matchCards,
@@ -522,7 +524,7 @@ export default async function DashboardPage({
 					</div>
 
 					<MatchPredictionAccordion
-						matches={upcomingMatchCards}
+						matches={visibleMatchCards}
 						profileComplete={profileComplete}
 						submitPredictionAction={submitPrediction}
 						i18n={{
