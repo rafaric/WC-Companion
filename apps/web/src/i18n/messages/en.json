@@ -537,6 +537,8 @@
       },
       "actions": {
         "syncSectionBadge": "Provider maintenance actions",
+        "tournamentSelectorTitle": "Tournament to sync",
+        "tournamentSelectorHint": "Choose Liga Argentina before importing with the lpf-web provider; if World Cup 2026 remains selected, this provider has no config for that slug.",
         "importTournament": "Import tournament",
         "syncResults": "Sync results"
       },

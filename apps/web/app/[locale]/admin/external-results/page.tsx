@@ -23,6 +23,7 @@ import {
 import { buildPageMetadata } from "@/lib/metadata";
 import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
 import { getLocalizedPath, type AppLocale } from "@/lib/locale-nav";
+import { TournamentSelectorServer } from "@/components/tournaments/tournament-selector-server";
 
 type AdminExternalResultsTranslator = Awaited<ReturnType<typeof getTranslations>>;
 
@@ -566,6 +567,15 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
             <p className="mb-4 text-sm font-medium text-slate-300">{t("actions.syncSectionBadge")}</p>
+            <div className="mb-5 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-cyan-100">{t("actions.tournamentSelectorTitle")}</p>
+                  <p className="mt-1 text-xs leading-5 text-cyan-100/80">{t("actions.tournamentSelectorHint")}</p>
+                </div>
+                <TournamentSelectorServer />
+              </div>
+            </div>
             <div className="flex flex-wrap gap-3">
               <form action={importTournamentAction} className="inline">
                 <button
