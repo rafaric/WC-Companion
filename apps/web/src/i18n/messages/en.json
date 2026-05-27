@@ -123,6 +123,24 @@
       "worldCupPredictionsLabel": "World Cup predictions",
       "compactRowsShow": "Compact rows show each fixture and pick status. Open a match to update the full prediction."
     },
+    "tournamentCopy": {
+      "worldCup": {
+        "eyebrow": "World Cup predictions",
+        "title": "Make every World Cup match count.",
+        "subtitle": "Open one match at a time, save exact scores, and keep your tournament predictions easy to review.",
+        "predictionSectionLabel": "World Cup predictions",
+        "noUpcomingMatches": "No World Cup matches are open for predictions right now. Newly scored results will appear above when they arrive.",
+        "setExactScore": "Set the exact World Cup score."
+      },
+      "ligaArgentina": {
+        "eyebrow": "Liga Argentina predictions",
+        "title": "Follow every Liga Argentina match with your predictions.",
+        "subtitle": "Pick exact scores, review finalized matches, and track how each confirmed result affects your points.",
+        "predictionSectionLabel": "Liga Argentina predictions",
+        "noUpcomingMatches": "No Liga Argentina matches are open for predictions right now. Newly scored results will appear above when they arrive.",
+        "setExactScore": "Set the exact Liga Argentina score."
+      }
+    },
     "scoringExplanations": {
       "waitingForScoring": "Waiting for scoring",
       "waitingForScoringDetail": "Your prediction exists, but this match has not been scored yet.",
