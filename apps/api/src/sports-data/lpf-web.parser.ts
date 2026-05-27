@@ -188,7 +188,8 @@ function normalizePageText(raw: string): string {
 }
 
 function getAttribute(fragment: string, name: string): string | null {
-	const match = fragment.match(new RegExp(`${name}="([^"]*)"`));
+	const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	const match = fragment.match(new RegExp(`(?:^|\\s)${escapedName}="([^"]*)"`));
 	return match?.[1] ?? null;
 }
 
