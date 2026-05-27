@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import type { RankingEntry } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { getRankingDisplayName } from "@/lib/rankings";
 
 const VISIBLE_RANKING_LIMIT = 10;
 const SEARCH_DEBOUNCE_MS = 250;
@@ -14,34 +15,6 @@ interface RankingListProps {
 	currentUserId: string | null;
 	currentUserRankingEntry: RankingEntry | null;
 	ranking: RankingEntry[];
-}
-
-function looksTechnicalUsername(username: string): boolean {
-	const normalized = username.trim();
-
-	return (
-		/^\d+$/.test(normalized) ||
-		/^[a-f0-9]{12,}$/i.test(normalized) ||
-		/^[a-f0-9-]{20,}$/i.test(normalized) ||
-		normalized.startsWith("auth0-")
-	);
-}
-
-function getRankingDisplayName(
-	entry: RankingEntry,
-	currentUserId: string | null,
-	currentUserDisplayName: string,
-	playerFallback: (position: number) => string,
-): string {
-	if (entry.userId === currentUserId) {
-		return currentUserDisplayName;
-	}
-
-	if (looksTechnicalUsername(entry.username)) {
-		return playerFallback(entry.position);
-	}
-
-	return entry.username;
 }
 
 function RankingRow({

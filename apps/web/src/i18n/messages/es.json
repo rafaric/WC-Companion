@@ -117,6 +117,7 @@
       "completeProfileAndScore": "Completá tu perfil y acertá un partido para unirte a la clasificación.",
       "noGlobalRankingYet": "Sin clasificación global aún. Cuando haya predicciones puntuadas, la tabla aparecerá aquí.",
       "exactPicksLabel": "{count} exactas · {total} predicciones",
+      "playerFallback": "Jugador #{position}",
       "you": "Vos"
     },
     "predictionSection": {

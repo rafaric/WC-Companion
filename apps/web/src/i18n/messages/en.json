@@ -117,6 +117,7 @@
       "completeProfileAndScore": "Complete your profile and score a match to join the ranking.",
       "noGlobalRankingYet": "No global ranking yet. Once scored predictions land, the board will appear here.",
       "exactPicksLabel": "{count} exact · {total} predictions",
+      "playerFallback": "Player #{position}",
       "you": "You"
     },
     "predictionSection": {

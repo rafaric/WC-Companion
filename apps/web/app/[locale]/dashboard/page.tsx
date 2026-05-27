@@ -21,7 +21,7 @@ import {
 } from "@/lib/api";
 import { isProfileComplete } from "@/lib/profile";
 import { cn } from "@/lib/cn";
-import { findRankingEntryByUserId, getRankingPreview } from "@/lib/rankings";
+import { findRankingEntryByUserId, getRankingDisplayName, getRankingPreview } from "@/lib/rankings";
 import {
 	getScoringExplanation,
 	SCORING_EXPLANATION_KIND,
@@ -339,7 +339,7 @@ export default async function DashboardPage({
 		globalRanking,
 		currentUserProfile?.id,
 	);
-	const rankingPreview = getRankingPreview(globalRanking, 3);
+	const rankingPreview = getRankingPreview(globalRanking, currentUserProfile?.id, 3);
 	const featuredGroup = selectFeaturedGroup(myGroups);
 	const additionalGroupsCount = featuredGroup
 		? Math.max(myGroups.length - 1, 0)
@@ -525,7 +525,9 @@ export default async function DashboardPage({
 					<div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/30">
 						<div>
 							<p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-								{t(`tournamentCopy.${dashboardCopyNamespace}.predictionSectionLabel`)}
+								{t(
+									`tournamentCopy.${dashboardCopyNamespace}.predictionSectionLabel`,
+								)}
 							</p>
 							<p className="mt-1 text-sm text-slate-300">
 								{t("predictionSection.compactRowsShow")}
@@ -539,7 +541,9 @@ export default async function DashboardPage({
 						submitPredictionAction={submitPrediction}
 						i18n={{
 							locale,
-							noUpcomingMatches: t(`tournamentCopy.${dashboardCopyNamespace}.noUpcomingMatches`),
+							noUpcomingMatches: t(
+								`tournamentCopy.${dashboardCopyNamespace}.noUpcomingMatches`,
+							),
 							loadingLocalDates: t("dashboardStrings.loadingLocalDates"),
 							previousDate: t("dashboardStrings.previousDate"),
 							nextDate: t("dashboardStrings.nextDate"),
@@ -669,6 +673,12 @@ export default async function DashboardPage({
 						<ul className="mt-4 space-y-2">
 							{rankingPreview.map((entry) => {
 								const isCurrentUser = entry.userId === currentUserProfile?.id;
+								const entryDisplayName = getRankingDisplayName(
+									entry,
+									currentUserProfile?.id ?? null,
+									displayName,
+									(position) => t("rankingSection.playerFallback", { position }),
+								);
 
 								return (
 									<li
@@ -683,7 +693,7 @@ export default async function DashboardPage({
 										<div className="min-w-0">
 											<div className="flex items-center gap-2">
 												<p className="truncate font-semibold text-white">
-													#{entry.position} {entry.username}
+													#{entry.position} {entryDisplayName}
 												</p>
 												{isCurrentUser ? (
 													<span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
