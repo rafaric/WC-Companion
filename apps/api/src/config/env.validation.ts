@@ -1,8 +1,8 @@
 export interface AppEnv {
   PORT: number;
   DATABASE_URL: string;
-  REDIS_HOST: string;
-  REDIS_PORT: number;
+  REDIS_HOST: string | null;
+  REDIS_PORT: number | null;
   AUTH0_DOMAIN: string;
   AUTH0_AUDIENCE: string;
   WEB_ORIGIN: string;
@@ -58,8 +58,8 @@ export function validateEnv(env: Record<string, unknown>): AppEnv {
   return {
     PORT: requirePort(env.PORT, 'PORT'),
     DATABASE_URL: requireString(env.DATABASE_URL, 'DATABASE_URL'),
-    REDIS_HOST: requireString(env.REDIS_HOST, 'REDIS_HOST'),
-    REDIS_PORT: requirePort(env.REDIS_PORT, 'REDIS_PORT'),
+    REDIS_HOST: typeof env.REDIS_HOST === 'string' && env.REDIS_HOST.trim() ? env.REDIS_HOST.trim() : null,
+    REDIS_PORT: typeof env.REDIS_PORT === 'string' && env.REDIS_PORT.trim() ? requirePort(env.REDIS_PORT, 'REDIS_PORT') : null,
     AUTH0_DOMAIN: requireString(env.AUTH0_DOMAIN, 'AUTH0_DOMAIN'),
     AUTH0_AUDIENCE: requireString(env.AUTH0_AUDIENCE, 'AUTH0_AUDIENCE'),
     WEB_ORIGIN: webOrigin,
