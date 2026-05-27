@@ -81,8 +81,8 @@ const LPF_OPTA_XML_SAMPLE = `<SoccerDocument>
       <DateUtc>2026-01-22 20:00:00</DateUtc>
     </MatchInfo>
     <Stat Type="Venue">José María Minella</Stat>
-    <TeamData Score="0" Side="Home" TeamRef="t8621" />
-    <TeamData Score="0" Side="Away" TeamRef="t8625" />
+    <TeamData HalfScore="1" Score="2" Side="Home" TeamRef="t8621" />
+    <TeamData HalfScore="1" Score="3" Side="Away" TeamRef="t8625" />
   </MatchData>
   <MatchData uID="g2">
     <MatchInfo Period="ShootOut" MatchDay="17" Venue_id="4000">
@@ -109,8 +109,8 @@ describe("parseLpfPage", () => {
 				isFinalEligible: true,
 				homeTeamName: "Aldosivi",
 				awayTeamName: "Def y Justicia",
-				homeScore: 0,
-				awayScore: 0,
+				homeScore: 2,
+				awayScore: 3,
 				venueName: "José María Minella",
 				dateLabel: "2026-01-22",
 			});
