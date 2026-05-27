@@ -1,9 +1,9 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { MatchStatus, TournamentStatus } from '@prisma/client';
 
-import type { MatchesService, FinalizeMatchSummary } from '../matches/matches.service';
-import type { PrismaService } from '../prisma/prisma.service';
-import type { TournamentsService, TournamentContextInput, ResolvedTournamentContext } from '../tournaments/tournaments.service';
+import { MatchesService, type FinalizeMatchSummary } from '../matches/matches.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { TournamentsService, type TournamentContextInput, type ResolvedTournamentContext } from '../tournaments/tournaments.service';
 import {
   EXTERNAL_MATCH_RESULT_STATES,
   type ExternalMatchResultState,
