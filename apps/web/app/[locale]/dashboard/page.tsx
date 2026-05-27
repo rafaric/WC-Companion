@@ -700,59 +700,59 @@ export default async function DashboardPage({
 							{t("rankingSection.noGlobalRankingYet")}
 						</div>
 					)}
-	
-          <section className="rounded-3xl border border-cyan-400/20 bg-cyan-400/10 p-5">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">
-                  {t("scoringRules.eyebrow")}
-                </p>
-                <h2 className="mt-1 text-lg font-semibold text-white">
-                  {t("scoringRules.title")}
-                </h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-cyan-100/75">
-                  {t("scoringRules.description")}
-                </p>
-              </div>
-              <Link
-                href={getLocalizedPath(locale as AppLocale, "/rankings")}
-                className="inline-flex whitespace-nowrap rounded-full border border-cyan-300/30 bg-slate-950/50 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/60 hover:bg-slate-950/80"
-              >
-                {t("scoringRules.viewRanking")}
-              </Link>
-            </div>
 
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
-              <div className="rounded-2xl border border-cyan-300/25 bg-slate-950/55 p-4">
-                <p className="text-3xl font-black text-cyan-200">3</p>
-                <p className="mt-2 text-sm font-bold text-white">
-                  {t("scoringRules.exactScoreTitle")}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-cyan-100/70">
-                  {t("scoringRules.exactScoreDetail")}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-emerald-300/25 bg-slate-950/55 p-4">
-                <p className="text-3xl font-black text-emerald-200">1</p>
-                <p className="mt-2 text-sm font-bold text-white">
-                  {t("scoringRules.correctOutcomeTitle")}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-emerald-100/70">
-                  {t("scoringRules.correctOutcomeDetail")}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-rose-300/25 bg-slate-950/55 p-4">
-                <p className="text-3xl font-black text-rose-200">0</p>
-                <p className="mt-2 text-sm font-bold text-white">
-                  {t("scoringRules.wrongOutcomeTitle")}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-rose-100/70">
-                  {t("scoringRules.wrongOutcomeDetail")}
-                </p>
-              </div>
-            </div>
-          </section>
-			</section>
+					<section className="rounded-3xl border border-cyan-400/20 bg-cyan-400/10 p-5">
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+							<div>
+								<p className="text-xs uppercase tracking-[0.2em] text-cyan-300">
+									{t("scoringRules.eyebrow")}
+								</p>
+								<h2 className="mt-1 text-lg font-semibold text-white">
+									{t("scoringRules.title")}
+								</h2>
+								<p className="mt-2 max-w-2xl text-sm leading-6 text-cyan-100/75">
+									{t("scoringRules.description")}
+								</p>
+							</div>
+							<Link
+								href={getLocalizedPath(locale as AppLocale, "/rankings")}
+								className="inline-flex whitespace-nowrap rounded-full border border-cyan-300/30 bg-slate-950/50 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/60 hover:bg-slate-950/80"
+							>
+								{t("scoringRules.viewRanking")}
+							</Link>
+						</div>
+
+						<div className="mt-5 grid gap-3 md:grid-cols-3">
+							<div className="rounded-2xl border border-cyan-300/25 bg-slate-950/55 p-4">
+								<p className="text-3xl font-black text-cyan-200">3</p>
+								<p className="mt-2 text-sm font-bold text-white">
+									{t("scoringRules.exactScoreTitle")}
+								</p>
+								<p className="mt-1 text-xs leading-5 text-cyan-100/70">
+									{t("scoringRules.exactScoreDetail")}
+								</p>
+							</div>
+							<div className="rounded-2xl border border-emerald-300/25 bg-slate-950/55 p-4">
+								<p className="text-3xl font-black text-emerald-200">1</p>
+								<p className="mt-2 text-sm font-bold text-white">
+									{t("scoringRules.correctOutcomeTitle")}
+								</p>
+								<p className="mt-1 text-xs leading-5 text-emerald-100/70">
+									{t("scoringRules.correctOutcomeDetail")}
+								</p>
+							</div>
+							<div className="rounded-2xl border border-rose-300/25 bg-slate-950/55 p-4">
+								<p className="text-3xl font-black text-rose-200">0</p>
+								<p className="mt-2 text-sm font-bold text-white">
+									{t("scoringRules.wrongOutcomeTitle")}
+								</p>
+								<p className="mt-1 text-xs leading-5 text-rose-100/70">
+									{t("scoringRules.wrongOutcomeDetail")}
+								</p>
+							</div>
+						</div>
+					</section>
+				</section>
 			</section>
 		</main>
 	);
