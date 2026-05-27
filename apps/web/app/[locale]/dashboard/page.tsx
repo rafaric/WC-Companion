@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 
 import { auth0 } from "@/lib/auth0";
 import {
+	getActiveTournament,
 	getActiveTournamentMatches,
 	getCurrentUserProfile,
 	getGlobalRanking,
@@ -307,14 +308,21 @@ export default async function DashboardPage({
 		);
 	}
 
-	const [currentUserProfile, matches, predictions, globalRanking, myGroups] =
-		await Promise.all([
-			getCurrentUserProfile(accessToken).catch(() => null),
-			getActiveTournamentMatches(tournamentSlug).catch(() => []),
-			getMyPredictions(accessToken).catch(() => []),
-			getGlobalRanking(tournamentSlug).catch(() => [] as RankingEntry[]),
-			getMyGroups(accessToken, tournamentSlug).catch(() => [] as MyGroupView[]),
-		]);
+	const [
+		currentUserProfile,
+		currentTournament,
+		matches,
+		predictions,
+		globalRanking,
+		myGroups,
+	] = await Promise.all([
+		getCurrentUserProfile(accessToken).catch(() => null),
+		getActiveTournament(tournamentSlug).catch(() => null),
+		getActiveTournamentMatches(tournamentSlug).catch(() => []),
+		getMyPredictions(accessToken).catch(() => []),
+		getGlobalRanking(tournamentSlug).catch(() => [] as RankingEntry[]),
+		getMyGroups(accessToken, tournamentSlug).catch(() => [] as MyGroupView[]),
+	]);
 
 	const profileComplete = currentUserProfile
 		? isProfileComplete(currentUserProfile)
@@ -336,6 +344,8 @@ export default async function DashboardPage({
 	const additionalGroupsCount = featuredGroup
 		? Math.max(myGroups.length - 1, 0)
 		: 0;
+	const isLigaArgentina = currentTournament?.slug === "liga-argentina-2026";
+	const dashboardCopyNamespace = isLigaArgentina ? "ligaArgentina" : "worldCup";
 
 	async function submitPrediction(matchId: string, formData: FormData) {
 		"use server";
@@ -385,13 +395,13 @@ export default async function DashboardPage({
 			<section className="space-y-6 py-2 sm:py-4">
 				<div className="space-y-3">
 					<p className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
-						{t("eyebrow.worldCupPredictions")}
+						{t(`tournamentCopy.${dashboardCopyNamespace}.eyebrow`)}
 					</p>
 					<h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
-						{t("title.makeEveryWorldCup")}
+						{t(`tournamentCopy.${dashboardCopyNamespace}.title`)}
 					</h1>
 					<p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-						{t("subtitle.expandOneMatch")}
+						{t(`tournamentCopy.${dashboardCopyNamespace}.subtitle`)}
 					</p>
 				</div>
 
@@ -515,7 +525,7 @@ export default async function DashboardPage({
 					<div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/30">
 						<div>
 							<p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-								{t("predictionSection.worldCupPredictionsLabel")}
+								{t(`tournamentCopy.${dashboardCopyNamespace}.predictionSectionLabel`)}
 							</p>
 							<p className="mt-1 text-sm text-slate-300">
 								{t("predictionSection.compactRowsShow")}
@@ -529,7 +539,7 @@ export default async function DashboardPage({
 						submitPredictionAction={submitPrediction}
 						i18n={{
 							locale,
-							noUpcomingMatches: t("dashboardStrings.noUpcomingMatches"),
+							noUpcomingMatches: t(`tournamentCopy.${dashboardCopyNamespace}.noUpcomingMatches`),
 							loadingLocalDates: t("dashboardStrings.loadingLocalDates"),
 							previousDate: t("dashboardStrings.previousDate"),
 							nextDate: t("dashboardStrings.nextDate"),
@@ -544,7 +554,7 @@ export default async function DashboardPage({
 							),
 							yourPrediction: t("dashboardStrings.yourPrediction"),
 							setExactWorldCupScore: t(
-								"dashboardStrings.setExactWorldCupScore",
+								`tournamentCopy.${dashboardCopyNamespace}.setExactScore`,
 							),
 							savePrediction: t("dashboardStrings.savePrediction"),
 							matchFinalLocked: t("dashboardStrings.matchFinalLocked"),

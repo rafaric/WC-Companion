@@ -123,6 +123,24 @@
       "worldCupPredictionsLabel": "Predicciones del Mundial",
       "compactRowsShow": "Las filas compactas muestran cada partido y estado de elección. Abrí un partido para actualizar la predicción completa."
     },
+    "tournamentCopy": {
+      "worldCup": {
+        "eyebrow": "Predicciones del Mundial",
+        "title": "Hacé que cada partido del Mundial cuente.",
+        "subtitle": "Expandí un partido a la vez, guardá scores exactos y mantené tus predicciones del torneo fáciles de ver.",
+        "predictionSectionLabel": "Predicciones del Mundial",
+        "noUpcomingMatches": "No hay partidos del Mundial abiertos para predecir ahora. Los nuevos resultados puntuados aparecerán arriba cuando lleguen.",
+        "setExactScore": "Poné el resultado exacto del Mundial."
+      },
+      "ligaArgentina": {
+        "eyebrow": "Predicciones de Liga Argentina",
+        "title": "Seguí cada partido de la Liga Argentina con tus predicciones.",
+        "subtitle": "Elegí resultados exactos, revisá partidos finalizados y seguí cómo impacta cada resultado confirmado en tu puntaje.",
+        "predictionSectionLabel": "Predicciones de Liga Argentina",
+        "noUpcomingMatches": "No hay partidos de Liga Argentina abiertos para predecir ahora. Los nuevos resultados puntuados aparecerán arriba cuando lleguen.",
+        "setExactScore": "Poné el resultado exacto de la Liga Argentina."
+      }
+    },
     "scoringExplanations": {
       "waitingForScoring": "Esperando puntuación",
       "waitingForScoringDetail": "Tu predicción existe, pero este partido aún no fue puntuado.",

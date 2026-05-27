@@ -88,6 +88,18 @@ function readStoredState(fingerprint: string): RecentlyScoredState | null {
   }
 }
 
+function getOutcomeClassName(item: RecentlyScoredResultItem): string {
+  if (item.pointsAwarded > 0) {
+    return "border-emerald-300/30 bg-gradient-to-br from-emerald-400/20 via-cyan-400/10 to-slate-950/80 shadow-emerald-950/20";
+  }
+
+  return "border-rose-300/30 bg-gradient-to-br from-rose-500/20 via-orange-400/10 to-slate-950/80 shadow-rose-950/20";
+}
+
+function getOutcomeAccentClassName(item: RecentlyScoredResultItem): string {
+  return item.pointsAwarded > 0 ? "text-emerald-200" : "text-rose-200";
+}
+
 function getExplanationClassName(kind: string): string {
   switch (kind) {
     case "exact-score":
@@ -141,14 +153,7 @@ export function RecentlyScoredResults({ items, i18n }: RecentlyScoredResultsProp
   }
 
   return (
-    <section
-      className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5 shadow-xl shadow-emerald-950/20"
-      style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(16, 185, 129, 0.08), rgba(15, 23, 42, 0.9)), url(/assets/won.png)`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
+    <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">{i18n.recentlyScored}</p>
@@ -166,33 +171,33 @@ export function RecentlyScoredResults({ items, i18n }: RecentlyScoredResultsProp
 
       <div className="mt-5 space-y-3">
         {visibleItems.map((item) => (
-          <article key={item.id} className="rounded-2xl border border-emerald-300/20 bg-slate-950/50 p-4">
+          <article key={item.id} className={cn("rounded-2xl border p-4 shadow-xl", getOutcomeClassName(item))}>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="space-y-1">
                 <p className="font-semibold text-white">
                   {item.homeTeamName} vs {item.awayTeamName}
                 </p>
-                <p className="text-xs text-emerald-100/60">
+                <p className={cn("text-xs", getOutcomeAccentClassName(item))}>
                   {item.stage ?? i18n.stageUnavailable}
                   {item.groupName ? ` · ${item.groupName}` : ""} · {formatDateTime(item.scoredAt, i18n.locale)}
                 </p>
               </div>
 
               <div className="grid gap-3 text-sm sm:grid-cols-3 lg:min-w-[520px]">
-                <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/60 p-3">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">{i18n.final}</p>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
+                  <p className={cn("text-[11px] uppercase tracking-[0.2em]", getOutcomeAccentClassName(item))}>{i18n.final}</p>
                   <p className="mt-1 text-lg font-bold text-white">
                     {item.finalHomeScore} - {item.finalAwayScore}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/60 p-3">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">{i18n.yourPick}</p>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
+                  <p className={cn("text-[11px] uppercase tracking-[0.2em]", getOutcomeAccentClassName(item))}>{i18n.yourPick}</p>
                   <p className="mt-1 text-lg font-bold text-white">
                     {item.predictedHomeScore} - {item.predictedAwayScore}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-emerald-300/20 bg-slate-950/60 p-3">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-emerald-300">{i18n.points}</p>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3">
+                  <p className={cn("text-[11px] uppercase tracking-[0.2em]", getOutcomeAccentClassName(item))}>{i18n.points}</p>
                   <p className="mt-1 text-lg font-bold text-white">{formatPointsLabel(item.pointsAwarded, i18n)}</p>
                 </div>
               </div>
