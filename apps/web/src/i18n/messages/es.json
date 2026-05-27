@@ -577,6 +577,7 @@
         "title": "Partidos visibles para usuarios",
         "subtitle": "Esto muestra cada partido del torneo activo y si existe el mapeo/resultado del proveedor. Si falta un partido del panel como resultado pendiente, mirá primero su referencia externa y el último estado del resultado.",
         "matches": "{count, plural, one {# partido} other {# partidos}}",
+        "toggle": "Mostrar/ocultar",
         "emptyState": "No se encontraron partidos del torneo activo para diagnóstico."
       },
       "diagnosticCard": {
