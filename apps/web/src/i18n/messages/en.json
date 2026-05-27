@@ -577,6 +577,7 @@
         "title": "Matches visible to users",
         "subtitle": "This shows every active-tournament match and whether the provider mapping/result exists. If a dashboard match is missing here as a pending result, look at its external ref and latest result state first.",
         "matches": "{count, plural, one {# match} other {# matches}}",
+        "toggle": "Show/hide",
         "emptyState": "No active-tournament matches found for diagnostics."
       },
       "diagnosticCard": {

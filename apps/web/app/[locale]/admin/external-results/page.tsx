@@ -691,8 +691,8 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
             ) : null}
           </section>
 
-          <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <details className="group rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/30">
+            <summary className="flex cursor-pointer list-none flex-col gap-3 rounded-2xl outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:flex-row sm:items-start sm:justify-between [&::-webkit-details-marker]:hidden">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{t("diagnosticsSection.badge")}</p>
                 <h2 className="mt-1 text-lg font-semibold text-white">{t("diagnosticsSection.title")}</h2>
@@ -700,10 +700,16 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
                   {t("diagnosticsSection.subtitle")}
                 </p>
               </div>
-              <p className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs font-semibold text-slate-300">
-                {t("diagnosticsSection.matches", { count: matchDiagnostics.length })}
-              </p>
-            </div>
+              <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                <p className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-xs font-semibold text-slate-300">
+                  {t("diagnosticsSection.matches", { count: matchDiagnostics.length })}
+                </p>
+                <span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100">
+                  {t("diagnosticsSection.toggle")}
+                  <span aria-hidden="true" className="transition group-open:rotate-180">⌄</span>
+                </span>
+              </div>
+            </summary>
 
             {diagnosticsLoadErrorMessage ? (
               <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
@@ -756,7 +762,7 @@ export default async function AdminExternalResultsPage({ searchParams, params }:
                 {t("diagnosticsSection.emptyState")}
               </div>
             )}
-          </section>
+          </details>
 
           <div className="flex flex-wrap gap-2">
             {EXTERNAL_MATCH_RESULT_FILTERS.map((state) => {
