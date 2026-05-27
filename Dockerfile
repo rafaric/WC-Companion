@@ -9,7 +9,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@11.1.2 --activate
 
 # Copy workspace config files
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 COPY apps/api/package.json ./apps/api/
 
 # Install dependencies (only what's needed for the API)
