@@ -1,6 +1,6 @@
 import { MatchStatus, TournamentStatus } from '@prisma/client';
 
-import { PrismaService } from '../prisma/prisma.service';
+import type { PrismaService } from '../prisma/prisma.service';
 import { TournamentsService, type TournamentMatchView, type TournamentView } from './tournaments.service';
 
 interface TournamentFindFirstArgs {
@@ -107,6 +107,7 @@ interface MatchRecord {
     flagCode: string | null;
     primaryColor: string | null;
     secondaryColor: string | null;
+    crestUrl: string | null;
   };
   awayTeam: {
     id: string;
@@ -116,6 +117,7 @@ interface MatchRecord {
     flagCode: string | null;
     primaryColor: string | null;
     secondaryColor: string | null;
+    crestUrl: string | null;
   };
 }
 
@@ -167,6 +169,7 @@ function createMatch(overrides: Partial<MatchRecord> = {}): MatchRecord {
       flagCode: 'ARG',
       primaryColor: '#74ACDF',
       secondaryColor: '#F6E7A1',
+      crestUrl: null,
     },
     awayTeam: {
       id: 'team-2',
@@ -176,6 +179,7 @@ function createMatch(overrides: Partial<MatchRecord> = {}): MatchRecord {
       flagCode: 'ENG',
       primaryColor: '#FFFFFF',
       secondaryColor: '#CE1124',
+      crestUrl: null,
     },
     ...overrides,
   };
@@ -202,6 +206,7 @@ function toMatchView(match: MatchRecord): TournamentMatchView {
         primaryColor: match.homeTeam.primaryColor,
         secondaryColor: match.homeTeam.secondaryColor,
       },
+      crestUrl: match.homeTeam.crestUrl,
     },
     awayTeam: {
       id: match.awayTeam.id,
@@ -213,6 +218,7 @@ function toMatchView(match: MatchRecord): TournamentMatchView {
         primaryColor: match.awayTeam.primaryColor,
         secondaryColor: match.awayTeam.secondaryColor,
       },
+      crestUrl: match.awayTeam.crestUrl,
     },
   };
 }
@@ -283,6 +289,7 @@ describe('TournamentsService', () => {
         flagCode: 'BRA',
         primaryColor: '#009C3B',
         secondaryColor: '#FFDF00',
+        crestUrl: null,
       },
       awayTeam: {
         id: 'team-4',
@@ -292,6 +299,7 @@ describe('TournamentsService', () => {
         flagCode: 'GER',
         primaryColor: '#000000',
         secondaryColor: '#DD0000',
+        crestUrl: null,
       },
     });
     const prisma = createPrismaMock({

@@ -76,6 +76,7 @@ export interface TeamView {
   countryCode: string | null;
   flagCode: string | null;
   colors: TeamColors;
+  crestUrl: string | null;
 }
 
 export interface MatchView {

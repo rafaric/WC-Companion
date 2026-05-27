@@ -24,6 +24,7 @@ export const MOCK_SPORTS_DATA_PROVIDER_SNAPSHOT: MockSportsDataProviderSnapshot 
       flagCode: 'ARG',
       primaryColor: '#74ACDF',
       secondaryColor: '#F6E7A1',
+      crestUrl: null,
     },
     {
       externalId: 'team-england',
@@ -33,6 +34,7 @@ export const MOCK_SPORTS_DATA_PROVIDER_SNAPSHOT: MockSportsDataProviderSnapshot 
       flagCode: 'ENG',
       primaryColor: '#FFFFFF',
       secondaryColor: '#CE1124',
+      crestUrl: null,
     },
     {
       externalId: 'team-brazil',
@@ -42,6 +44,7 @@ export const MOCK_SPORTS_DATA_PROVIDER_SNAPSHOT: MockSportsDataProviderSnapshot 
       flagCode: 'BRA',
       primaryColor: '#009C3B',
       secondaryColor: '#FFDF00',
+      crestUrl: null,
     },
     {
       externalId: 'team-germany',
@@ -51,6 +54,7 @@ export const MOCK_SPORTS_DATA_PROVIDER_SNAPSHOT: MockSportsDataProviderSnapshot 
       flagCode: 'GER',
       primaryColor: '#000000',
       secondaryColor: '#DD0000',
+      crestUrl: null,
     },
     {
       externalId: 'team-france',
@@ -60,6 +64,7 @@ export const MOCK_SPORTS_DATA_PROVIDER_SNAPSHOT: MockSportsDataProviderSnapshot 
       flagCode: 'FRA',
       primaryColor: '#002654',
       secondaryColor: '#ED2939',
+      crestUrl: null,
     },
     {
       externalId: 'team-portugal',
@@ -69,6 +74,7 @@ export const MOCK_SPORTS_DATA_PROVIDER_SNAPSHOT: MockSportsDataProviderSnapshot 
       flagCode: 'POR',
       primaryColor: '#006600',
       secondaryColor: '#FF0000',
+      crestUrl: null,
     },
     {
       externalId: 'team-spain',
@@ -78,6 +84,7 @@ export const MOCK_SPORTS_DATA_PROVIDER_SNAPSHOT: MockSportsDataProviderSnapshot 
       flagCode: 'ESP',
       primaryColor: '#AA151B',
       secondaryColor: '#F1BF00',
+      crestUrl: null,
     },
     {
       externalId: 'team-uruguay',
@@ -87,6 +94,7 @@ export const MOCK_SPORTS_DATA_PROVIDER_SNAPSHOT: MockSportsDataProviderSnapshot 
       flagCode: 'URU',
       primaryColor: '#5DADE2',
       secondaryColor: '#FDFEFE',
+      crestUrl: null,
     },
   ],
   venues: [

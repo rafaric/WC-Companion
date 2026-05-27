@@ -56,6 +56,7 @@ function mapTeamFromRaw(raw: RawTeam): SportsDataTeamDTO {
 		flagCode: null,
 		primaryColor: null,
 		secondaryColor: null,
+		crestUrl: null,
 	};
 }
 

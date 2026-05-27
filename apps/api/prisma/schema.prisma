@@ -123,6 +123,7 @@ model Team {
   flagCode       String?
   primaryColor   String?
   secondaryColor String?
+  crestUrl       String?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 

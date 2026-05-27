@@ -109,6 +109,7 @@ function mapTeam(team: FootballDataTeamApi): SportsDataTeamDTO {
     flagCode: countryCode,
     primaryColor: null,
     secondaryColor: null,
+    crestUrl: null,
   };
 }
 

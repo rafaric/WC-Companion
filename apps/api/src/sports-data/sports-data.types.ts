@@ -12,6 +12,7 @@ export interface SportsDataTeamDTO {
   flagCode: string | null;
   primaryColor: string | null;
   secondaryColor: string | null;
+  crestUrl: string | null;
 }
 
 export interface SportsDataVenueDTO {

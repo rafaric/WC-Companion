@@ -77,6 +77,7 @@ describe('FootballDataProvider', () => {
         flagCode: 'AR',
         primaryColor: null,
         secondaryColor: null,
+        crestUrl: null,
       },
       {
         externalId: '11',
@@ -86,6 +87,7 @@ describe('FootballDataProvider', () => {
         flagCode: 'GB-ENG',
         primaryColor: null,
         secondaryColor: null,
+        crestUrl: null,
       },
     ]);
 
