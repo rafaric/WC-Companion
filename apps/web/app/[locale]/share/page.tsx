@@ -276,8 +276,11 @@ function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetI
           <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
             <div className="rounded-3xl border border-cyan-300/30 bg-cyan-400/10 p-4 text-center">
               <p className="flex items-center justify-center gap-2" aria-hidden="true">
-                <TeamCrest crestUrl={match?.homeTeam.crestUrl ?? null} shortName={match?.homeTeam.shortName ?? ""} className="h-8 w-8" />
-                <FlagIcon flagCode={match?.homeTeam.flagCode ?? null} countryCode={match?.homeTeam.countryCode ?? null} size="2.75rem" />
+                {match?.homeTeam.crestUrl ? (
+                  <TeamCrest crestUrl={match.homeTeam.crestUrl} shortName={match.homeTeam.shortName} className="h-8 w-8" />
+                ) : (
+                  <FlagIcon flagCode={match?.homeTeam.flagCode ?? null} countryCode={match?.homeTeam.countryCode ?? null} size="2.75rem" />
+                )}
               </p>
               <p className="mt-2 text-xl font-black text-white">{match?.homeTeam.shortName ?? "---"}</p>
               <p className="mt-1 truncate text-xs text-cyan-100/70">{match?.homeTeam.name ?? t("templates.homeTeam")}</p>
@@ -285,8 +288,11 @@ function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetI
             <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">vs</span>
             <div className="rounded-3xl border border-violet-300/30 bg-violet-400/10 p-4 text-center">
               <p className="flex items-center justify-center gap-2" aria-hidden="true">
-                <TeamCrest crestUrl={match?.awayTeam.crestUrl ?? null} shortName={match?.awayTeam.shortName ?? ""} className="h-8 w-8" />
-                <FlagIcon flagCode={match?.awayTeam.flagCode ?? null} countryCode={match?.awayTeam.countryCode ?? null} size="2.75rem" />
+                {match?.awayTeam.crestUrl ? (
+                  <TeamCrest crestUrl={match.awayTeam.crestUrl} shortName={match.awayTeam.shortName} className="h-8 w-8" />
+                ) : (
+                  <FlagIcon flagCode={match?.awayTeam.flagCode ?? null} countryCode={match?.awayTeam.countryCode ?? null} size="2.75rem" />
+                )}
               </p>
               <p className="mt-2 text-xl font-black text-white">{match?.awayTeam.shortName ?? "---"}</p>
               <p className="mt-1 truncate text-xs text-violet-100/70">{match?.awayTeam.name ?? t("templates.awayTeam")}</p>

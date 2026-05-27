@@ -389,25 +389,31 @@ export function MatchPredictionAccordion({
 									>
 										<span className="min-w-0">
 											<span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-white sm:text-base">
+											{match.homeTeam.crestUrl ? (
 												<TeamCrest
 													crestUrl={match.homeTeam.crestUrl}
 													shortName={match.homeTeam.shortName}
 												/>
+											) : (
 												<FlagIcon
 													flagCode={match.homeTeam.flagCode}
 													countryCode={match.homeTeam.countryCode}
 												/>
-												<span>{match.homeTeam.shortName}</span>
-												<span className="text-slate-500">{i18n.vs}</span>
-												<span>{match.awayTeam.shortName}</span>
-												<FlagIcon
-													flagCode={match.awayTeam.flagCode}
-													countryCode={match.awayTeam.countryCode}
-												/>
+											)}
+											<span>{match.homeTeam.shortName}</span>
+											<span className="text-slate-500">{i18n.vs}</span>
+											<span>{match.awayTeam.shortName}</span>
+											{match.awayTeam.crestUrl ? (
 												<TeamCrest
 													crestUrl={match.awayTeam.crestUrl}
 													shortName={match.awayTeam.shortName}
 												/>
+											) : (
+												<FlagIcon
+													flagCode={match.awayTeam.flagCode}
+													countryCode={match.awayTeam.countryCode}
+												/>
+											)}
 											</span>
 											<span className="mt-1 block truncate text-xs text-slate-500">
 												{match.stage}
