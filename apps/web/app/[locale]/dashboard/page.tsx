@@ -21,7 +21,11 @@ import {
 } from "@/lib/api";
 import { isProfileComplete } from "@/lib/profile";
 import { cn } from "@/lib/cn";
-import { findRankingEntryByUserId, getRankingDisplayName, getRankingPreview } from "@/lib/rankings";
+import {
+	findRankingEntryByUserId,
+	getRankingDisplayName,
+	getRankingPreview,
+} from "@/lib/rankings";
 import {
 	getScoringExplanation,
 	SCORING_EXPLANATION_KIND,
@@ -339,7 +343,11 @@ export default async function DashboardPage({
 		globalRanking,
 		currentUserProfile?.id,
 	);
-	const rankingPreview = getRankingPreview(globalRanking, currentUserProfile?.id, 3);
+	const rankingPreview = getRankingPreview(
+		globalRanking,
+		currentUserProfile?.id,
+		3,
+	);
 	const featuredGroup = selectFeaturedGroup(myGroups);
 	const additionalGroupsCount = featuredGroup
 		? Math.max(myGroups.length - 1, 0)
@@ -677,7 +685,8 @@ export default async function DashboardPage({
 									entry,
 									currentUserProfile?.id ?? null,
 									displayName,
-									(position) => t("rankingSection.playerFallback", { position }),
+									(position) =>
+										t("rankingSection.playerFallback", { position }),
 								);
 
 								return (

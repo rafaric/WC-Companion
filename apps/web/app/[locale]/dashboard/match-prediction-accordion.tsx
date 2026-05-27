@@ -13,6 +13,7 @@ import {
 	type ScoringExplanationStrings,
 } from "@/lib/scoring-explanations";
 import { FlagIcon } from "@/components/FlagIcon";
+import { TeamCrest } from "@/components/team-crest";
 
 interface MatchPredictionCard extends MatchView {
 	prediction: PredictionView | null;
@@ -388,6 +389,10 @@ export function MatchPredictionAccordion({
 									>
 										<span className="min-w-0">
 											<span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-white sm:text-base">
+												<TeamCrest
+													crestUrl={match.homeTeam.crestUrl}
+													shortName={match.homeTeam.shortName}
+												/>
 												<FlagIcon
 													flagCode={match.homeTeam.flagCode}
 													countryCode={match.homeTeam.countryCode}
@@ -398,6 +403,10 @@ export function MatchPredictionAccordion({
 												<FlagIcon
 													flagCode={match.awayTeam.flagCode}
 													countryCode={match.awayTeam.countryCode}
+												/>
+												<TeamCrest
+													crestUrl={match.awayTeam.crestUrl}
+													shortName={match.awayTeam.shortName}
 												/>
 											</span>
 											<span className="mt-1 block truncate text-xs text-slate-500">
@@ -521,6 +530,10 @@ export function MatchPredictionAccordion({
 													<div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
 														<label className="group rounded-3xl border border-slate-800 bg-slate-950/70 p-3 text-center transition duration-200 focus-within:-translate-y-0.5 focus-within:border-cyan-300/60 focus-within:bg-slate-950 focus-within:shadow-lg focus-within:shadow-cyan-500/15 sm:p-4">
 															<span className="block truncate text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 group-focus-within:text-cyan-300">
+																<TeamCrest
+																	crestUrl={match.homeTeam.crestUrl}
+																	shortName={match.homeTeam.shortName}
+																/>
 																{match.homeTeam.shortName}
 															</span>
 															<input
@@ -543,6 +556,10 @@ export function MatchPredictionAccordion({
 
 														<label className="group rounded-3xl border border-slate-800 bg-slate-950/70 p-3 text-center transition duration-200 focus-within:-translate-y-0.5 focus-within:border-violet-300/60 focus-within:bg-slate-950 focus-within:shadow-lg focus-within:shadow-violet-500/15 sm:p-4">
 															<span className="block truncate text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 group-focus-within:text-violet-300">
+																<TeamCrest
+																	crestUrl={match.awayTeam.crestUrl}
+																	shortName={match.awayTeam.shortName}
+																/>
 																{match.awayTeam.shortName}
 															</span>
 															<input

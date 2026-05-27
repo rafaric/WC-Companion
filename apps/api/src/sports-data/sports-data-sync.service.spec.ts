@@ -1576,7 +1576,7 @@ it('filters external match results by explicit tournament context', async () => 
       } as unknown as TournamentsService;
 
       const provider = new MockSportsDataProvider({
-        teams: [{ externalId: 'team-argentina', name: 'Argentina', shortName: 'ARG', countryCode: 'AR', flagCode: 'ARG', primaryColor: '#74ACDF', secondaryColor: '#F6E7A1' }],
+        teams: [{ externalId: 'team-argentina', name: 'Argentina', shortName: 'ARG', countryCode: 'AR', flagCode: 'ARG', primaryColor: '#74ACDF', secondaryColor: '#F6E7A1', crestUrl: null }],
         venues: [],
         fixtures: [],
         finalResults: [],
@@ -1861,7 +1861,7 @@ it('filters external match results by explicit tournament context', async () => 
 
       const provider = new MockSportsDataProvider({
         teams: [
-          { externalId: 'team-argentina', name: 'Argentina', shortName: 'ARG', countryCode: 'AR', flagCode: 'ARG', primaryColor: '#74ACDF', secondaryColor: '#F6E7A1' },
+          { externalId: 'team-argentina', name: 'Argentina', shortName: 'ARG', countryCode: 'AR', flagCode: 'ARG', primaryColor: '#74ACDF', secondaryColor: '#F6E7A1', crestUrl: null },
         ],
         venues: [],
         fixtures: [],

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { MatchStatus, TournamentStatus } from '@prisma/client';
+import { type MatchStatus, TournamentStatus } from '@prisma/client';
 
-import { PrismaService } from '../prisma/prisma.service';
+import type { PrismaService } from '../prisma/prisma.service';
 
 /**
  * Input for tournament context resolution.
@@ -45,6 +45,7 @@ export interface TeamView {
   countryCode: string | null;
   flagCode: string | null;
   colors: TeamColorsView;
+  crestUrl: string | null;
 }
 
 export interface TournamentMatchView {
@@ -89,6 +90,7 @@ interface ActiveTournamentMatchRecord {
     flagCode: string | null;
     primaryColor: string | null;
     secondaryColor: string | null;
+    crestUrl: string | null;
   };
   awayTeam: {
     id: string;
@@ -98,6 +100,7 @@ interface ActiveTournamentMatchRecord {
     flagCode: string | null;
     primaryColor: string | null;
     secondaryColor: string | null;
+    crestUrl: string | null;
   };
 }
 
@@ -163,6 +166,7 @@ export class TournamentsService {
             flagCode: true,
             primaryColor: true,
             secondaryColor: true,
+            crestUrl: true,
           },
         },
         awayTeam: {
@@ -174,6 +178,7 @@ export class TournamentsService {
             flagCode: true,
             primaryColor: true,
             secondaryColor: true,
+            crestUrl: true,
           },
         },
       },
@@ -300,6 +305,7 @@ export class TournamentsService {
         primaryColor: team.primaryColor,
         secondaryColor: team.secondaryColor,
       },
+      crestUrl: team.crestUrl,
     };
   }
 

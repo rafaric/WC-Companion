@@ -70,6 +70,7 @@ describe('ApiSportsProvider', () => {
           flagCode: null,
           primaryColor: null,
           secondaryColor: null,
+          crestUrl: null,
         },
         {
           externalId: '501',
@@ -79,6 +80,7 @@ describe('ApiSportsProvider', () => {
           flagCode: null,
           primaryColor: null,
           secondaryColor: null,
+          crestUrl: null,
         },
       ]);
     });

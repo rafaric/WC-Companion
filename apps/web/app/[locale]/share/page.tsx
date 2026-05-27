@@ -25,6 +25,7 @@ import { findRankingEntryByUserId } from "@/lib/rankings";
 import { getFriendlyDisplayName } from "@/lib/user-display";
 import { resolveTournamentSlug } from "@/lib/resolve-tournament-slug";
 import { FlagIcon } from "@/components/FlagIcon";
+import { TeamCrest } from "@/components/team-crest";
 import { getTranslations } from "next-intl/server";
 import { getLocalizedPath, type AppLocale } from "@/lib/locale-nav";
 import { buildPageMetadata } from "@/lib/metadata";
@@ -274,7 +275,8 @@ function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetI
           <p className="text-center text-[11px] font-bold uppercase tracking-[0.24em] text-slate-300">{t("templates.selectedMatch")}</p>
           <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
             <div className="rounded-3xl border border-cyan-300/30 bg-cyan-400/10 p-4 text-center">
-              <p className="flex items-center justify-center" aria-hidden="true">
+              <p className="flex items-center justify-center gap-2" aria-hidden="true">
+                <TeamCrest crestUrl={match?.homeTeam.crestUrl ?? null} shortName={match?.homeTeam.shortName ?? ""} className="h-8 w-8" />
                 <FlagIcon flagCode={match?.homeTeam.flagCode ?? null} countryCode={match?.homeTeam.countryCode ?? null} size="2.75rem" />
               </p>
               <p className="mt-2 text-xl font-black text-white">{match?.homeTeam.shortName ?? "---"}</p>
@@ -282,7 +284,8 @@ function PredictionShareTemplate({ predictionOption, predictedBy, captureTargetI
             </div>
             <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">vs</span>
             <div className="rounded-3xl border border-violet-300/30 bg-violet-400/10 p-4 text-center">
-              <p className="flex items-center justify-center" aria-hidden="true">
+              <p className="flex items-center justify-center gap-2" aria-hidden="true">
+                <TeamCrest crestUrl={match?.awayTeam.crestUrl ?? null} shortName={match?.awayTeam.shortName ?? ""} className="h-8 w-8" />
                 <FlagIcon flagCode={match?.awayTeam.flagCode ?? null} countryCode={match?.awayTeam.countryCode ?? null} size="2.75rem" />
               </p>
               <p className="mt-2 text-xl font-black text-white">{match?.awayTeam.shortName ?? "---"}</p>

@@ -209,14 +209,14 @@ function parseOptaXmlFeed(raw: string): LpfWebParseResult | null {
 		return null;
 	}
 
-	const teams = new Map<string, { name: string }>();
+	const teams = new Map<string, { name: string; optaId: string }>();
 	for (const match of raw.matchAll(/<Team\s+uID="([^"]+)"[\s\S]*?<\/Team>/g)) {
 		const teamXml = match[0];
 		const teamId = match[1];
 		const shortName = getTagText(teamXml, "ShortTeamName");
 		const name = getTagText(teamXml, "Name");
 		if (teamId && (shortName || name)) {
-			teams.set(teamId, { name: shortName ?? name! });
+			teams.set(teamId, { name: shortName ?? name!, optaId: teamId });
 		}
 	}
 
@@ -236,6 +236,8 @@ function parseOptaXmlFeed(raw: string): LpfWebParseResult | null {
 		const awayTeamRef = awayTeam ? getAttribute(awayTeam, "TeamRef") : null;
 		const homeTeamName = homeTeamRef ? teams.get(homeTeamRef)?.name : null;
 		const awayTeamName = awayTeamRef ? teams.get(awayTeamRef)?.name : null;
+		const homeOptaTeamId = homeTeamRef ? teams.get(homeTeamRef)?.optaId ?? null : null;
+		const awayOptaTeamId = awayTeamRef ? teams.get(awayTeamRef)?.optaId ?? null : null;
 
 		if (
 			!kickoffAt ||
@@ -274,6 +276,8 @@ function parseOptaXmlFeed(raw: string): LpfWebParseResult | null {
 			kickoffAt,
 			homeTeamName,
 			awayTeamName,
+			homeOptaTeamId,
+			awayOptaTeamId,
 			homeScore,
 			awayScore,
 			venueName,
@@ -368,6 +372,8 @@ export function parseLpfPage(raw: string): LpfWebParseResult {
 				kickoffAt,
 				homeTeamName: parsed.homeTeam,
 				awayTeamName: parsed.awayTeam,
+				homeOptaTeamId: null,
+				awayOptaTeamId: null,
 				homeScore: parsed.homeScore,
 				awayScore: parsed.awayScore,
 				venueName,

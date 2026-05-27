@@ -75,6 +75,10 @@ export interface LpfWebMatchRow {
 	homeTeamName: string;
 	/** Canonical away team name as it appears on the LPF page. */
 	awayTeamName: string;
+	/** Opta team uID for the home team (e.g. "t540"), when available. */
+	homeOptaTeamId: string | null;
+	/** Opta team uID for the away team (e.g. "t608"), when available. */
+	awayOptaTeamId: string | null;
 	/** Home team score. `null` if not yet played or not available. */
 	homeScore: number | null;
 	/** Away team score. `null` if not yet played or not available. */

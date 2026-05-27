@@ -23,6 +23,13 @@ function slugify(value: string): string {
 		.replace(/^-+|-+$/g, "");
 }
 
+/** Builds an Opta badge image URL from the team uID (e.g. "t540" → "540"). */
+function buildCrestUrl(optaTeamId: string | null): string | null {
+	if (!optaTeamId) return null;
+	const numericId = optaTeamId.replace(/^t/, "");
+	return `https://omo.akamai.opta.net/image.php?secure=true&h=omo.akamai.opta.net&sport=football&entity=team&description=badges&dimensions=20&id=${numericId}`;
+}
+
 export class LpfWebProvider implements SportsDataProvider {
 	readonly providerKey = SPORTS_DATA_PROVIDER_KEYS.LPF_WEB;
 
@@ -54,19 +61,23 @@ export class LpfWebProvider implements SportsDataProvider {
 		const teams: SportsDataTeamDTO[] = [];
 
 		for (const row of rows) {
-			for (const name of [row.homeTeamName, row.awayTeamName]) {
-				const slug = slugify(name);
+			for (const entry of [
+				{ name: row.homeTeamName, optaId: row.homeOptaTeamId },
+				{ name: row.awayTeamName, optaId: row.awayOptaTeamId },
+			]) {
+				const slug = slugify(entry.name);
 				const externalId = `lpf-web-team:${slug}`;
 				if (!seen.has(externalId)) {
 					seen.add(externalId);
 					teams.push({
 						externalId,
-						name,
-						shortName: this.resolveShortName(name),
+						name: entry.name,
+						shortName: this.resolveShortName(entry.name),
 						countryCode: null,
 						flagCode: null,
 						primaryColor: null,
 						secondaryColor: null,
+						crestUrl: buildCrestUrl(entry.optaId),
 					});
 				}
 			}
