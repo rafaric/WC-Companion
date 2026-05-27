@@ -18,8 +18,8 @@ RUN pnpm install --frozen-lockfile
 # Copy API source
 COPY apps/api ./apps/api
 
-# Generate Prisma client and build
-RUN pnpm --filter @worldpredict/api prisma:generate
+# Generate Prisma client and build (DATABASE_URL is required by prisma.config.ts but not used for generation)
+RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" pnpm --filter @worldpredict/api prisma:generate
 RUN pnpm --filter @worldpredict/api build
 
 # Production stage
