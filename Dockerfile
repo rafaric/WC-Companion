@@ -36,7 +36,7 @@ COPY apps/api/package.json ./apps/api/
 # Install production dependencies
 RUN pnpm install --frozen-lockfile --prod
 
-# Copy built artifacts, Prisma files, scripts, and node_modules from builder
+# Copy built artifacts, Prisma files, migrations, scripts, and node_modules from builder
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 COPY --from=builder /app/apps/api/scripts/start.sh ./apps/api/scripts/start.sh

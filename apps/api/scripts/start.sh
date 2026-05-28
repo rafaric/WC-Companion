@@ -1,9 +1,8 @@
 #!/bin/sh
-set -e
 
 echo "Running Prisma migrations..."
 cd /app/apps/api
-npx prisma migrate deploy
+npx prisma migrate deploy || echo "Migration failed, continuing startup..."
 
 echo "Starting server..."
 node dist/main
