@@ -12,7 +12,7 @@ RUN corepack enable && corepack prepare pnpm@11.1.2 --activate
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 COPY apps/api/package.json ./apps/api/
 
-# Install dependencies (only what's needed for the API)
+# Install dependencies
 RUN pnpm install --frozen-lockfile
 
 # Copy API source
@@ -29,18 +29,17 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@11.1.2 --activate
 
-# Copy workspace files again for production install
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+# Copy workspace files
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 COPY apps/api/package.json ./apps/api/
 
-# Install production dependencies only
+# Install production dependencies
 RUN pnpm install --frozen-lockfile --prod
 
-# Copy built artifacts and Prisma files
+# Copy built artifacts, Prisma files, and node_modules from builder
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-COPY --from=builder /app/node_modules/.pnpm/@prisma+client* ./node_modules/.pnpm/
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules ./node_modules
 
 WORKDIR /app/apps/api
 
