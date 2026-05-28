@@ -33,6 +33,7 @@ export class Auth0JwtStrategy extends PassportStrategy(Strategy, AUTH0_JWT_STRAT
   }
 
   validate(payload: Auth0JwtPayload): AuthenticatedIdentity {
+    console.warn('[Auth Debug] Token audience:', payload.aud, '| Expected:', this.configService.getOrThrow('AUTH0_AUDIENCE'));
     return this.authService.normalizeIdentity(payload);
   }
 }
