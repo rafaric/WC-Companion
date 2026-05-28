@@ -1,0 +1,17 @@
+{
+  "files": {
+    "src/config/env.validation.ts": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 88
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-05-27T23:48:58.190Z"
+    }
+  },
+  "turnCycles": 0,
+  "maxCycles": 3,
+  "lastUpdated": "2026-05-27T23:48:58.190Z"
+}
