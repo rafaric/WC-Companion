@@ -36,6 +36,9 @@ COPY apps/api/package.json ./apps/api/
 # Install production dependencies
 RUN pnpm install --frozen-lockfile --prod
 
+# Install prisma CLI globally for migrations (devDependency not available in prod)
+RUN npm install -g prisma@6
+
 # Copy built artifacts, Prisma files, migrations, scripts, and node_modules from builder
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
