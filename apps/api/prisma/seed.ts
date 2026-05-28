@@ -389,7 +389,7 @@ async function main() {
     console.log('\nThe selector will show all seeded tournaments.');
     console.log('The ACTIVE tournament serves as the deterministic fallback.');
     console.log('Demo fixtures are preserved under the demo slug for preview.');
-  });
+  }, { maxWait: 60000, timeout: 120000 });
 }
 
 main()
