@@ -1,11 +1,7 @@
-import {
-	BadRequestException,
-	Injectable,
-	NotFoundException,
-} from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { type MatchStatus, TournamentStatus } from "@prisma/client";
 
-import { PrismaService } from "../prisma/prisma.service";
+import type { PrismaService } from "../prisma/prisma.service";
 
 /**
  * Input for tournament context resolution.
@@ -35,6 +31,8 @@ export interface TournamentView {
 	status: TournamentStatus;
 	startsAt: Date | null;
 	endsAt: Date | null;
+	/** Provider key for this tournament's data source */
+	providerKey: string | null;
 }
 
 export interface TeamColorsView {
@@ -74,6 +72,7 @@ interface ActiveTournamentRecord {
 	status: TournamentStatus;
 	startsAt: Date | null;
 	endsAt: Date | null;
+	providerKey: string | null;
 }
 
 interface ActiveTournamentMatchRecord {
@@ -125,6 +124,7 @@ export class TournamentsService {
 				status: true,
 				startsAt: true,
 				endsAt: true,
+				providerKey: true,
 			},
 		});
 
@@ -211,6 +211,7 @@ export class TournamentsService {
 				status: true,
 				startsAt: true,
 				endsAt: true,
+				providerKey: true,
 			},
 		});
 
@@ -240,6 +241,7 @@ export class TournamentsService {
 					status: true,
 					startsAt: true,
 					endsAt: true,
+					providerKey: true,
 				},
 			});
 
@@ -271,6 +273,7 @@ export class TournamentsService {
 					status: true,
 					startsAt: true,
 					endsAt: true,
+					providerKey: true,
 				},
 			});
 
@@ -309,6 +312,7 @@ export class TournamentsService {
 			status: tournament.status,
 			startsAt: tournament.startsAt,
 			endsAt: tournament.endsAt,
+			providerKey: tournament.providerKey,
 		};
 	}
 
