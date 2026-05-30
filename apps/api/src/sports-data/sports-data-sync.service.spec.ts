@@ -242,13 +242,24 @@ function createMatchesServiceMock(
 
 function createMockFactory(
 	provider: MockSportsDataProvider,
-	tournamentProviderKey: 'mock' | 'football-data' | 'api-sports' | 'lpf-web' = 'mock',
+	tournamentProviderKey:
+		| "mock"
+		| "football-data"
+		| "api-sports"
+		| "lpf-web" = "mock",
 ): SportsDataProviderFactory {
 	return {
 		getProvider: jest.fn((_key?: string | null) => provider),
-		getAvailableProviders: jest.fn((): Array<'mock' | 'football-data' | 'api-sports' | 'lpf-web'> => [tournamentProviderKey]),
-		getDefaultProviderKey: jest.fn((): 'mock' | 'football-data' | 'api-sports' | 'lpf-web' => tournamentProviderKey),
-	};
+		getAvailableProviders: jest.fn(
+			(): Array<"mock" | "football-data" | "api-sports" | "lpf-web"> => [
+				tournamentProviderKey,
+			],
+		),
+		getDefaultProviderKey: jest.fn(
+			(): "mock" | "football-data" | "api-sports" | "lpf-web" =>
+				tournamentProviderKey,
+		),
+	} as unknown as SportsDataProviderFactory;
 }
 
 /**
@@ -993,20 +1004,23 @@ describe("SportsDataSyncService", () => {
 		};
 		const service = new SportsDataSyncService(
 			prisma as unknown as PrismaService,
-			createMockFactory(provider as unknown as MockSportsDataProvider, 'football-data'),
+			createMockFactory(
+				provider as unknown as MockSportsDataProvider,
+				"football-data",
+			),
 			createMatchesServiceMock(
 				createFinalizeMatchSummary("match-1", "tournament-db-id"),
 			) as unknown as MatchesService,
 			createTournamentsServiceMock({
-					id: "tournament-db-id",
+				id: "tournament-db-id",
 				slug: "world-cup-2026",
 				providerKey: "football-data",
 			}) as unknown as TournamentsService,
 		);
 
-				await service.importTournament("tournament-db-id");
+		await service.importTournament("tournament-db-id");
 
-				expect(provider.listTeams).toHaveBeenCalledWith("world-cup-2026");
+		expect(provider.listTeams).toHaveBeenCalledWith("world-cup-2026");
 		expect(provider.listVenues).toHaveBeenCalledWith("world-cup-2026");
 		expect(provider.listFixtures).toHaveBeenCalledWith("world-cup-2026");
 	});
@@ -1032,12 +1046,15 @@ describe("SportsDataSyncService", () => {
 		};
 		const service = new SportsDataSyncService(
 			prisma as unknown as PrismaService,
-			createMockFactory(provider as unknown as MockSportsDataProvider, 'api-sports'),
+			createMockFactory(
+				provider as unknown as MockSportsDataProvider,
+				"api-sports",
+			),
 			createMatchesServiceMock(
 				createFinalizeMatchSummary("match-1", "liga-db-id"),
 			) as unknown as MatchesService,
 			createTournamentsServiceMock({
-					id: "liga-db-id",
+				id: "liga-db-id",
 				slug: "liga-argentina-2026",
 				providerKey: "api-sports",
 			}) as unknown as TournamentsService,
@@ -1071,7 +1088,10 @@ describe("SportsDataSyncService", () => {
 		};
 		const service = new SportsDataSyncService(
 			prisma as unknown as PrismaService,
-			createMockFactory(provider as unknown as MockSportsDataProvider, 'lpf-web'),
+			createMockFactory(
+				provider as unknown as MockSportsDataProvider,
+				"lpf-web",
+			),
 			createMatchesServiceMock(
 				createFinalizeMatchSummary("match-1", "liga-db-id"),
 			) as unknown as MatchesService,
@@ -1110,7 +1130,10 @@ describe("SportsDataSyncService", () => {
 		};
 		const service = new SportsDataSyncService(
 			prisma as unknown as PrismaService,
-			createMockFactory(provider as unknown as MockSportsDataProvider, 'football-data'),
+			createMockFactory(
+				provider as unknown as MockSportsDataProvider,
+				"football-data",
+			),
 			createMatchesServiceMock(
 				createFinalizeMatchSummary("match-1", "liga-db-id"),
 			) as unknown as MatchesService,
@@ -1163,7 +1186,10 @@ describe("SportsDataSyncService", () => {
 
 		const service = new SportsDataSyncService(
 			prisma as unknown as PrismaService,
-			createMockFactory(provider as unknown as MockSportsDataProvider, 'football-data'),
+			createMockFactory(
+				provider as unknown as MockSportsDataProvider,
+				"football-data",
+			),
 			createMatchesServiceMock(
 				createFinalizeMatchSummary("match-1", "tournament-1"),
 			) as unknown as MatchesService,

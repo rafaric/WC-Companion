@@ -8,6 +8,10 @@ export const SPORTS_DATA_PROVIDER_KEYS = {
 export type SportsDataProviderKey =
 	(typeof SPORTS_DATA_PROVIDER_KEYS)[keyof typeof SPORTS_DATA_PROVIDER_KEYS];
 
+// System-level default provider (used when tournament has no providerKey)
+export const DEFAULT_SPORTS_DATA_PROVIDER_KEY: SportsDataProviderKey =
+	SPORTS_DATA_PROVIDER_KEYS.MOCK;
+
 export const SPORTS_DATA_SYNC_TYPES = {
 	IMPORT: "IMPORT",
 	RESULTS: "RESULTS",

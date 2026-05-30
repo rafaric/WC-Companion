@@ -96,6 +96,11 @@ model Tournament {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
+  // Provider key for this tournament's data source
+  // null = use system default, 'mock' = demo data, 'football_data' = Football-Data.org,
+  // 'api_sports' = API-Football, 'lpf_web' = LPF web/Opta feed
+  providerKey        String?
+
   teams              Team[]
   venues             Venue[]
   matches            Match[]
