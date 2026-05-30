@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { type MatchStatus, TournamentStatus } from "@prisma/client";
 
-import type { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "../prisma/prisma.service";
 
 /**
  * Input for tournament context resolution.
@@ -109,7 +109,7 @@ interface ActiveTournamentMatchRecord {
 
 @Injectable()
 export class TournamentsService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
 	async getActiveTournament(): Promise<TournamentView> {
 		const tournament = await this.prisma.tournament.findFirst({
