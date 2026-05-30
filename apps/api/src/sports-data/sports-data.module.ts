@@ -81,33 +81,34 @@ function safeCreateProvider<T extends SportsDataProvider>(
 		{
 			provide: "SPORTS_DATA_FOOTBALL_DATA_PROVIDER",
 			inject: [ConfigService],
-			useFactory: (
-				configService: ConfigService,
-			): SportsDataProvider => {
-				return safeCreateProvider(SPORTS_DATA_PROVIDER_KEYS.FOOTBALL_DATA, () => {
-					const apiToken = configService.get<string>("FOOTBALL_DATA_API_TOKEN");
-					if (!apiToken?.trim()) {
-						throw new Error("FOOTBALL_DATA_API_TOKEN is not configured");
-					}
-					return new FootballDataProvider(
-						new FootballDataClient({
-							baseUrl:
-								configService.get<string>("FOOTBALL_DATA_BASE_URL") ??
-								undefined,
-							apiToken: apiToken.trim(),
-						}),
-						FOOTBALL_DATA_TOURNAMENT_CONFIGS,
-					);
-				});
+			useFactory: (configService: ConfigService): SportsDataProvider => {
+				return safeCreateProvider(
+					SPORTS_DATA_PROVIDER_KEYS.FOOTBALL_DATA,
+					() => {
+						const apiToken = configService.get<string>(
+							"FOOTBALL_DATA_API_TOKEN",
+						);
+						if (!apiToken?.trim()) {
+							throw new Error("FOOTBALL_DATA_API_TOKEN is not configured");
+						}
+						return new FootballDataProvider(
+							new FootballDataClient({
+								baseUrl:
+									configService.get<string>("FOOTBALL_DATA_BASE_URL") ??
+									undefined,
+								apiToken: apiToken.trim(),
+							}),
+							FOOTBALL_DATA_TOURNAMENT_CONFIGS,
+						);
+					},
+				);
 			},
 		},
 		// API-Sports provider - requires API_SPORTS_API_KEY
 		{
 			provide: "SPORTS_DATA_API_SPORTS_PROVIDER",
 			inject: [ConfigService],
-			useFactory: (
-				configService: ConfigService,
-			): SportsDataProvider => {
+			useFactory: (configService: ConfigService): SportsDataProvider => {
 				return safeCreateProvider(SPORTS_DATA_PROVIDER_KEYS.API_SPORTS, () => {
 					const apiKey = configService.get<string>("API_SPORTS_API_KEY");
 					if (!apiKey?.trim()) {
@@ -128,9 +129,7 @@ function safeCreateProvider<T extends SportsDataProvider>(
 		{
 			provide: "SPORTS_DATA_LPF_WEB_PROVIDER",
 			inject: [ConfigService],
-			useFactory: (
-				configService: ConfigService,
-			): SportsDataProvider => {
+			useFactory: (configService: ConfigService): SportsDataProvider => {
 				return safeCreateProvider(SPORTS_DATA_PROVIDER_KEYS.LPF_WEB, () => {
 					const baseUrl = configService.get<string>("LPF_WEB_BASE_URL");
 					if (!baseUrl?.trim()) {
