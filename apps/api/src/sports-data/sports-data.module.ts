@@ -21,23 +21,50 @@ import { SportsDataSyncService } from "./sports-data-sync.service";
 import { SportsDataProviderFactory } from "./sports-data-provider.factory";
 import type { SportsDataProvider } from "./sports-data.types";
 
+class UnavailableSportsDataProvider implements SportsDataProvider {
+	constructor(
+		readonly providerKey: SportsDataProvider["providerKey"],
+		private readonly reason: string,
+	) {}
+
+	listTeams(): Promise<never> {
+		return Promise.reject(new Error(this.reason));
+	}
+
+	listVenues(): Promise<never> {
+		return Promise.reject(new Error(this.reason));
+	}
+
+	listFixtures(): Promise<never> {
+		return Promise.reject(new Error(this.reason));
+	}
+
+	listFinalResults(): Promise<never> {
+		return Promise.reject(new Error(this.reason));
+	}
+}
+
 /**
- * Creates a provider instance with lazy initialization.
- * The provider is created only if credentials are available, otherwise undefined.
- * Errors during initialization are caught and logged, returning undefined.
+ * Creates a provider instance without making missing optional credentials fatal
+ * during app startup. If a provider is selected later, its methods fail with a
+ * clear configuration error.
  */
 function safeCreateProvider<T extends SportsDataProvider>(
-	name: string,
+	providerKey: SportsDataProvider["providerKey"],
 	createFn: () => T,
-): T | undefined {
+): SportsDataProvider {
 	try {
 		return createFn();
 	} catch (error) {
+		const reason =
+			error instanceof Error
+				? error.message
+				: `Provider '${providerKey}' is not configured`;
 		console.warn(
-			`[SportsDataModule] Failed to initialize '${name}' provider:`,
-			error instanceof Error ? error.message : error,
+			`[SportsDataModule] Failed to initialize '${providerKey}' provider:`,
+			reason,
 		);
-		return undefined;
+		return new UnavailableSportsDataProvider(providerKey, reason);
 	}
 }
 
@@ -56,8 +83,8 @@ function safeCreateProvider<T extends SportsDataProvider>(
 			inject: [ConfigService],
 			useFactory: (
 				configService: ConfigService,
-			): SportsDataProvider | undefined => {
-				return safeCreateProvider("football-data", () => {
+			): SportsDataProvider => {
+				return safeCreateProvider(SPORTS_DATA_PROVIDER_KEYS.FOOTBALL_DATA, () => {
 					const apiToken = configService.get<string>("FOOTBALL_DATA_API_TOKEN");
 					if (!apiToken?.trim()) {
 						throw new Error("FOOTBALL_DATA_API_TOKEN is not configured");
@@ -80,8 +107,8 @@ function safeCreateProvider<T extends SportsDataProvider>(
 			inject: [ConfigService],
 			useFactory: (
 				configService: ConfigService,
-			): SportsDataProvider | undefined => {
-				return safeCreateProvider("api-sports", () => {
+			): SportsDataProvider => {
+				return safeCreateProvider(SPORTS_DATA_PROVIDER_KEYS.API_SPORTS, () => {
 					const apiKey = configService.get<string>("API_SPORTS_API_KEY");
 					if (!apiKey?.trim()) {
 						throw new Error("API_SPORTS_API_KEY is not configured");
@@ -103,8 +130,8 @@ function safeCreateProvider<T extends SportsDataProvider>(
 			inject: [ConfigService],
 			useFactory: (
 				configService: ConfigService,
-			): SportsDataProvider | undefined => {
-				return safeCreateProvider("lpf-web", () => {
+			): SportsDataProvider => {
+				return safeCreateProvider(SPORTS_DATA_PROVIDER_KEYS.LPF_WEB, () => {
 					const baseUrl = configService.get<string>("LPF_WEB_BASE_URL");
 					if (!baseUrl?.trim()) {
 						throw new Error("LPF_WEB_BASE_URL is not configured");
