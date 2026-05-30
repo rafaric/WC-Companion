@@ -322,6 +322,17 @@
       "brandName": "WorldPredict",
       "completeProfile": "Complete your profile",
       "backHome": "Back home"
+    },
+    "scoringRules": {
+      "eyebrow": "Scoring system",
+      "title": "How points are awarded",
+      "description": "Your ranking updates when final results are confirmed. Exact scores score the most, but picking the match outcome also earns points.",
+      "exactScoreTitle": "Exact score",
+      "exactScoreDetail": "Predict both teams' final goals to earn 3 points.",
+      "correctOutcomeTitle": "Correct outcome",
+      "correctOutcomeDetail": "Pick the winner, or the draw, without the exact score to earn 1 point.",
+      "wrongOutcomeTitle": "Wrong outcome",
+      "wrongOutcomeDetail": "If you miss the winner or draw, you earn 0 points for that match."
     }
   },
   "dashboardStrings": {

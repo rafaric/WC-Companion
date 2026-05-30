@@ -322,6 +322,17 @@
       "brandName": "WorldPredict",
       "completeProfile": "Completá tu perfil",
       "backHome": "Volver al inicio"
+    },
+    "scoringRules": {
+      "eyebrow": "Sistema de puntos",
+      "title": "Cómo se suman los puntos",
+      "description": "Tu clasificación se actualiza cuando se confirman los resultados finales. El score exacto es lo que más suma, pero acertar el resultado del partido también da puntos.",
+      "exactScoreTitle": "Score exacto",
+      "exactScoreDetail": "Acertá los goles finales de los dos equipos para ganar 3 puntos.",
+      "correctOutcomeTitle": "Resultado correcto",
+      "correctOutcomeDetail": "Elegí bien el ganador, o el empate, pero sin clavar el score exacto para ganar 1 punto.",
+      "wrongOutcomeTitle": "Resultado equivocado",
+      "wrongOutcomeDetail": "Si no acertás el ganador o el empate, sumás 0 puntos en ese partido."
     }
   },
   "dashboardStrings": {
